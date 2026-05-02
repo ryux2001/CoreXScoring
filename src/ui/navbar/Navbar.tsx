@@ -61,7 +61,7 @@ export default function Navbar() {
 
             {/* Botón Principal (Desktop) */}
             <button className="cursor-pointer hidden rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-black hover:bg-zinc-200 lg:block">
-              Autenticarse
+              <Link href="auth">Autenticarse</Link>
             </button>
 
             {/* MENU MÓVIL (Componente de Cliente) */}

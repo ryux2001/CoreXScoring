@@ -70,7 +70,7 @@ export default function RegisterForm() {
 
       {/* Botones (Corregido texto para Registro) */}
       <div className="space-y-3 pt-3">
-        <button className="w-full rounded-xl bg-white px-6 py-4 text-lg font-bold text-black hover:bg-zinc-200 transition-colors">
+        <button className="w-full rounded-xl bg-white px-6 py-4 mb-5 text-lg font-bold text-black hover:bg-zinc-200 transition-colors">
           Registrarse
         </button>
         <button className="flex items-center justify-center gap-3.5 w-full rounded-xl border border-white/10 bg-zinc-900 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-800 transition-colors">

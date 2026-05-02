@@ -13,7 +13,7 @@ export default function AuthClientWrapper() {
       <div className="flex border border-white/10 rounded-xl overflow-hidden mb-8">
         <button
           onClick={() => setShowLogin(true)}
-          className={`flex-1 text-center py-4 text-sm font-semibold transition-colors border-t-4 ${
+          className={`cursor-pointer flex-1 text-center py-4 text-sm font-semibold transition-colors border-t-4 ${
             showLogin
               ? "border-white bg-zinc-900 text-white"
               : "border-transparent text-zinc-400 hover:text-white"
@@ -24,7 +24,7 @@ export default function AuthClientWrapper() {
         <div className="w-px bg-white/10"></div>
         <button
           onClick={() => setShowLogin(false)}
-          className={`flex-1 text-center py-4 text-sm font-semibold transition-colors border-t-4 ${
+          className={`cursor-pointer flex-1 text-center py-4 text-sm font-semibold transition-colors border-t-4 ${
             !showLogin
               ? "border-white bg-zinc-900 text-white"
               : "border-transparent text-zinc-400 hover:text-white"
