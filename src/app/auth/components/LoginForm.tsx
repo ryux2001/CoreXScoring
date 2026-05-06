@@ -28,6 +28,18 @@ export default function LoginForm() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      // Esta es la URL a la que volverá el usuario tras loguearse
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+
+  if (error) alert("Error con Google: " + error.message);
+};
+
   return (
     <form onSubmit={handleLogin} className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tighter text-white">Bienvenido de nuevo</h1>
@@ -74,7 +86,7 @@ export default function LoginForm() {
         <button type="submit" className="cursor-pointer w-full rounded-xl bg-white px-6 py-4 text-lg font-bold text-black hover:bg-zinc-200 transition-colors">
           Iniciar Sesion
         </button>
-        <button type="button" className="cursor-pointer flex items-center justify-center gap-3.5 w-full rounded-xl border border-white/10 bg-zinc-900 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-800 transition-colors">
+        <button type="button" onClick={handleGoogleLogin} className="cursor-pointer flex items-center justify-center gap-3.5 w-full rounded-xl border border-white/10 bg-zinc-900 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-800 transition-colors">
           <span>Iniciar con Google</span>
         </button>
       </div>
