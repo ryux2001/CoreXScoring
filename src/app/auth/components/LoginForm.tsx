@@ -1,13 +1,18 @@
 "use client";
 
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginForm() {
   const setUser = useAuthStore((state) => state.setUser);
+  
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -21,10 +26,13 @@ export default function LoginForm() {
     });
 
     if (error) {
-      alert(error.message);
+      // Manejo específico de errores
+      if (error.status === 400) setErrorMsg("Credenciales inválidas. Revisa tu email o contraseña.");
+      else setErrorMsg(error.message);
+      setLoading(false);
     } else {
       setUser(data.user);
-      router.push("/"); // Redirigir al inicio tras login
+      router.push("/vault"); // Redirigimos a la nueva ruta protegida
     }
   };
 
@@ -43,6 +51,14 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleLogin} className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tighter text-white">Bienvenido de nuevo</h1>
+
+      {/* Caja de Error Visual */}
+      {errorMsg && (
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-500 animate-in fade-in slide-in-from-top-1">
+          <AlertCircle className="h-4 w-4" />
+          <p>{errorMsg}</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div>
@@ -84,7 +100,7 @@ export default function LoginForm() {
 
       <div className="space-y-3">
         <button type="submit" className="cursor-pointer w-full rounded-xl bg-white px-6 py-4 text-lg font-bold text-black hover:bg-zinc-200 transition-colors">
-          Iniciar Sesion
+          {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar Sesion"}
         </button>
         <button type="button" onClick={handleGoogleLogin} className="cursor-pointer flex items-center justify-center gap-3.5 w-full rounded-xl border border-white/10 bg-zinc-900 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-800 transition-colors">
           <span>Iniciar con Google</span>
