@@ -5,7 +5,9 @@ export default function HomePage() {
   return (
     <>
      <Navbar></Navbar>
-      Home Page
+      <div className="h-dvh block bg-black">
+        Home
+      </div>
     </>
   );
 }

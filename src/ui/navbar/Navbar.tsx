@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Search, ArrowLeftRight } from "lucide-react";
 import MobileMenu from "./MobileMenu"; // Importamos el componente de cliente
+import AuthStatus from "./AuthStatus";
 
 const navLinks = [
   { name: "Inicio", href: "/" },
@@ -60,9 +61,7 @@ export default function Navbar() {
             </button>
 
             {/* Botón Principal (Desktop) */}
-            <button className="cursor-pointer hidden rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-black hover:bg-zinc-200 lg:block">
-              <Link href="auth">Autenticarse</Link>
-            </button>
+            <AuthStatus/>
 
             {/* MENU MÓVIL (Componente de Cliente) */}
             <MobileMenu links={navLinks} />
