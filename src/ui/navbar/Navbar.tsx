@@ -8,7 +8,7 @@ const navLinks = [
   { name: "Catalogo", href: "/catalog" },
   { name: "Builds", href: "/builds" },
   { name: "Comparador", href: "/comparator" },
-  { name: "Favoritos", href: "/favorites" },
+  { name: "Boveda", href: "/vault" },
   { name: "Perfil", href: "/profile" },
 ];
 

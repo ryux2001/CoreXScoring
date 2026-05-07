@@ -32,21 +32,11 @@ export default function LoginForm() {
       setLoading(false);
     } else {
       setUser(data.user);
-      router.push("/vault"); // Redirigimos a la nueva ruta protegida
+      router.push("/catalog"); // Redirigimos a la nueva ruta protegida
     }
   };
 
-  const handleGoogleLogin = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      // Esta es la URL a la que volverá el usuario tras loguearse
-      redirectTo: `${window.location.origin}/auth/callback`,
-    },
-  });
-
-  if (error) alert("Error con Google: " + error.message);
-};
+  
 
   return (
     <form onSubmit={handleLogin} className="space-y-6">
@@ -101,9 +91,6 @@ export default function LoginForm() {
       <div className="space-y-3">
         <button type="submit" className="cursor-pointer w-full rounded-xl bg-white px-6 py-4 text-lg font-bold text-black hover:bg-zinc-200 transition-colors">
           {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar Sesion"}
-        </button>
-        <button type="button" onClick={handleGoogleLogin} className="cursor-pointer flex items-center justify-center gap-3.5 w-full rounded-xl border border-white/10 bg-zinc-900 px-6 py-4 text-lg font-bold text-white hover:bg-zinc-800 transition-colors">
-          <span>Iniciar con Google</span>
         </button>
       </div>
     </form>

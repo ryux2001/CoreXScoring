@@ -11,6 +11,7 @@ export async function proxy(request: NextRequest) {
     {
       auth: {
         persistSession: true,
+        storageKey: 'sb-auth-token',
         storage: {
           getItem: (key: string) => {
             return request.cookies.get(key)?.value ?? null
@@ -23,7 +24,8 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
+  const session = !!user
 
   // --- CONFIGURACIÓN DE RUTAS (OPCIÓN B) ---
   
