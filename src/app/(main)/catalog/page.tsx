@@ -30,9 +30,14 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
   // 1. Construir consulta con RANGO (.range)
   let query = supabase
-    .from("products")
+    .from("products_with_priority")
     .select(`id, name, type, brand, ${priceColumn}, specs, compatibility, release_date`, { count: 'exact' });
 
+  query = query
+  .order('priority', { ascending: true })       // 1. CPUs y GPUs primero
+  .order('release_date', { ascending: false }) // 2. Dentro de eso, lo más nuevo primero
+  .range(from, to);                            // 3. Paginación
+  
   if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%`);
   if (brand) query = query.in("brand", brand.split(","));
   if (type) query = query.eq("type", type);
