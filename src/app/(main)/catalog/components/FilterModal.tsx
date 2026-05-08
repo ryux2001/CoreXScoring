@@ -4,14 +4,17 @@ import { X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+// 1. AÑADIMOS 'currency' A LA INTERFAZ
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   availableBrands: string[];
   availableTypes: string[];
+  currency: string; 
 }
 
-export default function FilterModal({ isOpen, onClose, availableBrands, availableTypes }: Props) {
+// 2. RECIBIMOS 'currency' EN LOS PARÁMETROS DEL COMPONENTE
+export default function FilterModal({ isOpen, onClose, availableBrands, availableTypes, currency }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -56,8 +59,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
     let val = e.target.value;
     if (val !== "") {
       let num = Number(val);
-      if (num < 0) num = 0; // Evita números negativos
-      // El mínimo no puede superar al máximo (si el máximo existe)
+      if (num < 0) num = 0;
       if (priceRange.max && num > Number(priceRange.max)) {
         num = Number(priceRange.max);
       }
@@ -70,16 +72,14 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
     let val = e.target.value;
     if (val !== "") {
       let num = Number(val);
-      if (num < 0) num = 0; // Evita números negativos
-      if (num > 10000) num = 10000; // Límite máximo de 10000
+      if (num < 0) num = 0;
+      if (num > 10000) num = 10000;
       val = num.toString();
     }
     setPriceRange({ ...priceRange, max: val });
   };
 
   const handleMaxBlur = () => {
-    // Si al terminar de escribir en el input MAX, el valor es menor que el MIN,
-    // se iguala al MIN automáticamente para evitar errores lógicos.
     if (priceRange.min && priceRange.max) {
       if (Number(priceRange.max) < Number(priceRange.min)) {
         setPriceRange({ ...priceRange, max: priceRange.min });
@@ -140,7 +140,10 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
 
           {/* PRECIO */}
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 block mb-4">Rango de Precio ($)</span>
+            {/* 3. MOSTRAMOS EL SÍMBOLO DINÁMICO EN EL TÍTULO */}
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 block mb-4">
+              Rango de Precio ({currency === 'EUR' ? '€' : '$'})
+            </span>
             <div className="flex items-center gap-4">
               <input 
                 type="number" 
@@ -155,7 +158,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
                 placeholder="Max" 
                 value={priceRange.max}
                 onChange={handleMaxChange}
-                onBlur={handleMaxBlur} // Corrección inteligente al quitar el foco
+                onBlur={handleMaxBlur}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>

@@ -5,18 +5,18 @@ interface ProductProps {
   type: string;
   brand: string;
   name: string;
-  price_base: number;
+  price: number; // Cambiamos price_base_usd por price genérico
+  currency: string; // Añadimos la moneda ('USD' o 'EUR')
   specs: any;
   compatibility: any;
   release_date: string;
   imageUrl?: string;
 }
 
-export const Card = ({ type, brand, name, price_base, specs, compatibility, release_date, imageUrl }: ProductProps) => {
+export const Card = ({ type, brand, name, price, currency, specs, compatibility, release_date, imageUrl }: ProductProps) => {
   
   // 1. LÓGICA DE DETECCIÓN DE IMAGEN LOCAL (SSR puro)
   const getLocalImage = () => {
-    // Si la marca o el tipo vienen vacíos, evitamos errores
     if (!type || !brand) return null;
 
     const basePath = '/images/catalog/';
@@ -97,8 +97,11 @@ export const Card = ({ type, brand, name, price_base, specs, compatibility, rele
 
   const techDetails = getTechnicalDetails();
 
+  // 3. Determinar el símbolo de la moneda
+  const currencySymbol = currency === 'EUR' ? '€' : '$';
+
   return (
-    <div className="group flex w-full flex-col bg-black border border-zinc-900 rounded-2xl p-0 overflow-hidden transition-all hover:border-zinc-700 hover:-translate-y-1 font-sans">
+    <div className="group flex w-full flex-col bg-black border border-zinc-900 rounded-2xl p-0 overflow-hidden transition-all hover:border-zinc-700 font-sans">
       
       {/* 1. SECCIÓN IMAGEN */}
       <div className="relative aspect-square w-full overflow-hidden bg-zinc-950 flex items-center justify-center border-b border-zinc-800">
@@ -137,9 +140,10 @@ export const Card = ({ type, brand, name, price_base, specs, compatibility, rele
           ))}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex items-baseline gap-1">
+          {/* Mostramos el símbolo y el precio dinámicamente */}
           <span className="text-2xl font-black text-white tracking-tighter">
-            ${Number(price_base).toLocaleString('es-ES')}
+            {currencySymbol}{Number(price).toLocaleString('es-ES')}
           </span>
         </div>
 
