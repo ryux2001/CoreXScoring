@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Search, ArrowLeftRight } from "lucide-react";
-import MobileMenu from "./MobileMenu"; // Importamos el componente de cliente
+import { ArrowLeftRight } from "lucide-react";
+import MobileMenu from "./MobileMenu"; 
 import AuthStatus from "./AuthStatus";
+import SearchBar from "./SearchBar";
 
 const navLinks = [
   { name: "Inicio", href: "/" },
@@ -17,32 +18,26 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/70 backdrop-blur-md">
       <nav className="mx-auto px-4 py-2 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          {/* LADO IZQUIERDO: Título y Buscador (Desktop) */}
-          <div className="flex items-center gap-8">
+          
+          {/* LADO IZQUIERDO: Título y Buscador */}
+          <div className="flex items-center gap-4 flex-1">
+            {/* El título desaparece en móvil con 'hidden sm:block' */}
             <Link
               href="/"
-              className="text-xl font-bold tracking-tighter text-white sm:text-2xl"
+              className="hidden sm:block text-xl font-bold tracking-tighter text-white sm:text-2xl whitespace-nowrap"
             >
               CorexScoring
             </Link>
 
-            {/* Buscador Desktop (Boceto 1) */}
-            <div className="hidden max-w-sm sm:block">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                <input
-                  type="search"
-                  placeholder="Buscar..."
-                  className="lg:w-64 sm:w-75 w-90 rounded-full border border-white/10 bg-zinc-900 py-2.5 pl-10 pr-4 text-sm text-zinc-200 transition-all focus:border-white/20 focus:outline-none"
-                />
-              </div>
+            {/* El buscador ahora es visible siempre y se expande en móvil */}
+            <div className="w-full max-w-sm">
+              <SearchBar />
             </div>
           </div>
 
           {/* LADO DERECHO: Acciones */}
-          <div className="flex items-center gap-3">
-
-            {/* CENTRO: Links de navegación (Desktop) */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Links Desktop */}
             <div className="hidden lg:flex lg:items-center lg:gap-3 me-5">
               {navLinks.map((link) => (
                 <Link
@@ -55,15 +50,17 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Icono VS */}
-            <button className="cursor-pointer flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-zinc-900 text-zinc-300 hover:border-white/40 hover:text-white transition-all">
+            {/* Icono VS (Visible en desktop, puedes decidir si ocultarlo en móvil) */}
+            <button className="hidden sm:flex cursor-pointer h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-zinc-900 text-zinc-300 hover:border-white/40 hover:text-white transition-all">
               <ArrowLeftRight className="h-4 w-4" />
             </button>
 
-            {/* Botón Principal (Desktop) */}
-            <AuthStatus/>
+            {/* AuthStatus Desktop: Se oculta en móvil */}
+            <div className="hidden sm:block">
+              <AuthStatus />
+            </div>
 
-            {/* MENU MÓVIL (Componente de Cliente) */}
+            {/* Menú Móvil: Siempre presente en móvil */}
             <MobileMenu links={navLinks} />
           </div>
         </div>

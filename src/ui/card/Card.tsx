@@ -98,7 +98,7 @@ export const Card = ({ type, brand, name, price_base, specs, compatibility, rele
   const techDetails = getTechnicalDetails();
 
   return (
-    <div className="group flex w-full flex-col bg-black border border-zinc-900 rounded-2xl p-0 overflow-hidden transition-all hover:border-zinc-700 font-sans">
+    <div className="group flex w-full flex-col bg-black border border-zinc-900 rounded-2xl p-0 overflow-hidden transition-all hover:border-zinc-700 hover:-translate-y-1 font-sans">
       
       {/* 1. SECCIÓN IMAGEN */}
       <div className="relative aspect-square w-full overflow-hidden bg-zinc-950 flex items-center justify-center border-b border-zinc-800">
