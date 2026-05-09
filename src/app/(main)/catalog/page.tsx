@@ -31,7 +31,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   // 1. Construir consulta con RANGO (.range)
   let query = supabase
     .from("products_with_priority")
-    .select(`id, name, type, brand, ${priceColumn}, specs, compatibility, release_date`, { count: 'exact' });
+    .select(`id, slug, name, type, brand, ${priceColumn}, specs, compatibility, release_date`, { count: 'exact' });
 
   query = query
   .order('priority', { ascending: true })       // 1. CPUs y GPUs primero
@@ -76,6 +76,8 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
           {products?.map((product: any) => (
             <Card 
               key={product.id}
+              id={product.id}
+              slug={product.slug}
               type={product.type}
               brand={product.brand}
               name={product.name}
