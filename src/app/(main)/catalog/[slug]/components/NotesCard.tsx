@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
+// 1. Importamos la lógica central de scoring
+import { getComponentNotes } from '@/lib/scoring';
 
 interface NotesCardProps {
   product: any;
@@ -29,26 +31,43 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
     return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
   }, [initialPrice]);
 
-  const getCategories = (type: string) => {
-    const t = type?.toUpperCase();
-    switch (t) {
-      case 'CPU':
-      case 'GPU':
-        return ['Potencia', 'Tecnologías', 'Productividad', 'Juegos', 'Eficiencia', 'Calidad precio'];
-      case 'RAM':
-        return ['Velocidad', 'Tecnologías', 'Latencia', 'Compatibilidad', 'Eficiencia', 'Calidad precio'];
-      case 'STORAGE':
-        return ['Velocidad', 'Tecnologías', 'Temperaturas', 'Durabilidad', 'Eficiencia', 'Calidad Precio'];
-      case 'MOTHERBOARD':
-        return ['Conectividad', 'Tecnologías', 'Construcción', 'Compatibilidad', 'Estabilidad', 'Calidad precio'];
-      case 'PSU':
-        return ['Estabilidad', 'Conectividad', 'Protecciones', 'Construcción', 'Eficiencia', 'Calidad Precio'];
-      default:
-        return ['Rendimiento', 'Características', 'Construcción', 'Eficiencia', 'Calidad precio'];
-    }
-  };
+  // 2. Obtenemos el objeto completo de notas (nombres y valores)
+  // Lo calculamos en cada render basado en el evaluatedPrice actual
+  const notesData = getComponentNotes(product, evaluatedPrice);
+  
+  // Extraemos solo los nombres (las llaves del objeto) para el mapeo del grid
+  const categories = Object.keys(notesData);
 
-  const categories = getCategories(product.type);
+  const getColorStyles = (score: number) => {
+    if (score >= 9) return {
+      border: 'border-blue-500/50',
+      bg: 'bg-blue-950/30',
+      text: 'text-blue-400',
+      bar: 'bg-blue-500',
+      label: 'text-blue-500/70'
+    };
+    if (score >= 7) return {
+      border: 'border-emerald-500/50',
+      bg: 'bg-emerald-950/30',
+      text: 'text-emerald-400',
+      bar: 'bg-emerald-500',
+      label: 'text-emerald-500/70'
+    };
+    if (score >= 5) return {
+      border: 'border-yellow-500/50',
+      bg: 'bg-yellow-950/30',
+      text: 'text-yellow-400',
+      bar: 'bg-yellow-500',
+      label: 'text-yellow-500/70'
+    };
+    return {
+      border: 'border-red-500/50',
+      bg: 'bg-red-950/30',
+      text: 'text-red-400',
+      bar: 'bg-red-500',
+      label: 'text-red-500/70'
+    };
+  };
 
   const formatPrice = (val: number) => {
     return `${!isEUR ? symbol : ''}${Number(val).toLocaleString('es-ES')}${isEUR ? symbol : ''}`;
@@ -57,14 +76,13 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
   return (
     <div className="flex flex-col p-6 lg:p-8 rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-xl h-full justify-between overflow-hidden">
       
-      {/* HEADER: Precio Evaluado movido arriba y alineado */}
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-6">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
             Notas de Evaluación
           </h3>
           
-          {/* Precio Evaluado en una sola línea */}
           <div className="hidden sm:flex items-center gap-2 whitespace-nowrap bg-zinc-900/30 px-3 py-1 rounded-full border border-zinc-900/50">
             <span className="text-[8px] font-black uppercase tracking-[0.1em] text-zinc-700">Precio Evaluado:</span>
             <span className="text-xs font-black text-zinc-400">
@@ -85,36 +103,45 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
         </div>
       </div>
 
-      {/* CUERPO: GRID DE NOTAS CON CAJAS MÁS GRANDES Y SIMÉTRICAS */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1">
-        {categories.map((cat, idx) => (
-          <div 
-            key={idx}
-            className="group relative flex flex-col justify-between items-center py-3 px-3 rounded-2xl border border-zinc-900 bg-black/40 transition-all hover:border-zinc-700 hover:bg-zinc-900/20 min-h-[100px]"
-          >
-            {/* Título de la nota con altura mínima para evitar saltos si hay 2 líneas */}
-            <div className="text-center h-6 flex items-center justify-center">
-              <p className="text-[8px] font-black uppercase tracking-widest text-zinc-600 group-hover:text-zinc-400 transition-colors leading-tight">
-                {cat}
-              </p>
-            </div>
+      {/* CUERPO: GRID DINÁMICO */}
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+        {categories.map((cat, idx) => {
+          // 3. Obtenemos el número real desde el objeto notesData usando el nombre como llave
+          const score = notesData[cat] || 0;
+          const styles = getColorStyles(score);
 
-            {/* Número central con tamaño ligeramente reducido */}
-            <div className="text-center">
-              <p className="text-[26px] font-black text-white tracking-tighter">
-                7.5
-              </p>
-            </div>
+          return (
+            <div 
+              key={idx}
+              className={`group relative flex flex-col justify-between items-center py-3 px-3 rounded-2xl border transition-all min-h-[100px] ${styles.border} ${styles.bg}`}
+            >
+              {/* Título */}
+              <div className="text-center h-6 flex items-center justify-center">
+                <p className={`text-[8px] font-black uppercase tracking-widest transition-colors leading-tight ${styles.label}`}>
+                  {cat}
+                </p>
+              </div>
 
-            {/* Pequeña barra decorativa */}
-            <div className="w-1/2 h-[2px] bg-zinc-900 rounded-full overflow-hidden">
-               <div className="h-full bg-zinc-700 w-[75%]" />
+              {/* Número real del script */}
+              <div className="text-center">
+                <p className={`text-[26px] font-black tracking-tighter ${styles.text}`}>
+                  {score.toFixed(1)}
+                </p>
+              </div>
+
+              {/* Barra proporcional al número real */}
+              <div className="w-1/2 h-[2px] bg-zinc-900 rounded-full overflow-hidden">
+                 <div 
+                   className={`h-full transition-all duration-1000 ${styles.bar}`} 
+                   style={{ width: `${score * 10}%` }} 
+                 />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* FOOTER: Texto informativo sutil */}
+      {/* FOOTER */}
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
         <p className="text-[8px] text-zinc-700 uppercase tracking-widest leading-tight text-center lg:text-left">
           * Todas las evaluaciones se basan en el rendimiento relativo frente a la competencia.
