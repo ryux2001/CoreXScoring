@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { notFound } from "next/navigation";
 import MainInfoCard from "./components/MainInfoCard";
 import PriceCustomCard from "./components/PriceCustomCard";
+import NotesCard from "./components/NotesCard";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -43,8 +44,8 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
             </div>
 
             {/* Notas: Ocupa 7 de 12 (Más ancha) */}
-            <div className="lg:col-span-8 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 p-8 flex items-center justify-center min-h-[300px]">
-               <span className="text-zinc-600 font-bold uppercase tracking-widest text-xs">Aquí irá: Notas</span>
+            <div className="lg:col-span-8">
+               <NotesCard product={product} currency={currency} />
             </div>
 
             {/* FILA 2: SIMÉTRICA (50/50) */}
