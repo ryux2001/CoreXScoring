@@ -12,19 +12,39 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  // NUEVO: Estado para verificar si ya estamos en el cliente
   const [isMounted, setIsMounted] = useState(false);
 
+  // LÓGICA DE MONEDA
+  const isEUR = currency === 'EUR';
+  const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
+  const symbol = isEUR ? '€' : '$';
+  const initialPrice = product[priceColumn] || 0;
+
+  // NUEVO: Estado para el precio evaluado dinámico
+  const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
+
   useEffect(() => {
-    setIsMounted(true); // Se activa solo al llegar al navegador
+    setIsMounted(true);
+    // Resetear el precio si cambia la moneda en la URL
+    setEvaluatedPrice(initialPrice);
+
+    // Escuchar el evento de actualización de precio
+    const handlePriceUpdate = (e: any) => {
+      setEvaluatedPrice(e.detail);
+    };
+
+    window.addEventListener('updateProductPrice', handlePriceUpdate);
+    
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isModalOpen]);
+    return () => {
+      window.removeEventListener('updateProductPrice', handlePriceUpdate);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen, initialPrice]);
 
   const handleCloseModal = () => {
     setIsClosing(true);
@@ -62,11 +82,9 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
   const imageUrl = getLocalImage();
 
   const getAllDetails = () => {
-    // Si no está montado, devolvemos una fecha genérica o vacía para que el servidor 
-    // y el primer render del cliente coincidan.
     const dateValue = isMounted 
       ? new Date(product.release_date).toLocaleDateString('es-ES', { year: 'numeric', month: 'short' })
-      : ""; // El servidor no renderiza la fecha, el cliente la añade después
+      : "";
 
     const details = [{ label: "Marca", value: product.brand }, { label: "Lanzamiento", value: dateValue }];
     
@@ -90,36 +108,21 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
     return details;
   };
 
-  // Importante: No renderizar nada que use isMounted fuera de aquí para evitar saltos visuales bruscos
   const details = getAllDetails();
   const displayedDetails = isExpanded ? details : details.slice(0, 8);
 
-  const isEUR = currency === 'EUR';
-  const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
-  const symbol = isEUR ? '€' : '$';
-  const priceValue = product[priceColumn] || 0;
-
   return (
     <div className="flex flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-2xl transition-all duration-500">
-      
-      {/* HEADER CONTENEDOR */}
       <div className="flex flex-row gap-5 p-5 lg:flex-col lg:p-0 lg:gap-0">
-        
-        {/* SECCIÓN IMAGEN - Limpiamos posibles espacios extra en className */}
         <div className="relative flex flex-none items-center justify-center bg-black overflow-hidden rounded-2xl border border-zinc-900 w-32 h-32 p-4 lg:w-full lg:h-80 lg:rounded-none lg:border-0 lg:border-b lg:p-12">
           <span className="absolute left-4 top-4 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white z-10">
             {product.type}
           </span>
           {imageUrl && (
-            <img 
-              src={imageUrl} 
-              alt={product.name} 
-              className="max-h-full max-w-full object-contain opacity-90 drop-shadow-[0_0_50px_rgba(255,255,255,0.12)]" 
-            />
+            <img src={imageUrl} alt={product.name} className="max-h-full max-w-full object-contain opacity-90 drop-shadow-[0_0_50px_rgba(255,255,255,0.12)]" />
           )}
         </div>
 
-        {/* NOMBRE Y PRECIOS */}
         <div className="flex flex-1 flex-col justify-center lg:p-8 lg:pb-0">
           <h1 className="text-base font-black uppercase leading-tight tracking-tighter text-white lg:text-2xl mb-2 lg:mb-6">
             {product.name}
@@ -129,34 +132,28 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
             <div className="rounded-lg border border-zinc-900 bg-black p-2 lg:p-4 lg:rounded-xl">
               <span className="text-[7px] font-black uppercase text-zinc-600 block tracking-widest lg:text-[8px] lg:mb-1">MSRP</span>
               <div className="text-sm font-black text-white lg:text-xl">
-                {!isEUR && symbol}{Number(priceValue).toLocaleString('es-ES')}{isEUR && symbol}
+                {!isEUR && symbol}{Number(initialPrice).toLocaleString('es-ES')}{isEUR && symbol}
               </div>
             </div>
+            
+            {/* PRECIO EVALUADO DINÁMICO */}
             <div className="rounded-lg border border-zinc-800 border-dashed bg-zinc-900/10 p-2 lg:p-4 lg:rounded-xl">
-              <span className="text-[7px] font-black uppercase text-zinc-400 block tracking-widest lg:text-[8px] lg:mb-1">Evaluado</span>
+              <span className="text-[7px] font-black uppercase text-zinc-400 block mb-1 tracking-widest">Evaluado</span>
               <div className="text-sm font-black text-white lg:text-xl">
-                {!isEUR && symbol}{Number(priceValue).toLocaleString('es-ES')}{isEUR && symbol}
+                {!isEUR && symbol}{Number(evaluatedPrice).toLocaleString('es-ES')}{isEUR && symbol}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* DETALLES TÉCNICOS */}
       <div className="p-5 pt-2 lg:p-8 lg:pt-0">
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95 lg:hidden"
-        >
-          <Info size={16} />
-          MOSTRAR DETALLES TÉCNICOS
+        <button onClick={() => setIsModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-4 text-[10px] font-black uppercase tracking-widest text-white lg:hidden">
+          <Info size={16} /> MOSTRAR DETALLES TÉCNICOS
         </button>
 
         <div className="hidden lg:flex flex-col mt-8 relative">
-          <h3 className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
-            Detalles Técnicos
-          </h3>
-          
+          <h3 className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Detalles Técnicos</h3>
           <div className="space-y-3 transition-all duration-500">
             {displayedDetails.map((detail, idx) => (
               <div key={idx} className="flex justify-between border-b border-zinc-900/30 pb-2.5">
@@ -165,16 +162,10 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
               </div>
             ))}
           </div>
-
           {details.length > 8 && (
             <div className="mt-6">
-              {!isExpanded && (
-                <div className="pointer-events-none absolute bottom-14 left-0 h-20 w-full bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent" />
-              )}
-              <button 
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="group flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-white hover:text-black"
-              >
+              {!isExpanded && <div className="pointer-events-none absolute bottom-14 left-0 h-20 w-full bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent" />}
+              <button onClick={() => setIsExpanded(!isExpanded)} className="group flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-white hover:text-black">
                 {isExpanded ? <><ChevronUp size={14} /> VER MENOS</> : <><ChevronDown size={14} /> VER TODO</>}
               </button>
             </div>
@@ -182,7 +173,6 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
         </div>
       </div>
 
-      {/* MODAL MÓVIL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md lg:hidden p-6">
           <div className="absolute inset-0 z-[-1]" onClick={handleCloseModal} />

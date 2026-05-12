@@ -38,12 +38,12 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
             
             {/* FILA 1: ASIMÉTRICA */}
             {/* Precio: Ocupa 5 de 12 (Más estrecha) */}
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-4">
               <PriceCustomCard product={product} currency={currency} />
             </div>
 
             {/* Notas: Ocupa 7 de 12 (Más ancha) */}
-            <div className="lg:col-span-7 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 p-8 flex items-center justify-center min-h-[300px]">
+            <div className="lg:col-span-8 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 p-8 flex items-center justify-center min-h-[300px]">
                <span className="text-zinc-600 font-bold uppercase tracking-widest text-xs">Aquí irá: Notas</span>
             </div>
 
