@@ -5,10 +5,12 @@ import PriceCustomCard from "./components/PriceCustomCard";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ currency?: string }>;
 }
 
-export default async function ProductPage({ params }: ProductPageProps) {
+export default async function ProductPage({ params, searchParams }: ProductPageProps) {
   const { slug } = await params;
+  const { currency = 'USD' } = await searchParams;
 
   // Traemos TODOS los datos del producto
   const { data: product, error } = await supabase
@@ -28,7 +30,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           
           {/* COLUMNA IZQUIERDA (3/12) */}
           <div className="lg:col-span-3 lg:sticky lg:top-8 h-fit">
-            <MainInfoCard product={product} />
+            <MainInfoCard product={product} currency={currency} />
           </div>
 
           {/* COLUMNA DERECHA (9/12) - Contenedor de las Islas */}
@@ -37,7 +39,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {/* FILA 1: ASIMÉTRICA */}
             {/* Precio: Ocupa 5 de 12 (Más estrecha) */}
             <div className="lg:col-span-5">
-              <PriceCustomCard product={product} />
+              <PriceCustomCard product={product} currency={currency} />
             </div>
 
             {/* Notas: Ocupa 7 de 12 (Más ancha) */}

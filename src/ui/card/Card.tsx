@@ -141,7 +141,7 @@ export const Card = ({ id, slug, type, brand, name, price, currency, specs, comp
         {/* FOOTER DE LA CARD ACTUALIZADO */}
         <div className="mt-6 flex gap-2">
           <Link 
-            href={`/catalog/${slug}`}
+            href={`/catalog/${slug}?currency=${currency}`}
             className="flex-none w-19 flex items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 cursor-pointer active:scale-95"
           >
             <Eye size={14} strokeWidth={2.5} />

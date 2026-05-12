@@ -5,15 +5,19 @@ import { X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MainInfoProps {
   product: any;
+  currency?: string;
 }
 
-export default function MainInfoCard({ product }: MainInfoProps) {
+export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // NUEVO: Estado para verificar si ya estamos en el cliente
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Bloqueo de scroll para la modal
   useEffect(() => {
+    setIsMounted(true); // Se activa solo al llegar al navegador
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -56,11 +60,15 @@ export default function MainInfoCard({ product }: MainInfoProps) {
   };
 
   const imageUrl = getLocalImage();
-  const releaseDate = new Date(product.release_date).toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
 
-  // --- LÓGICA DE SPECS CORREGIDA PARA OBJETOS ANIDADOS (GPU) ---
   const getAllDetails = () => {
-    const details = [{ label: "Marca", value: product.brand }, { label: "Lanzamiento", value: releaseDate }];
+    // Si no está montado, devolvemos una fecha genérica o vacía para que el servidor 
+    // y el primer render del cliente coincidan.
+    const dateValue = isMounted 
+      ? new Date(product.release_date).toLocaleDateString('es-ES', { year: 'numeric', month: 'short' })
+      : ""; // El servidor no renderiza la fecha, el cliente la añade después
+
+    const details = [{ label: "Marca", value: product.brand }, { label: "Lanzamiento", value: dateValue }];
     
     if (product.compatibility) {
       Object.entries(product.compatibility).forEach(([key, value]) => {
@@ -70,40 +78,36 @@ export default function MainInfoCard({ product }: MainInfoProps) {
 
     if (product.specs) {
       Object.entries(product.specs).forEach(([key, value]) => {
-        // Si el valor es el objeto 'processing_units', lo desglosamos en filas individuales
-        if (key === 'processing_units' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        if (key === 'processing_units' && typeof value === 'object' && value !== null) {
           Object.entries(value).forEach(([subKey, subValue]) => {
-            details.push({ 
-              label: subKey.replace(/_/g, ' '), 
-              value: String(subValue) 
-            });
+            details.push({ label: subKey.replace(/_/g, ' '), value: String(subValue) });
           });
         } else {
-          // Para el resto de specs normales
-          details.push({ 
-            label: key.replace(/_/g, ' '), 
-            value: String(value) 
-          });
+          details.push({ label: key.replace(/_/g, ' '), value: String(value) });
         }
       });
     }
     return details;
   };
 
+  // Importante: No renderizar nada que use isMounted fuera de aquí para evitar saltos visuales bruscos
   const details = getAllDetails();
   const displayedDetails = isExpanded ? details : details.slice(0, 8);
+
+  const isEUR = currency === 'EUR';
+  const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
+  const symbol = isEUR ? '€' : '$';
+  const priceValue = product[priceColumn] || 0;
 
   return (
     <div className="flex flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-2xl transition-all duration-500">
       
-      {/* HEADER CONTENEDOR (Mobile: Row | Desktop: Column) */}
+      {/* HEADER CONTENEDOR */}
       <div className="flex flex-row gap-5 p-5 lg:flex-col lg:p-0 lg:gap-0">
         
-        {/* 1. SECCIÓN IMAGEN */}
-        <div className="relative flex flex-none items-center justify-center bg-black overflow-hidden rounded-2xl border border-zinc-900
-                        w-32 h-32 p-4           /* Mobile */
-                        lg:w-full lg:h-80 lg:rounded-none lg:border-0 lg:border-b lg:p-12"> 
-          <span className="absolute left-2 top-2 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white z-10 lg:left-4 lg:top-4 lg:px-2 lg:text-[9px]">
+        {/* SECCIÓN IMAGEN - Limpiamos posibles espacios extra en className */}
+        <div className="relative flex flex-none items-center justify-center bg-black overflow-hidden rounded-2xl border border-zinc-900 w-32 h-32 p-4 lg:w-full lg:h-80 lg:rounded-none lg:border-0 lg:border-b lg:p-12">
+          <span className="absolute left-4 top-4 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white z-10">
             {product.type}
           </span>
           {imageUrl && (
@@ -115,7 +119,7 @@ export default function MainInfoCard({ product }: MainInfoProps) {
           )}
         </div>
 
-        {/* 2. NOMBRE Y PRECIOS */}
+        {/* NOMBRE Y PRECIOS */}
         <div className="flex flex-1 flex-col justify-center lg:p-8 lg:pb-0">
           <h1 className="text-base font-black uppercase leading-tight tracking-tighter text-white lg:text-2xl mb-2 lg:mb-6">
             {product.name}
@@ -124,17 +128,21 @@ export default function MainInfoCard({ product }: MainInfoProps) {
           <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3">
             <div className="rounded-lg border border-zinc-900 bg-black p-2 lg:p-4 lg:rounded-xl">
               <span className="text-[7px] font-black uppercase text-zinc-600 block tracking-widest lg:text-[8px] lg:mb-1">MSRP</span>
-              <div className="text-sm font-black text-white lg:text-xl">${Number(product.price_base_usd).toLocaleString('es-ES')}</div>
+              <div className="text-sm font-black text-white lg:text-xl">
+                {!isEUR && symbol}{Number(priceValue).toLocaleString('es-ES')}{isEUR && symbol}
+              </div>
             </div>
             <div className="rounded-lg border border-zinc-800 border-dashed bg-zinc-900/10 p-2 lg:p-4 lg:rounded-xl">
               <span className="text-[7px] font-black uppercase text-zinc-400 block tracking-widest lg:text-[8px] lg:mb-1">Evaluado</span>
-              <div className="text-sm font-black text-white lg:text-xl">${Number(product.price_base_usd).toLocaleString('es-ES')}</div>
+              <div className="text-sm font-black text-white lg:text-xl">
+                {!isEUR && symbol}{Number(priceValue).toLocaleString('es-ES')}{isEUR && symbol}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. SECCIÓN INFERIOR: BOTÓN (Móvil) / SPECS (Escritorio) */}
+      {/* DETALLES TÉCNICOS */}
       <div className="p-5 pt-2 lg:p-8 lg:pt-0">
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -174,7 +182,7 @@ export default function MainInfoCard({ product }: MainInfoProps) {
         </div>
       </div>
 
-      {/* MODAL MÓVIL CENTRADA */}
+      {/* MODAL MÓVIL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md lg:hidden p-6">
           <div className="absolute inset-0 z-[-1]" onClick={handleCloseModal} />
@@ -183,7 +191,7 @@ export default function MainInfoCard({ product }: MainInfoProps) {
               <h2 className="text-xs font-black uppercase tracking-widest text-white">Detalles Técnicos</h2>
               <button onClick={handleCloseModal} className="rounded-full bg-zinc-900 p-2 text-zinc-400"><X size={20} /></button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 pb-10 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 pb-10">
               <div className="space-y-4">
                 {details.map((detail, idx) => (
                   <div key={idx} className="flex flex-col gap-1 border-b border-zinc-900/50 pb-3 last:border-0 last:pb-0">
