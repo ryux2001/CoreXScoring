@@ -146,7 +146,7 @@ export default function PriceCustomCard({ product, currency = 'USD' }: PriceCust
 
       {/* --- MODAL DE PRECIO (Móvil) --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 lg:hidden">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 lg:hidden">
           <div className="absolute inset-0 z-[-1]" onClick={handleCloseModal} />
           
           <div className={`w-full max-w-sm flex flex-col overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl ${isClosing ? 'animate-out fade-out zoom-out-95 duration-300' : 'animate-in fade-in zoom-in-95 duration-300'}`}>
