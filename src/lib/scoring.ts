@@ -1,23 +1,80 @@
 /**
  * SISTEMA CENTRAL DE SCORING
  * Este archivo gestiona el cálculo de notas para todos los componentes.
- * Por ahora devuelve valores estáticos (7.5) para facilitar la integración visual.
  */
 
-// Interfaces para tipado (opcional pero recomendado)
+// Interfaces para tipado
 export interface ComponentNotes {
   [key: string]: number;
 }
 
-// 1. NOTAS PARA CPU
+// 1. CONFIGURACIÓN DE PUNTOS MÁXIMOS PARA POTENCIA CPU
+const CPU_POTENCY_MAX_POINTS = 10000;
+
+// Benchmarks (70% de los 10000 = 7000 pts)
+const CPU_CINEBENCH_WEIGHT = 3500;  // 50% de 7000, techo 80000
+const CPU_GEEKBENCH_WEIGHT = 2100;  // 30% de 7000, techo 3600
+const CPU_PASSMARK_WEIGHT = 1400;   // 20% de 7000, techo 80000
+
+// Specs (30% de los 10000 = 3000 pts)
+const CPU_TURBO_WEIGHT = 1200;  // 40% de 3000, techo 6.2 GHz
+const CPU_THREADS_WEIGHT = 900; // 30% de 3000, techo 32 hilos
+const CPU_CACHE_WEIGHT = 900;   // 30% de 3000, techo 150 MB
+
+// 2. NOTAS PARA CPU - POTENCIA
+export const calculateCpuPotencyScore = (product: any): number => {
+  const benchmarks = product?.benchmarks || {};
+  const specs = product?.specs || {};
+  
+  // Benchmarks
+  const cinebench = parseFloat(benchmarks?.cinebench_multi || '0');
+  const geekbench = parseFloat(benchmarks?.geekbench_single || '0');
+  const passmark = parseFloat(benchmarks?.passmark_score || '0');
+  
+  const cinebenchPoints = Math.min(cinebench, 50000) * (CPU_CINEBENCH_WEIGHT / 50000);
+  const geekbenchPoints = Math.min(geekbench, 3600) * (CPU_GEEKBENCH_WEIGHT / 3600);
+  const passmarkPoints = Math.min(passmark, 80000) * (CPU_PASSMARK_WEIGHT / 80000);
+  
+  const benchmarkTotal = cinebenchPoints + geekbenchPoints + passmarkPoints;
+  
+  // Specs
+  const turbo = parseFloat(specs?.turbo_frequency || '0');
+  const threads = parseInt(specs?.threads || '0');
+  const cacheL3MB = parseFloat(specs?.cache?.l3 || '0') / 1024; // de KB a MB
+  
+  const turboPoints = Math.min(turbo, 6.2) * (CPU_TURBO_WEIGHT / 6.2);
+  const threadsPoints = Math.min(threads, 32) * (CPU_THREADS_WEIGHT / 32);
+  const cachePoints = Math.min(cacheL3MB, 150) * (CPU_CACHE_WEIGHT / 150);
+  
+  const specsTotal = turboPoints + threadsPoints + cachePoints;
+  
+  // Total points
+  const totalPoints = benchmarkTotal + specsTotal;
+  
+  // Nota final (0-10)
+  return Math.min(10, (totalPoints / CPU_POTENCY_MAX_POINTS) * 10);
+};
+
+// 3. CONFIGURACIÓN DE PUNTOS MÁXIMOS PARA LAS OTRAS NOTAS CPU
+const CPU_NOTES_MAX_POINTS = 10000;
+
+const CPU_TECH_WEIGHT = 10000 * 0.15; // 1500 pts
+const CPU_PROD_WEIGHT = 10000 * 0.15; // 1500 pts
+const CPU_GAME_WEIGHT = 10000 * 0.20; // 2000 pts
+const CPU_EFF_WEIGHT = 10000 * 0.15; // 1500 pts
+const CPU_VALUE_WEIGHT = 10000 * 0.35; // 3500 pts
+
+// 1. NOTAS PARA CPU - POTENCIA
 export const getCpuNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
+  const potencyScore = calculateCpuPotencyScore(product);
+  
   return {
-    "Potencia": 8.5,
-    "Tecnologías": 8.5,
-    "Productividad": 7.2,
-    "Juegos": 9.5,
-    "Eficiencia": 4.5,
-    "Calidad precio": 6.5,
+    "Potencia": potencyScore,
+    "Tecnologías": 7.5,
+    "Productividad": 7.5,
+    "Juegos": 7.5,
+    "Eficiencia": 7.5,
+    "Calidad precio": 7.5,
   };
 };
 
