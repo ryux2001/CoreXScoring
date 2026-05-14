@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
 // 1. Importamos la lógica central de scoring
-import { getComponentNotes } from '@/lib/scoring';
+import { getComponentNotes } from '@/lib/scoring/index';
 
 interface NotesCardProps {
   product: any;
@@ -53,7 +53,7 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
       bar: 'bg-emerald-500',
       label: 'text-emerald-500/70'
     };
-    if (score >= 5) return {
+    if (score >= 3) return {
       border: 'border-yellow-500/50',
       bg: 'bg-yellow-950/30',
       text: 'text-yellow-400',
