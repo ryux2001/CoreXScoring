@@ -1,21 +1,40 @@
 /**
  * CPU EFFICIENCY SCORE CALCULATOR
  * Calcula la nota de eficiencia para CPU
+ * Similar estructura a potency.ts
  */
 
-import { formatNoteScore } from '../../utils/helpers';
-import { safeExtract } from '../../utils/validators';
+import { CPU_CONFIG } from '../../config/cpu';
+import { formatNoteScore, safeExtract } from '../../utils/helpers';
 
 export const calculateEfficiencyScore = (product: any): number => {
-  const specs = product?.specs || {};
+  // Parsear JSONB strings que vienen de Supabase
+  const benchmarks = typeof product?.benchmarks === 'string'
+    ? JSON.parse(product.benchmarks)
+    : product?.benchmarks || {};
   
-  // Extraer datos relevantes para eficiencia
-  const tdp = safeExtract(specs?.tdp || specs?.power_base, 0);
-  const turbo = safeExtract(specs?.turbo_frequency, 0);
+  const specs = typeof product?.specs === 'string'
+    ? JSON.parse(product.specs)
+    : product?.specs || {};
   
-  // Eficiencia se mide inversamente al TDP
-  // TDP más bajo = eficiencia mejor (10 - TDP/200)
-  const baseScore = 10 - (tdp / 200);
+  // Extraer datos con safeExtract (como potency.ts)
+  const cinebench = safeExtract(benchmarks?.cinebench_multi, 0);
+  const powerTurboMax = safeExtract(specs?.power_turbo_max, 0);
   
-  return formatNoteScore(Math.min(10, Math.max(0, baseScore)));
+  // 1. Rendimiento por vatio puro (7000 pts)
+  const { RATIO: ratioConfig } = CPU_CONFIG.EFFICIENCY;
+  const ratio = cinebench / powerTurboMax;
+  const ratioPoints = (ratio / ratioConfig.MAX_RATIO) * ratioConfig.POINTS;
+  
+  // 2. Huella de consumo (3000 pts)
+  const { FOOTPRINT: footprintConfig } = CPU_CONFIG.EFFICIENCY;
+  const powerTurboMaxFootprint = Math.max(footprintConfig.MIN_WATTAGE, Math.min(footprintConfig.MAX_WATTAGE, powerTurboMax));
+  const footprintPoints = ((footprintConfig.MAX_WATTAGE - powerTurboMaxFootprint) / footprintConfig.PENALTY_FACTOR) * footprintConfig.POINTS;
+  
+  // Total puntos
+  const totalPoints = ratioPoints + footprintPoints;
+  
+  // Escalar a 0-10 (como potency.ts)
+  const normalizedScore = (totalPoints / CPU_CONFIG.EFFICIENCY.TOTAL_POINTS) * 10;
+  return formatNoteScore(normalizedScore);
 };

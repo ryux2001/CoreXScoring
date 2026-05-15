@@ -161,4 +161,24 @@ export const CPU_CONFIG = {
     // Validación
     TOTAL_POINTS: 10000,
   },
+  
+  // Efficiency Score Configuration (10000 pts total)
+  EFFICIENCY: {
+    // 1. Rendimiento por vatio puro (7000 pts)
+    RATIO: {
+      POINTS: 7000,
+      MAX_RATIO: 300,  // pts por vatio
+    },
+    
+    // 2. Huella de consumo (3000 pts)
+    FOOTPRINT: {
+      POINTS: 3000,
+      MAX_WATTAGE: 250,   // 0 pts (malo)
+      MIN_WATTAGE: 0,     // 3000 pts (perfecto)
+      PENALTY_FACTOR: 200,  // divisor para cálculo
+    },
+    
+    // Validación
+    TOTAL_POINTS: 10000,
+  },
 };
