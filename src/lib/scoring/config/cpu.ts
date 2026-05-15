@@ -55,4 +55,57 @@ export const CPU_CONFIG = {
     virtualization: ['virtualization', 'virtualizacion', 'vt-x', 'vt-d', 'amd-v', 'svm'],
     security: ['vpro', 'trustzone', 'amd pro', 'sgx', 'ftpm', 'tpm'],
   },
+  
+  // Productivity Score Configuration (10000 pts total)
+  PRODUCTIVITY: {
+    // 1. Fuerza bruta multitarea (4500 pts)
+    BRUTE_FORCE: {
+      POINTS: 4500,
+      WEIGHTS: {
+        cinebench: 3000,  // pts para Cinebench
+        passmark: 1500,   // pts para Passmark
+      },
+      MAX_VALUES: {
+        cinebench: 50000,  // techo Cinebench Multi
+        passmark: 80000,   // techo Passmark
+      },
+    },
+    
+    // 2. Capacidad física (3000 pts)
+    PHYSICAL_CAPACITY: {
+      POINTS: 3000,
+      WEIGHTS: {
+        threads: 2000,    // pts para hilos
+        ecores: 1000,     // pts para ecores
+      },
+      MAX_VALUES: {
+        threads: 32,      // max hilos
+        ecores: 16,       // max ecores
+      },
+    },
+    
+    // 3. Ecosistema profesional (2500 pts)
+    PROFESSIONAL_ECOSYSTEM: {
+      POINTS: 2500,
+      WEIGHTS: {
+        ram: 1000,        // pts para RAM max
+      },
+      MAX_VALUES: {
+        ram: 192,         // max RAM en GB
+      },
+    },
+    
+    // Puntos fijos para tecnologías bonus
+    VIRTUALIZATION_POINTS: 750,
+    AI_POINTS: 750,
+    
+    // Keywords para tecnologías
+    TECHNOLOGY_KEYWORDS: {
+      virtualization: ['virtualization', 'virtualizacion', 'vt-x', 'vt-d', 'amd-v', 'svm'],
+      ai: ['ai', 'npu', 'deep learning', 'ryzen ai', 'xdna', 'neural', 'avx-512'],
+    },
+    
+    // Validación
+    TOTAL_POINTS: 10000,
+  },
 };

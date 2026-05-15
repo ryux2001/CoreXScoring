@@ -190,6 +190,10 @@ export const safeExtract = (value: any, defaultValue: number = 0): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
   }
+  if (typeof value === 'string') {
+    const num = parseFloat(value);
+    return Number.isFinite(num) ? num : defaultValue;
+  }
   return defaultValue;
 };
 
