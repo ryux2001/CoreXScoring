@@ -108,4 +108,57 @@ export const CPU_CONFIG = {
     // Validación
     TOTAL_POINTS: 10000,
   },
+  
+  // Gaming Score Configuration (10000 pts total)
+  GAMING: {
+    // 1. Benchmarks y núcleos (4000 pts)
+    BENCHMARKS_CORES: {
+      POINTS: 4000,
+      WEIGHTS: {
+        geekbench: 3000,
+        cores: 1000,
+      },
+      MAX_VALUES: {
+        geekbench: 3600,
+      },
+      // Núcleos escalonados
+      CORES_STEPS: {
+        high: { threshold: 8, points: 1000 },
+        medium: { threshold: 6, points: 850 },
+        low: { threshold: 4, points: 400 },
+        none: { points: 0 },
+      },
+    },
+    
+    // 2. Cache y frecuencias (4000 pts)
+    CACHE_FREQUENCY: {
+      POINTS: 4000,
+      WEIGHTS: {
+        cache: 2500,
+        turbo: 1500,
+      },
+      MAX_VALUES: {
+        cache: 150,    // MB
+        turbo: 6.2,    // GHz
+      },
+    },
+    
+    // 3. Ancho de banda y plataforma (2000 pts)
+    BANDWIDTH_PLATFORM: {
+      POINTS: 2000,
+      RAM_SCORES: {
+        ddr5: 1000,
+        ddr4: 750,
+        ddr3: 400,
+      },
+      PCIE_SCORES: {
+        '5': 1000,
+        '4': 900,
+        '3': 500,
+      },
+    },
+    
+    // Validación
+    TOTAL_POINTS: 10000,
+  },
 };
