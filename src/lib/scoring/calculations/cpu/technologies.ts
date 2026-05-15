@@ -1,30 +1,20 @@
 /**
  * CPU TECHNOLOGIES SCORE CALCULATOR
  * Calcula la nota de tecnologías para CPU
+ * Importa el cálculo desde el utility central
  */
 
+import { calculateTechnologiesScore as extractTechnologiesScore } from '../../utils/technology-extractor';
 import { formatNoteScore } from '../../utils/helpers';
-import { safeArrayLength } from '../../utils/validators';
 
-export const calculateTechnologiesScore = (product: any): number => {
-  // Arquitectura
-  const arch = product?.specs?.architecture || '';
-  const archScore = getArchitectureScore(arch);
+/**
+ * Wrapper para mantener compatibilidad y formato
+ * El cálculo real está en technology-extractor.ts
+ */
+export const calculateTechnologiesScore = (product: any, year: number = 2026): number => {
+  // Extraer score desde el utility central
+  const rawScore = extractTechnologiesScore(product, year);
   
-  // Tecnologías
-  const techCount = safeArrayLength(product?.technologies || []);
-  
-  // Ponderación: 60% arquitectura, 40% cantidad de tecnologías
-  const score = (archScore * 0.6) + (techCount * 0.4);
-  
-  return formatNoteScore(score);
+  // Formatear resultado final (0-10)
+  return formatNoteScore(rawScore);
 };
-
-function getArchitectureScore(arch: string): number {
-  const scores: Record<string, number> = {
-    'alder lake': 9, 'zen 4': 9, 'zen 5': 10,
-    'zen 3': 8, 'zen 2': 7,
-    'skylake': 8, 'haswell': 7, 'broadwell': 6,
-  };
-  return scores[arch.toLowerCase()] || 7.5;
-}

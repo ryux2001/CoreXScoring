@@ -39,3 +39,16 @@ export const safeArrayLength = (arr: any[]): number => {
   }
   return 0;
 };
+
+// Validar que es un array JSONB (de Supabase)
+export const isJsonbArray = (value: any): boolean => {
+  if (!Array.isArray(value)) return false;
+  if (value.length === 0) return true;
+  
+  // Verificar que el primer elemento tenga la estructura esperada
+  const firstElement = value[0];
+  if (typeof firstElement !== 'object' || firstElement === null) return false;
+  
+  // Verificar que tenga al menos una propiedad
+  return Object.keys(firstElement).length > 0;
+};
