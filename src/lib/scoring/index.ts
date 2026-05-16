@@ -9,6 +9,7 @@ import { calculateRamNotes } from './calculations/ram/ram';
 import { calculateStorageNotes } from './calculations/storage/storage';
 import { calculateMotherboardNotes } from './calculations/motherboard/motherboard';
 import { calculatePsuNotes } from './calculations/psu/psu';
+import { calculateValueScore } from './calculations/cpu/value';
 import { ComponentNotes } from './types';
 
 export const getComponentNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
@@ -38,3 +39,6 @@ export const getComponentNotes = (product: any, evaluatedPrice: number): Compone
       };
   }
 };
+
+// Exportar calculateValueScore para uso en NotesCard
+export { calculateValueScore };

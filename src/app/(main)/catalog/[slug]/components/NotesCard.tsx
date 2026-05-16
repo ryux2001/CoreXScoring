@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
-// 1. Importamos la lógica central de scoring
 import { getComponentNotes } from '@/lib/scoring/index';
 
 interface NotesCardProps {
@@ -18,25 +17,28 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
 
   const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
   const [isMounted, setIsMounted] = useState(false);
+  const [precioUSD, setPrecioUSD] = useState(initialPrice);
 
+  // 1. Calcular nota de calidad/precio al montar (antes del render)
   useEffect(() => {
     setIsMounted(true);
     setEvaluatedPrice(initialPrice);
+    setPrecioUSD(isEUR ? initialPrice * 1.08 : initialPrice);
 
     const handlePriceUpdate = (e: any) => {
       setEvaluatedPrice(e.detail);
+      setPrecioUSD(isEUR ? e.detail * 1.08 : e.detail);
     };
 
     window.addEventListener('updateProductPrice', handlePriceUpdate);
     return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
-  }, [initialPrice]);
+  }, [initialPrice, isEUR, product]);
 
-  // 2. Obtenemos el objeto completo de notas (nombres y valores)
-  // Lo calculamos en cada render basado en el evaluatedPrice actual
-  const notesData = getComponentNotes(product, evaluatedPrice);
+  // Obtenemos las 5 notas principales (el precio ya está en USD)
+  const baseNotes = getComponentNotes(product, precioUSD);
   
   // Extraemos solo los nombres (las llaves del objeto) para el mapeo del grid
-  const categories = Object.keys(notesData);
+  const categories = Object.keys(baseNotes);
 
   const getColorStyles = (score: number) => {
     if (score >= 9) return {
@@ -106,8 +108,8 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
       {/* CUERPO: GRID DINÁMICO */}
       <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
         {categories.map((cat, idx) => {
-          // 3. Obtenemos el número real desde el objeto notesData usando el nombre como llave
-          const score = notesData[cat] || 0;
+          // Obtenemos el número real desde el objeto baseNotes usando el nombre como llave
+          const score = baseNotes[cat] || 0;
           const styles = getColorStyles(score);
 
           return (

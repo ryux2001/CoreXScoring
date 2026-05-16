@@ -181,4 +181,14 @@ export const CPU_CONFIG = {
     // Validación
     TOTAL_POINTS: 10000,
   },
+  
+  // Calidad/Precio - Pesos de cada nota
+  VALUE_WEIGHTS: {
+    POTENCIA_WEIGHT: 25,    // 25%
+    TECNOLOGIAS_WEIGHT: 15, // 15%
+    PRODUCTIVIDAD_WEIGHT: 25, // 25%
+    JUEGOS_WEIGHT: 25, // 25%
+    EFICIENCIA_WEIGHT: 10, // 10%
+    TOTAL: 100, // 100%
+  },
 };
