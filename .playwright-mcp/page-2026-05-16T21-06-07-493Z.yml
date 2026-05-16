@@ -1,0 +1,364 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - link "CorexScoring" [ref=e6] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e9]:
+            - textbox "Buscar componente..." [ref=e10]
+            - button [ref=e11]:
+              - img [ref=e12]
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img [ref=e17]
+          - button [ref=e21] [cursor=pointer]:
+            - img [ref=e22]
+  - main [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - button [ref=e28] [cursor=pointer]:
+            - img [ref=e29]
+          - generic [ref=e32]: 14 Productos
+        - button "$ USD" [ref=e33] [cursor=pointer]:
+          - text: $ USD
+          - img [ref=e34]
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: GPU
+            - img "Radeon RX 9070 XT" [ref=e41]
+          - generic [ref=e42]:
+            - heading "Radeon RX 9070 XT" [level=3] [ref=e44]
+            - generic [ref=e45]:
+              - generic [ref=e46]:
+                - generic [ref=e47]: VRAM
+                - generic [ref=e48]: 16GB GDDR6
+              - generic [ref=e49]:
+                - generic [ref=e50]: Bus
+                - generic [ref=e51]: 256-bit
+              - generic [ref=e52]:
+                - generic [ref=e53]: Lanzamiento
+                - generic [ref=e54]: mar 2025
+            - generic [ref=e56]: $599
+            - generic [ref=e57]:
+              - link "VER" [ref=e58] [cursor=pointer]:
+                - /url: /catalog/radeon-rx-9070-xt?currency=USD
+                - img [ref=e59]
+                - text: VER
+              - button "COMPARAR" [ref=e62] [cursor=pointer]:
+                - img [ref=e63]
+                - text: COMPARAR
+              - button [ref=e64] [cursor=pointer]:
+                - img [ref=e65]
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e69]: GPU
+            - img "GeForce RTX 5090" [ref=e70]
+          - generic [ref=e71]:
+            - heading "GeForce RTX 5090" [level=3] [ref=e73]
+            - generic [ref=e74]:
+              - generic [ref=e75]:
+                - generic [ref=e76]: VRAM
+                - generic [ref=e77]: 32GB GDDR7
+              - generic [ref=e78]:
+                - generic [ref=e79]: Bus
+                - generic [ref=e80]: 512-bit
+              - generic [ref=e81]:
+                - generic [ref=e82]: Lanzamiento
+                - generic [ref=e83]: ene 2025
+            - generic [ref=e85]: $1999
+            - generic [ref=e86]:
+              - link "VER" [ref=e87] [cursor=pointer]:
+                - /url: /catalog/geforce-rtx-5090?currency=USD
+                - img [ref=e88]
+                - text: VER
+              - button "COMPARAR" [ref=e91] [cursor=pointer]:
+                - img [ref=e92]
+                - text: COMPARAR
+              - button [ref=e93] [cursor=pointer]:
+                - img [ref=e94]
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - generic [ref=e98]: GPU
+            - img "GeForce RTX 5070" [ref=e99]
+          - generic [ref=e100]:
+            - heading "GeForce RTX 5070" [level=3] [ref=e102]
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - generic [ref=e105]: VRAM
+                - generic [ref=e106]: 12GB GDDR7
+              - generic [ref=e107]:
+                - generic [ref=e108]: Bus
+                - generic [ref=e109]: 192-bit
+              - generic [ref=e110]:
+                - generic [ref=e111]: Lanzamiento
+                - generic [ref=e112]: ene 2025
+            - generic [ref=e114]: $549
+            - generic [ref=e115]:
+              - link "VER" [ref=e116] [cursor=pointer]:
+                - /url: /catalog/geforce-rtx-5070?currency=USD
+                - img [ref=e117]
+                - text: VER
+              - button "COMPARAR" [ref=e120] [cursor=pointer]:
+                - img [ref=e121]
+                - text: COMPARAR
+              - button [ref=e122] [cursor=pointer]:
+                - img [ref=e123]
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - generic [ref=e127]: GPU
+            - img "Intel Arc B580" [ref=e128]
+          - generic [ref=e129]:
+            - heading "Intel Arc B580" [level=3] [ref=e131]
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - generic [ref=e134]: VRAM
+                - generic [ref=e135]: 12GB GDDR6
+              - generic [ref=e136]:
+                - generic [ref=e137]: Bus
+                - generic [ref=e138]: 192-bit
+              - generic [ref=e139]:
+                - generic [ref=e140]: Lanzamiento
+                - generic [ref=e141]: dic 2024
+            - generic [ref=e143]: $249
+            - generic [ref=e144]:
+              - link "VER" [ref=e145] [cursor=pointer]:
+                - /url: /catalog/intel-arc-b580?currency=USD
+                - img [ref=e146]
+                - text: VER
+              - button "COMPARAR" [ref=e149] [cursor=pointer]:
+                - img [ref=e150]
+                - text: COMPARAR
+              - button [ref=e151] [cursor=pointer]:
+                - img [ref=e152]
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - generic [ref=e156]: cpu
+            - img "Intel Core i5-12400F" [ref=e157]
+          - generic [ref=e158]:
+            - heading "Intel Core i5-12400F" [level=3] [ref=e160]
+            - generic [ref=e161]:
+              - generic [ref=e162]:
+                - generic [ref=e163]: Socket
+                - generic [ref=e164]: LGA 1700
+              - generic [ref=e165]:
+                - generic [ref=e166]: Núcleos/Hilos
+                - generic [ref=e167]: 6/12
+              - generic [ref=e168]:
+                - generic [ref=e169]: Lanzamiento
+                - generic [ref=e170]: ene 2022
+            - generic [ref=e172]: $174
+            - generic [ref=e173]:
+              - link "VER" [ref=e174] [cursor=pointer]:
+                - /url: /catalog/intel-core-i5-12400f?currency=USD
+                - img [ref=e175]
+                - text: VER
+              - button "COMPARAR" [ref=e178] [cursor=pointer]:
+                - img [ref=e179]
+                - text: COMPARAR
+              - button [ref=e180] [cursor=pointer]:
+                - img [ref=e181]
+        - generic [ref=e183]:
+          - generic [ref=e184]:
+            - generic [ref=e185]: cpu
+            - img "AMD Ryzen 5 5600X" [ref=e186]
+          - generic [ref=e187]:
+            - heading "AMD Ryzen 5 5600X" [level=3] [ref=e189]
+            - generic [ref=e190]:
+              - generic [ref=e191]:
+                - generic [ref=e192]: Socket
+                - generic [ref=e193]: AM4
+              - generic [ref=e194]:
+                - generic [ref=e195]: Núcleos/Hilos
+                - generic [ref=e196]: 6/12
+              - generic [ref=e197]:
+                - generic [ref=e198]: Lanzamiento
+                - generic [ref=e199]: nov 2020
+            - generic [ref=e201]: $299
+            - generic [ref=e202]:
+              - link "VER" [ref=e203] [cursor=pointer]:
+                - /url: /catalog/amd-ryzen-5-5600x?currency=USD
+                - img [ref=e204]
+                - text: VER
+              - button "COMPARAR" [ref=e207] [cursor=pointer]:
+                - img [ref=e208]
+                - text: COMPARAR
+              - button [ref=e209] [cursor=pointer]:
+                - img [ref=e210]
+        - generic [ref=e212]:
+          - generic [ref=e213]:
+            - generic [ref=e214]: Storage
+            - img "NVMe M.2 PCIe 5.0 SSD 1TB 9100 PRO" [ref=e215]
+          - generic [ref=e216]:
+            - heading "NVMe M.2 PCIe 5.0 SSD 1TB 9100 PRO" [level=3] [ref=e218]
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - generic [ref=e221]: Interfaz
+                - generic [ref=e222]: PCIe 5
+              - generic [ref=e223]:
+                - generic [ref=e224]: Lectura
+                - generic [ref=e225]: 14800MB/s
+              - generic [ref=e226]:
+                - generic [ref=e227]: Lanzamiento
+                - generic [ref=e228]: feb 2025
+            - generic [ref=e230]: $199,99
+            - generic [ref=e231]:
+              - link "VER" [ref=e232] [cursor=pointer]:
+                - /url: /catalog/ssd-9100-pro-1tb?currency=USD
+                - img [ref=e233]
+                - text: VER
+              - button "COMPARAR" [ref=e236] [cursor=pointer]:
+                - img [ref=e237]
+                - text: COMPARAR
+              - button [ref=e238] [cursor=pointer]:
+                - img [ref=e239]
+        - generic [ref=e241]:
+          - generic [ref=e242]:
+            - generic [ref=e243]: PSU
+            - img "Toughpower GT 850W" [ref=e244]
+          - generic [ref=e245]:
+            - heading "Toughpower GT 850W" [level=3] [ref=e247]
+            - generic [ref=e248]:
+              - generic [ref=e249]:
+                - generic [ref=e250]: Potencia
+                - generic [ref=e251]: 850W
+              - generic [ref=e252]:
+                - generic [ref=e253]: Certificación
+                - generic [ref=e254]: 80+ Gold
+              - generic [ref=e255]:
+                - generic [ref=e256]: Lanzamiento
+                - generic [ref=e257]: nov 2024
+            - generic [ref=e259]: $159
+            - generic [ref=e260]:
+              - link "VER" [ref=e261] [cursor=pointer]:
+                - /url: /catalog/thermaltake-toughpower-gt-850w?currency=USD
+                - img [ref=e262]
+                - text: VER
+              - button "COMPARAR" [ref=e265] [cursor=pointer]:
+                - img [ref=e266]
+                - text: COMPARAR
+              - button [ref=e267] [cursor=pointer]:
+                - img [ref=e268]
+        - generic [ref=e270]:
+          - generic [ref=e271]:
+            - generic [ref=e272]: Storage
+            - img "MSI SPATIUM M461 1TB NVMe M.2 Gen4x4 SSD" [ref=e273]
+          - generic [ref=e274]:
+            - heading "MSI SPATIUM M461 1TB NVMe M.2 Gen4x4 SSD" [level=3] [ref=e276]
+            - generic [ref=e277]:
+              - generic [ref=e278]:
+                - generic [ref=e279]: Interfaz
+                - generic [ref=e280]: PCIe 4
+              - generic [ref=e281]:
+                - generic [ref=e282]: Lectura
+                - generic [ref=e283]: 5000MB/s
+              - generic [ref=e284]:
+                - generic [ref=e285]: Lanzamiento
+                - generic [ref=e286]: mar 2023
+            - generic [ref=e288]: $49,99
+            - generic [ref=e289]:
+              - link "VER" [ref=e290] [cursor=pointer]:
+                - /url: /catalog/msi-spatium-m461-1tb?currency=USD
+                - img [ref=e291]
+                - text: VER
+              - button "COMPARAR" [ref=e294] [cursor=pointer]:
+                - img [ref=e295]
+                - text: COMPARAR
+              - button [ref=e296] [cursor=pointer]:
+                - img [ref=e297]
+        - generic [ref=e299]:
+          - generic [ref=e300]:
+            - generic [ref=e301]: Motherboard
+            - img "TUF GAMING B650E-PLUS WIFI" [ref=e302]
+          - generic [ref=e303]:
+            - heading "TUF GAMING B650E-PLUS WIFI" [level=3] [ref=e305]
+            - generic [ref=e306]:
+              - generic [ref=e307]:
+                - generic [ref=e308]: Socket
+                - generic [ref=e309]: AM5
+              - generic [ref=e310]:
+                - generic [ref=e311]: RAM Max
+                - generic [ref=e312]: DDR5-4800
+              - generic [ref=e313]:
+                - generic [ref=e314]: Lanzamiento
+                - generic [ref=e315]: oct 2022
+            - generic [ref=e317]: $239
+            - generic [ref=e318]:
+              - link "VER" [ref=e319] [cursor=pointer]:
+                - /url: /catalog/asus-tuf-gaming-b650e-plus-wifi?currency=USD
+                - img [ref=e320]
+                - text: VER
+              - button "COMPARAR" [ref=e323] [cursor=pointer]:
+                - img [ref=e324]
+                - text: COMPARAR
+              - button [ref=e325] [cursor=pointer]:
+                - img [ref=e326]
+        - generic [ref=e328]:
+          - generic [ref=e329]:
+            - generic [ref=e330]: RAM
+            - img "DDR5 32GB (2x16GB) 6000MHz CL36 Kit" [ref=e331]
+          - generic [ref=e332]:
+            - heading "DDR5 32GB (2x16GB) 6000MHz CL36 Kit" [level=3] [ref=e334]
+            - generic [ref=e335]:
+              - generic [ref=e336]:
+                - generic [ref=e337]: Tipo
+                - generic [ref=e338]: DDR5
+              - generic [ref=e339]:
+                - generic [ref=e340]: Frecuencia
+                - generic [ref=e341]: 6000MHz
+              - generic [ref=e342]:
+                - generic [ref=e343]: Lanzamiento
+                - generic [ref=e344]: sept 2022
+            - generic [ref=e346]: $110
+            - generic [ref=e347]:
+              - link "VER" [ref=e348] [cursor=pointer]:
+                - /url: /catalog/ddr5-32gb-2x16-6000-cl36-kit?currency=USD
+                - img [ref=e349]
+                - text: VER
+              - button "COMPARAR" [ref=e352] [cursor=pointer]:
+                - img [ref=e353]
+                - text: COMPARAR
+              - button [ref=e354] [cursor=pointer]:
+                - img [ref=e355]
+        - generic [ref=e357]:
+          - generic [ref=e358]:
+            - generic [ref=e359]: Motherboard
+            - img "TUF GAMING B660M-PLUS WIFI" [ref=e360]
+          - generic [ref=e361]:
+            - heading "TUF GAMING B660M-PLUS WIFI" [level=3] [ref=e363]
+            - generic [ref=e364]:
+              - generic [ref=e365]:
+                - generic [ref=e366]: Socket
+                - generic [ref=e367]: LGA1700
+              - generic [ref=e368]:
+                - generic [ref=e369]: RAM Max
+                - generic [ref=e370]: DDR5-4800
+              - generic [ref=e371]:
+                - generic [ref=e372]: Lanzamiento
+                - generic [ref=e373]: ene 2022
+            - generic [ref=e375]: $239
+            - generic [ref=e376]:
+              - link "VER" [ref=e377] [cursor=pointer]:
+                - /url: /catalog/asus-tuf-gaming-b660m-plus-wifi?currency=USD
+                - img [ref=e378]
+                - text: VER
+              - button "COMPARAR" [ref=e381] [cursor=pointer]:
+                - img [ref=e382]
+                - text: COMPARAR
+              - button [ref=e383] [cursor=pointer]:
+                - img [ref=e384]
+      - generic [ref=e386]:
+        - button "Anterior" [disabled] [ref=e387]:
+          - img [ref=e388]
+          - text: Anterior
+        - generic [ref=e390]:
+          - button "1" [ref=e391]
+          - button "2" [ref=e392] [cursor=pointer]
+        - button "Siguiente" [ref=e393] [cursor=pointer]:
+          - text: Siguiente
+          - img [ref=e394]
+  - button "Open Next.js Dev Tools" [ref=e401] [cursor=pointer]:
+    - img [ref=e402]
+  - alert [ref=e405]

@@ -1,0 +1,16 @@
+[     118ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     241ms] [LOG] [Fast Refresh] done in 229ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     302ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     324ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     581ms] [LOG] DEBUG B580 Benchmarks: {timeSpy: 14665, portRoyal: 7066, speedWay: 2881} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     581ms] [LOG] DEBUG B580 VRAM: {vramCapacity: 12, vramType: gddr6, busWidth: 192} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     581ms] [LOG] DEBUG B580 Chip: {tflops: 13.67, coreClock: 2670} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     582ms] [LOG] DEBUG B580 Total: {benchmarkTotal: 1545.0947368421052, vramTotal: 975, chipTotal: 513.35, totalPoints: 3033.444736842105} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     589ms] [LOG] DEBUG B580 Benchmarks: {timeSpy: 14665, portRoyal: 7066, speedWay: 2881} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     589ms] [LOG] DEBUG B580 VRAM: {vramCapacity: 12, vramType: gddr6, busWidth: 192} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     590ms] [LOG] DEBUG B580 Chip: {tflops: 13.67, coreClock: 2670} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     590ms] [LOG] DEBUG B580 Total: {benchmarkTotal: 1545.0947368421052, vramTotal: 975, chipTotal: 513.35, totalPoints: 3033.444736842105} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[  184677ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[  184697ms] [LOG] [Fast Refresh] done in 85ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[  184805ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[  185070ms] [LOG] [Fast Refresh] done in 369ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431

@@ -1,0 +1,107 @@
+- generic [ref=e1]:
+  - generic [active]:
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - navigation [ref=e27]:
+            - button "previous" [disabled] [ref=e28]:
+              - img "previous" [ref=e29]
+            - generic [ref=e31]:
+              - generic [ref=e32]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e33]:
+              - img "next" [ref=e34]
+          - img
+        - generic [ref=e36]:
+          - link "Next.js 16.2.4 (stale) Turbopack" [ref=e37] [cursor=pointer]:
+            - /url: https://nextjs.org/docs/messages/version-staleness
+            - img [ref=e38]
+            - generic "There is a newer version (16.2.6) available, upgrade recommended!" [ref=e40]: Next.js 16.2.4 (stale)
+            - generic [ref=e41]: Turbopack
+          - img
+      - dialog "Runtime ReferenceError" [ref=e43]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - generic [ref=e50]: Runtime ReferenceError
+              - generic [ref=e51]:
+                - button "Copy Error Info" [ref=e52] [cursor=pointer]:
+                  - img [ref=e53]
+                - button "No related documentation found" [disabled] [ref=e55]:
+                  - img [ref=e56]
+                - button "Attach Node.js inspector" [ref=e58] [cursor=pointer]:
+                  - img [ref=e59]
+            - generic [ref=e68]: Cannot access 'rayTracingScore' before initialization
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - paragraph [ref=e72]:
+                - img [ref=e74]
+                - generic [ref=e78]: src/lib/scoring/calculations/gpu/potency.ts (39:32) @ calculatePotencyScore
+                - button "Open in editor" [ref=e79] [cursor=pointer]:
+                  - img [ref=e81]
+              - generic [ref=e84]:
+                - generic [ref=e85]: 37 | portRoyal,
+                - generic [ref=e86]: "38 | rayTracingScore: Math.max(portRoyal, speedWay),"
+                - generic [ref=e87]: "> 39 | rayTracingPoints: Math.min(rayTracingScore, GPU_CONFIG.POTENCIA.BENCHMARKS.MAX_VALUES.portRoyal) *"
+                - generic [ref=e88]: "| ^"
+                - generic [ref=e89]: 40 | (GPU_CONFIG.POTENCIA.BENCHMARKS.WEIGHTS.portRoyal / GPU_CONFIG.POTENCIA.BENCHMARKS.MAX_VALUES.portRoyal),
+                - generic [ref=e90]: "41 | benchmarkTotal: timeSpyPoints + rayTracingPoints"
+                - generic [ref=e91]: "42 | });"
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - paragraph [ref=e94]:
+                  - text: Call Stack
+                  - generic [ref=e95]: "16"
+                - button "Show 11 ignore-listed frame(s)" [ref=e96] [cursor=pointer]:
+                  - text: Show 11 ignore-listed frame(s)
+                  - img [ref=e97]
+              - generic [ref=e99]:
+                - generic [ref=e100]:
+                  - text: calculatePotencyScore
+                  - button "Open calculatePotencyScore in editor" [ref=e101] [cursor=pointer]:
+                    - img [ref=e102]
+                - text: src/lib/scoring/calculations/gpu/potency.ts (39:32)
+              - generic [ref=e104]:
+                - generic [ref=e105]:
+                  - text: calculateGpuNotes
+                  - button "Open calculateGpuNotes in editor" [ref=e106] [cursor=pointer]:
+                    - img [ref=e107]
+                - text: src/lib/scoring/calculations/gpu/gpu.ts (19:40)
+              - generic [ref=e109]:
+                - generic [ref=e110]:
+                  - text: getComponentNotes
+                  - button "Open getComponentNotes in editor" [ref=e111] [cursor=pointer]:
+                    - img [ref=e112]
+                - text: src/lib/scoring/index.ts (22:31)
+              - generic [ref=e114]:
+                - generic [ref=e115]:
+                  - text: NotesCard
+                  - button "Sourcemapping failed. Click to log cause of error." [ref=e116] [cursor=pointer]:
+                    - img [ref=e117]
+                - text: file:///C:/Users/Rynaldo/Desktop/Programacion/Proyectos/corexscoring/.next/dev/static/chunks/src_0i3~ne9._.js (3832:198)
+              - generic [ref=e119]:
+                - generic [ref=e120]:
+                  - text: ProductPage
+                  - button "Open ProductPage in editor" [ref=e121] [cursor=pointer]:
+                    - img [ref=e122]
+                - text: src\app\(main)\catalog\[slug]\page.tsx (48:16)
+        - generic [ref=e124]: "1"
+        - generic [ref=e125]: "2"
+    - generic [ref=e6] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e7]:
+        - img [ref=e8]
+      - generic [ref=e126]:
+        - button "Open issues overlay" [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]: "0"
+            - generic [ref=e130]: "1"
+          - generic [ref=e131]: Issue
+        - button "Collapse issues badge" [ref=e132]:
+          - img [ref=e133]
+  - generic [ref=e13]:
+    - img [ref=e14]
+    - heading "This page couldn’t load" [level=1] [ref=e16]
+    - paragraph [ref=e17]: Reload to try again, or go back.
+    - generic [ref=e18]:
+      - button "Reload" [ref=e20] [cursor=pointer]
+      - button "Back" [ref=e21] [cursor=pointer]

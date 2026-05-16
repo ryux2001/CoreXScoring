@@ -1,0 +1,27 @@
+[     121ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     190ms] [LOG] [Fast Refresh] done in 180ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     245ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     259ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     417ms] ReferenceError: Cannot access 'rayTracingScore' before initialization
+    at calculatePotencyScore (http://localhost:3000/_next/static/chunks/src_0i3~ne9._.js:2739:36)
+    at calculateGpuNotes (http://localhost:3000/_next/static/chunks/src_0i3~ne9._.js:3071:205)
+    at getComponentNotes (http://localhost:3000/_next/static/chunks/src_0i3~ne9._.js:3727:196)
+    at NotesCard (http://localhost:3000/_next/static/chunks/src_0i3~ne9._.js:3832:198)
+    at Object.react_stack_bottom_frame (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:15037:24)
+    at renderWithHooks (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:4620:24)
+    at updateFunctionComponent (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:6081:21)
+    at beginWork (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:6665:639)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:965:74)
+    at performUnitOfWork (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:9555:97)
+    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:9551:58)
+    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:9534:71)
+    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:9061:150)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_react-dom_0luqc1q._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/0im5_next_dist_compiled_0fzwmub._.js:2647:64)
+[   51781ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51789ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51800ms] [LOG] [Fast Refresh] done in 68ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51917ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   52193ms] [LOG] [Fast Refresh] done in 379ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   52607ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   52634ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431

@@ -1,0 +1,73 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - link "CorexScoring" [ref=e6] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e9]:
+            - textbox "Buscar componente..." [ref=e10]
+            - button [ref=e11]:
+              - img [ref=e12]
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img [ref=e17]
+          - button [ref=e21] [cursor=pointer]:
+            - img [ref=e22]
+  - button "Open Next.js Dev Tools" [ref=e401] [cursor=pointer]:
+    - img [ref=e402]
+  - alert [ref=e405]
+  - main [ref=e406]:
+    - generic [ref=e408]:
+      - generic [ref=e410]:
+        - generic [ref=e411]:
+          - generic [ref=e412]:
+            - generic [ref=e413]: GPU
+            - img "Radeon RX 9070 XT" [ref=e414]
+          - generic [ref=e415]:
+            - heading "Radeon RX 9070 XT" [level=1] [ref=e416]
+            - generic [ref=e417]:
+              - generic [ref=e418]:
+                - generic [ref=e419]: MSRP
+                - generic [ref=e420]: $599
+              - generic [ref=e421]:
+                - generic [ref=e422]: Evaluado
+                - generic [ref=e423]: $599
+        - button "MOSTRAR DETALLES TÉCNICOS" [ref=e425]:
+          - img [ref=e426]
+          - text: MOSTRAR DETALLES TÉCNICOS
+      - generic [ref=e428]:
+        - button "Personalizar Precio" [ref=e430]:
+          - img [ref=e431]
+          - text: Personalizar Precio
+        - generic [ref=e435]:
+          - generic [ref=e436]:
+            - generic [ref=e437]:
+              - heading "Notas de Evaluación" [level=3] [ref=e438]
+              - generic [ref=e439]:
+                - generic [ref=e440]: "Precio Evaluado:"
+                - generic [ref=e441]: $599
+                - generic [ref=e442]: USD
+            - img [ref=e445]
+          - generic [ref=e447]:
+            - generic [ref=e448]:
+              - paragraph [ref=e450]: Potencia
+              - paragraph [ref=e452]: "5.1"
+            - generic [ref=e455]:
+              - paragraph [ref=e457]: Tecnologías
+              - paragraph [ref=e459]: "8.6"
+            - generic [ref=e462]:
+              - paragraph [ref=e464]: Productividad
+              - paragraph [ref=e466]: "3.9"
+            - generic [ref=e469]:
+              - paragraph [ref=e471]: Juegos
+              - paragraph [ref=e473]: "5.9"
+            - generic [ref=e476]:
+              - paragraph [ref=e478]: Eficiencia
+              - paragraph [ref=e480]: "7.7"
+            - generic [ref=e483]:
+              - paragraph [ref=e485]: Calidad precio
+              - paragraph [ref=e487]: "2.4"
+          - paragraph [ref=e491]: "* Todas las evaluaciones se basan en el rendimiento relativo frente a la competencia."
+        - generic [ref=e493]: "Aquí irá: Radar Chart"
+        - generic [ref=e495]: "Aquí irá: Benchmarks"

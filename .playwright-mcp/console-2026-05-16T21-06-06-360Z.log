@@ -1,0 +1,23 @@
+[     103ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     116ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[     858ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/images/catalog/storage.webp:0
+[     938ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/images/catalog/psu.webp:0
+[     942ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/images/catalog/motherboard.webp:0
+[    1050ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/images/catalog/storage.webp:0
+[    1055ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/images/catalog/motherboard.webp:0
+[   51213ms] [LOG] Page contains: Radeon RX 9070 XT : true @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51213ms] [LOG] Elements with data-testid: 0 @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Product cards: 0 @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Catalog links: 12 @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 0: http://localhost:3000/catalog/radeon-rx-9070-xt?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 1: http://localhost:3000/catalog/geforce-rtx-5090?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 2: http://localhost:3000/catalog/geforce-rtx-5070?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 3: http://localhost:3000/catalog/intel-arc-b580?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 4: http://localhost:3000/catalog/intel-core-i5-12400f?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 5: http://localhost:3000/catalog/amd-ryzen-5-5600x?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 6: http://localhost:3000/catalog/ssd-9100-pro-1tb?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 7: http://localhost:3000/catalog/thermaltake-toughpower-gt-850w?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 8: http://localhost:3000/catalog/msi-spatium-m461-1tb?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 9: http://localhost:3000/catalog/asus-tuf-gaming-b650e-plus-wifi?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 10: http://localhost:3000/catalog/ddr5-32gb-2x16-6000-cl36-kit?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
+[   51214ms] [LOG] Link 11: http://localhost:3000/catalog/asus-tuf-gaming-b660m-plus-wifi?currency=USD VER @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
