@@ -1,6 +1,6 @@
 /**
  * GPU VALUE SCORE CALCULATOR
- * Calcula la calidad/precio basada en las 5 notas técnicas y el precio
+ * Calcula la calidad/precio basada en el Umbral de Rendimiento Útil
  */
 
 import { GPU_CONFIG } from '../../config/gpu';
@@ -16,7 +16,7 @@ export const calculateValueScore = (
   evaluatedPrice: number,
   product: any
 ): number => {
-  // Calcular nota global ponderada
+  // 1. Calcular la Nota Global Ponderada según los nuevos pesos de GPU_CONFIG
   const potenciaPoints = notes.POTENCIA * GPU_CONFIG.VALUE_WEIGHTS.POTENCIA_WEIGHT;
   const technologiesPoints = notes.TECNOLOGIAS * GPU_CONFIG.VALUE_WEIGHTS.TECNOLOGIAS_WEIGHT;
   const productivityPoints = notes.PRODUCTIVIDAD * GPU_CONFIG.VALUE_WEIGHTS.PRODUCTIVIDAD_WEIGHT;
@@ -25,17 +25,25 @@ export const calculateValueScore = (
   
   const totalWeightedPoints = potenciaPoints + technologiesPoints + productivityPoints + gamingPoints + efficiencyPoints;
   
-  // Normalizar a 0-100
-  const normalizedScore = totalWeightedPoints / 100;
+  // Nota Global en escala de 0 a 10
+  const globalScore = totalWeightedPoints / 100;
   
-  // Calcular calidad/precio
-  // Fórmula: (nota_global_ponderada / precio_usd * 100) / 4.0 * 10
-  // Con techo de 4.0 (perfección 10/10)
-  let valueScore = 0;
-  if (evaluatedPrice > 0) {
-    valueScore = (normalizedScore / evaluatedPrice * 100) / 2.0 * 10;
+  // Control de seguridad: Si no hay precio registrado o es menor/igual a 0, la nota es 0
+  if (!evaluatedPrice || evaluatedPrice <= 0) {
+    return 0;
   }
+
+  // 2. Aplicar el Umbral de Rendimiento Útil (Restar 3.5 puntos base)
+  // Math.max(0, ...) asegura que si una gráfica rinde menos de 3.5, no devuelva valores negativos
+  const usefulPerformance = Math.max(0, globalScore - 3.5);
   
-  // Aplicar techo de 10
+  // 3. Calcular el Ratio de puntos útiles por dólar
+  const ratio = usefulPerformance / evaluatedPrice;
+  
+  // 4. Normalizar contra el techo de perfección (0.005 pts por dólar) para obtener escala 0-10
+  const maxCeiling = 0.005;
+  const valueScore = (ratio / maxCeiling) * 10;
+  
+  // Retornar la nota limitándola estrictamente a un máximo de 10
   return Math.min(10, valueScore);
 };
