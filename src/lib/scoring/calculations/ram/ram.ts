@@ -6,8 +6,8 @@
 import { calculateSpeedScore } from './speed';
 import { calculateTechnologiesScore } from './technologies';
 import { calculateLatencyScore } from './latency';
-import { calculateCompatibilityScore } from './compatibility';
-import { calculateEfficiencyScore } from './efficiency';
+import { calculateGamesScore } from './games';
+import { calculateProductivityScore } from './productivity';
 import { calculateValueScore } from './value';
 
 export type ComponentNotes = {
@@ -19,8 +19,8 @@ export const calculateRamNotes = (product: any, evaluatedPrice: number): Compone
     "Velocidad": calculateSpeedScore(product),
     "Tecnologías": 7.5,
     "Latencia": calculateLatencyScore(product),
-    "Compatibilidad": calculateCompatibilityScore(product),
-    "Eficiencia": calculateEfficiencyScore(product),
+    "Juegos": calculateGamesScore(product),
+    "Productividad": calculateProductivityScore(product),
     "Calidad precio": calculateValueScore(product, evaluatedPrice),
   };
 };
