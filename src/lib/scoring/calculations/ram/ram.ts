@@ -15,12 +15,32 @@ export type ComponentNotes = {
 };
 
 export const calculateRamNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
+  // 1. Calcular las 5 notas técnicas
+  const speed = calculateSpeedScore(product);
+  const technologies = calculateTechnologiesScore(product);
+  const latency = calculateLatencyScore(product);
+  const games = calculateGamesScore(product);
+  const productivity = calculateProductivityScore(product);
+  
+  // 2. Calcular el valor usando el objeto de notas
+  const valueScore = calculateValueScore(
+    {
+      VELOCIDAD: speed,
+      TECNOLOGIAS: technologies,
+      LATENCIA: latency,
+      JUEGOS: games,
+      PRODUCTIVIDAD: productivity,
+    },
+    evaluatedPrice,
+    product
+  );
+
   return {
-    "Velocidad": calculateSpeedScore(product),
-    "Tecnologías": 7.5,
-    "Latencia": calculateLatencyScore(product),
-    "Juegos": calculateGamesScore(product),
-    "Productividad": calculateProductivityScore(product),
-    "Calidad precio": calculateValueScore(product, evaluatedPrice),
+    "Velocidad": speed,
+    "Tecnologías": technologies,
+    "Latencia": latency,
+    "Juegos": games,
+    "Productividad": productivity,
+    "Calidad precio": valueScore,
   };
 };
