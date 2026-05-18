@@ -15,12 +15,32 @@ export type ComponentNotes = {
 };
 
 export const calculateStorageNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
+  // 1. Calcular notas técnicas
+  const speed = calculateSpeedScore(product);
+  const technologies = calculateTechnologiesScore(product);
+  const temperatures = calculateTemperaturesScore(product);
+  const durability = calculateDurabilityScore(product);
+  const efficiency = calculateEfficiencyScore(product);
+
+  // 2. Calcular el valor usando el objeto interno esperado por value.ts
+  const valueScore = calculateValueScore(
+    {
+      VELOCIDAD: speed,
+      TECNOLOGIAS: technologies,
+      TEMPERATURAS: temperatures,
+      DURABILIDAD: durability,
+      EFICIENCIA: efficiency,
+    },
+    evaluatedPrice,
+    product
+  );
+
   return {
-    "Velocidad": calculateSpeedScore(product),
-    "Tecnologías": calculateTechnologiesScore(product),
-    "Temperaturas": calculateTemperaturesScore(product),
-    "Durabilidad": calculateDurabilityScore(product),
-    "Eficiencia": calculateEfficiencyScore(product),
-    "Calidad Precio": calculateValueScore(product, evaluatedPrice),
+    "Velocidad": speed,
+    "Tecnologías": technologies,
+    "Temperaturas": temperatures,
+    "Durabilidad": durability,
+    "Eficiencia": efficiency,
+    "Calidad precio": valueScore,
   };
 };
