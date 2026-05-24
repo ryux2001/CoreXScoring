@@ -10,7 +10,7 @@ interface MobileWrapperProps {
 }
 
 export default function MobileEvaluationWrapper({ product, currency }: MobileWrapperProps) {
-  const [activeView, setActiveView] = useState<'numeric' | 'radar'>('radar');
+  const [activeView, setActiveView] = useState<'numeric' | 'radar'>('numeric');
 
   return (
     <div className="w-full h-[400px] relative animate-in fade-in duration-300">

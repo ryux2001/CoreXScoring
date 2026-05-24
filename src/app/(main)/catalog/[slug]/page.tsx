@@ -5,6 +5,7 @@ import PriceCustomCard from "./components/PriceCustomCard";
 import NotesCard from "./components/NotesCard";
 import RadarChartCard from "./components/RadarChartCard";
 import MobileEvaluationWrapper from "./components/MobileEvaluationWrapper"; // IMPORTAMOS EL WRAPPER MÓVIL
+import BenchmarksCard from "./components/BenchmarksCard";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -64,8 +65,8 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
 
             {/* --- SECCIÓN BENCHMARKS (Siempre visible debajo de las evaluaciones) --- */}
             {/* Ocupa todo el ancho en móvil, y el 65% (8 columnas) en escritorio al lado del radar */}
-            <div className="lg:col-span-7 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 p-8 flex items-center justify-center min-h-[400px]">
-               <span className="text-zinc-600 font-bold uppercase tracking-widest text-xs">Aquí irá: Benchmarks</span>
+            <div className="lg:col-span-7">
+               <BenchmarksCard product={product} />
             </div>
 
           </div>
