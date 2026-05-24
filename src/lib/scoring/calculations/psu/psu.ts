@@ -15,12 +15,32 @@ export type ComponentNotes = {
 };
 
 export const calculatePsuNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
+  // 1. Calcular notas técnicas
+  const estabilidad = calculateStabilityScore(product);
+  const conectividad = calculateConnectivityScore(product);
+  const protecciones = calculateProtectionsScore(product);
+  const construccion = calculateBuildQualityScore(product);
+  const eficiencia = calculateEfficiencyScore(product);
+
+  // 2. Calcular el valor usando el objeto interno esperado por value.ts
+  const valueScore = calculateValueScore(
+    {
+      ESTABILIDAD: estabilidad,
+      CONECTIVIDAD: conectividad,
+      PROTECCIONES: protecciones,
+      CONSTRUCCION: construccion,
+      EFICIENCIA: eficiencia,
+    },
+    evaluatedPrice,
+    product
+  );
+
   return {
-    "Estabilidad Eléctrica": calculateStabilityScore(product),
-    "Conectividad": calculateConnectivityScore(product),
-    "Protecciones": calculateProtectionsScore(product),
-    "Construcción": calculateBuildQualityScore(product),
-    "Eficiencia": calculateEfficiencyScore(product),
-    "Calidad Precio": calculateValueScore(product, evaluatedPrice),
+    "Estabilidad Eléctrica": estabilidad,
+    "Conectividad": conectividad,
+    "Protecciones": protecciones,
+    "Construcción": construccion,
+    "Eficiencia": eficiencia,
+    "Calidad Precio": valueScore,
   };
 };
