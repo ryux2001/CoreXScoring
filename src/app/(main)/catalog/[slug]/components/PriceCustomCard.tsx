@@ -135,7 +135,17 @@ export default function PriceCustomCard({
 
             {/* Contenido Modal */}
             <div className="p-6">
-              <PriceForm />
+              <PriceForm
+                selectedMarket={selectedMarket}
+                setSelectedMarket={setSelectedMarket}
+                customPrice={customPrice}
+                setCustomPrice={setCustomPrice}
+                basePrice={basePrice}
+                format={format}
+                symbol={symbol}
+                currency={currency}
+                handleApply={handleApply}
+              />
               <p className="mt-6 text-center text-[9px] text-zinc-600 uppercase tracking-widest leading-relaxed">
                 El cambio se verá reflejado en la <br /> tarjeta principal del
                 producto.
@@ -172,7 +182,9 @@ const PriceForm = ({
             const val = Number(e.target.value);
             setSelectedMarket(val);
             setCustomPrice(val);
-            window.dispatchEvent(new CustomEvent('updateProductPrice', { detail: val }));
+            window.dispatchEvent(
+              new CustomEvent("updateProductPrice", { detail: val }),
+            );
           }}
           className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700"
         >
@@ -202,8 +214,29 @@ const PriceForm = ({
           </span>
           <input
             type="number"
-            value={customPrice === 0 ? '' : customPrice}
+            value={customPrice === 0 ? "" : customPrice}
             onChange={(e) => setCustomPrice(Number(e.target.value))}
+            onKeyDown={(e) => {
+              if (
+                !/[0-9]/.test(e.key) &&
+                ![
+                  "Backspace",
+                  "Delete",
+                  "Tab",
+                  "Escape",
+                  "Enter",
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "ArrowUp",
+                  "ArrowDown",
+                  "Home",
+                  "End",
+                ].includes(e.key) &&
+                !(e.ctrlKey || e.metaKey)
+              ) {
+                e.preventDefault();
+              }
+            }}
             className="w-full rounded-xl border border-zinc-900 bg-black p-3 pl-7 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-zinc-600 uppercase tracking-tighter">
