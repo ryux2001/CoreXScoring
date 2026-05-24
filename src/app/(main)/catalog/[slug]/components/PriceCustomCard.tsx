@@ -172,6 +172,7 @@ const PriceForm = ({
             const val = Number(e.target.value);
             setSelectedMarket(val);
             setCustomPrice(val);
+            window.dispatchEvent(new CustomEvent('updateProductPrice', { detail: val }));
           }}
           className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700"
         >
@@ -201,7 +202,7 @@ const PriceForm = ({
           </span>
           <input
             type="number"
-            value={customPrice}
+            value={customPrice === 0 ? '' : customPrice}
             onChange={(e) => setCustomPrice(Number(e.target.value))}
             className="w-full rounded-xl border border-zinc-900 bg-black p-3 pl-7 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
