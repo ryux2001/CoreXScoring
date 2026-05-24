@@ -7,9 +7,11 @@ import { getComponentNotes } from '@/lib/scoring/index';
 interface NotesCardProps {
   product: any;
   currency?: string;
+  onSwitchView?: () => void;       // NUEVO PROP OPCIONAL
+  currentMobileView?: 'numeric';  // NUEVO PROP OPCIONAL
 }
 
-export default function NotesCard({ product, currency = 'USD' }: NotesCardProps) {
+export default function NotesCard({ product, currency = 'USD', onSwitchView }: NotesCardProps) {
   const isEUR = currency === 'EUR';
   const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const initialPrice = product[priceColumn] || 0;
@@ -82,7 +84,7 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-6">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
-            Notas de Evaluación
+            Notas
           </h3>
           
           <div className="hidden sm:flex items-center gap-2 whitespace-nowrap bg-zinc-900/30 px-3 py-1 rounded-full border border-zinc-900/50">
@@ -94,13 +96,27 @@ export default function NotesCard({ product, currency = 'USD' }: NotesCardProps)
           </div>
         </div>
         
-        <div className="group relative">
-          <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:text-white">
-            <Info size={11} strokeWidth={3} />
-          </div>
-          <div className="invisible absolute right-0 top-7 z-[9999] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
-            <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">Criterios de Evaluación</div>
-            <p>Las notas se calculan comparando las especificaciones técnicas con el estándar actual del mercado.</p>
+        {/* GRUPO DE ACCIONES DEL HEADER (INFO + TOGGLE MÓVIL) */}
+        <div className="flex items-center gap-3">
+          {/* Botón de intercambio: Solo se renderiza si se pasa el prop onSwitchView */}
+          {onSwitchView && (
+            <button 
+              onClick={onSwitchView}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-all active:scale-95"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Ver Radar
+            </button>
+          )}
+
+          <div className="group relative">
+            <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:text-white">
+              <Info size={11} strokeWidth={3} />
+            </div>
+            <div className="invisible absolute right-0 top-7 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+              <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">Criterios de Evaluación</div>
+              <p>Las notas se calculan comparando las especificaciones técnicas con el estándar actual del mercado.</p>
+            </div>
           </div>
         </div>
       </div>
