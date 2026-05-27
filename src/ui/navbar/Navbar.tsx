@@ -4,6 +4,8 @@ import MobileMenu from "./MobileMenu";
 import AuthStatus from "./AuthStatus";
 import SearchBar from "./SearchBar";
 
+import CompareCartDropdown from "./CompareCartDropdown";
+
 const navLinks = [
   { name: "Inicio", href: "/" },
   { name: "Catalogo", href: "/catalog" },
@@ -51,9 +53,7 @@ export default function Navbar() {
             </div>
 
             {/* Icono VS (Visible en desktop, puedes decidir si ocultarlo en móvil) */}
-            <button className="hidden sm:flex cursor-pointer h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-zinc-900 text-zinc-300 hover:border-white/40 hover:text-white transition-all">
-              <ArrowLeftRight className="h-4 w-4" />
-            </button>
+            <CompareCartDropdown />
 
             {/* AuthStatus Desktop: Se oculta en móvil */}
             <div className="hidden sm:block">
