@@ -7,6 +7,7 @@ interface CompareProduct {
   name: string;
   slug: string;
   type: string;
+  brand: string; // 🚀 Añade esta línea aquí
   image_url?: string;
   [key: string]: any; // Permite flexibilidad para las specs de cada componente
 }

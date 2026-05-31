@@ -1,16 +1,19 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // 🚀 Corregido el import aquí
+import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
 import EmptyState from './EmptyState';
 import SearchModal from './SearchModal';
+import CompareProductCard from './CompareProductCard';
 
 interface ComparatorClientProps {
   initialProducts: any[];
+  globalCurrency: string; // 
 }
 
-export default function ComparatorClient({ initialProducts }: ComparatorClientProps) {
+export default function ComparatorClient({ initialProducts, globalCurrency }: ComparatorClientProps) {
   const router = useRouter();
   
   const items = useCompareStore((state) => state.items);
@@ -19,29 +22,28 @@ export default function ComparatorClient({ initialProducts }: ComparatorClientPr
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 🔄 Hidratar el store si venimos de un enlace SEO con parámetros en la carpeta
   useEffect(() => {
     if (initialProducts.length > 0 && items.length === 0) {
       initialProducts.forEach((product) => {
-        const priceColumn = product.price_base_eur ? 'price_base_eur' : 'price_base_usd';
+        const isTargetEUR = globalCurrency === 'EUR';
+        const priceColumn = isTargetEUR ? 'price_base_eur' : 'price_base_usd';
         addItem({
           ...product,
           price: product[priceColumn] || 0,
-          currency: product.price_base_eur ? 'EUR' : 'USD'
+          currency: globalCurrency
         });
       });
     }
-  }, [initialProducts]);
+  }, [initialProducts, globalCurrency]);
 
-  // 🔄 Sincronizar el store con la URL de la carpeta limpia
   useEffect(() => {
     if (items.length === 0) {
       router.replace('/comparator', { scroll: false });
     } else {
       const pathSlugs = items.map(item => item.slug).join('/');
-      router.replace(`/comparator/${pathSlugs}`, { scroll: false });
+      router.replace(`/comparator/${pathSlugs}?currency=${globalCurrency}`, { scroll: false });
     }
-  }, [items, router]);
+  }, [items, router, globalCurrency]);
 
   if (items.length === 0) {
     return (
@@ -52,29 +54,53 @@ export default function ComparatorClient({ initialProducts }: ComparatorClientPr
     );
   }
 
-  return (
-    <div className="flex flex-col items-center justify-center text-center animate-in fade-in duration-300 w-full max-w-4xl">
-      <h1 className="text-sm md:text-xl font-black uppercase tracking-[0.2em] text-zinc-400 flex flex-wrap items-center justify-center gap-3 leading-relaxed">
-        {items.map((item, idx) => (
-          <React.Fragment key={item.id}>
-            {idx > 0 && <span className="text-zinc-700 font-medium lowercase tracking-normal px-1">vs</span>}
-            <span className="text-white border-b border-zinc-900 pb-1">{item.name}</span>
-          </React.Fragment>
-        ))}
-      </h1>
+  // 📐 LÓGICA DE EXPANSIÓN DINÁMICA:
+  // Determinamos el número total de columnas y el ancho máximo del contenedor unificado
+  const hasSpace = items.length < 3;
+  const totalColumns = hasSpace ? items.length + 1 : 3;
+  
+  const maxWidthClass = totalColumns === 2 
+    ? "max-w-2xl" 
+    : "max-w-5xl";
 
-      <div className="mt-12 flex gap-4">
-        {items.length < 3 && (
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="rounded-xl border border-zinc-800 hover:border-white/20 bg-zinc-950 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-all cursor-pointer"
-          >
-            + Añadir Componente
-          </button>
-        )}
+  return (
+    <div className="flex flex-col items-center w-full px-4 py-8 animate-in fade-in duration-300">
+      
+      {/* 👑 EL CONTENEDOR MAESTRO UNIFICADO (Mismo techo visual para todo el "Versus") */}
+      <div className={`w-full ${maxWidthClass} bg-zinc-950/50 border border-zinc-900 rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ease-out`}>
+        
+        {/* REJILLA INTERNA: Divide las columnas limpiamente con líneas verticales en desktop */}
+        <div className={`grid grid-cols-1 divide-y divide-zinc-900 md:divide-y-0 md:divide-x md:divide-zinc-900`}
+             style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}>
+          
+          {/* Renderizado de las celdas de productos */}
+          {items.map((item) => (
+            <CompareProductCard key={item.id} product={item} globalCurrency={globalCurrency}/>
+          ))}
+
+          {/* Slot de "Añadir" integrado como una sección interna de la misma tarjeta */}
+          {hasSpace && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex flex-col items-center justify-center p-6 h-full min-h-[380px] w-full text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/10 transition-all duration-300 group cursor-pointer"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-zinc-800 bg-zinc-950 text-zinc-500 group-hover:text-white group-hover:border-zinc-700 transition-colors">
+                <Plus size={16} />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] mt-4">
+                Añadir Componente
+              </span>
+            </button>
+          )}
+        </div>
+
+      </div>
+
+      {/* BOTÓN INFERIOR DE RESETEO */}
+      <div className="mt-12 flex justify-center">
         <button 
           onClick={() => clearCompare()}
-          className="rounded-xl border border-zinc-900 hover:border-red-900/30 bg-black px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-zinc-700 hover:text-red-400 transition-all cursor-pointer"
+          className="rounded-xl border border-zinc-900 hover:border-red-900/20 bg-zinc-950/40 px-5 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-red-400 transition-all cursor-pointer active:scale-95"
         >
           Limpiar Todo
         </button>
