@@ -18,9 +18,9 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
 
   if (slugs.length > 0) {
     const { data } = await supabase
-      .from('products_with_priority')
-      .select('id, slug, name, type, brand, price_base_usd, price_base_eur, specs, compatibility, release_date')
-      .in('slug', slugs);
+  .from('products_with_priority')
+  .select('*') // 🚀 Trae todas las especificaciones para el motor de scoring
+  .in('slug', slugs);
 
     if (data) {
       initialProducts = slugs

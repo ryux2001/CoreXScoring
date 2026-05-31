@@ -38,10 +38,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       setLoading(true);
       try {
         let query = supabase
-          .from('products_with_priority')
-          .select('id, slug, name, type, brand, price_base_usd, price_base_eur, specs, compatibility, release_date')
-          .ilike('name', `%${searchTerm}%`)
-          .limit(5);
+  .from('products_with_priority')
+  .select('*') // 🚀 Cambiado de columnas fijas a asterisco
+  .ilike('name', `%${searchTerm}%`)
+  .limit(5);
 
         if (componentType) {
           query = query.ilike('type', componentType);

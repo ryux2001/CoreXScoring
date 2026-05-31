@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, ChevronDown } from 'lucide-react';
-import Link from 'next/link'; // 🚀 Importado para redirigir a la vista del producto
+import Link from 'next/link';
 import { useCompareStore } from '@/store/useCompareStore';
-import { getComponentNotes } from '@/lib/scoring/index'; // 🚀 Importamos tu motor de scoring real
+import { getComponentNotes } from '@/lib/scoring/index'; // 🚀 Tu motor de scoring real
 
 interface CompareProductCardProps {
   product: {
@@ -25,31 +25,79 @@ interface CompareProductCardProps {
 export default function CompareProductCard({ product, globalCurrency }: CompareProductCardProps) {
   const removeItem = useCompareStore((state) => state.removeItem);
 
-  // 🪙 LÓGICA DE PRECIOS ADAPTADA DE PRICECUSTOMCARD
-  const isEUR = globalCurrency === "EUR"; // Mandas tú, no el objeto de Zustand
+  // 🪙 GESTIÓN DE DIVISAS Y PRECIOS
+  const isEUR = globalCurrency === "EUR";
   const priceColumn = isEUR ? "price_base_eur" : "price_base_usd";
-  const basePrice = product[priceColumn] || product.price || 0; // Si no hay columna, cae al precio por defecto
-  const symbol = isEUR ? "€" : "$";
-  const currencyCode = isEUR ? "EUR" : "USD"
+  const basePrice = product[priceColumn] || product.price || 0; //
+  const symbol = isEUR ? "€" : "$"; //[cite: 1]
+  const currencyCode = isEUR ? "EUR" : "USD";
 
-  const [selectedMarket, setSelectedMarket] = useState(basePrice);
-  const [customPrice, setCustomPrice] = useState(basePrice);
-  const [displayedPrice, setDisplayedPrice] = useState(basePrice); // Almacena el valor evaluado final
+  const [selectedMarket, setSelectedMarket] = useState(basePrice); //[cite: 1]
+  const [customPrice, setCustomPrice] = useState(basePrice); //[cite: 1]
+  const [displayedPrice, setDisplayedPrice] = useState(basePrice);
 
-  // Sincronizar estados si cambia el componente base
   useEffect(() => {
-    setSelectedMarket(basePrice);
-    setCustomPrice(basePrice);
+    setSelectedMarket(basePrice); //[cite: 1]
+    setCustomPrice(basePrice); //[cite: 1]
     setDisplayedPrice(basePrice);
   }, [basePrice]);
 
   const format = (val: number) =>
-    `${isEUR ? "" : symbol}${val.toFixed(0)}${isEUR ? symbol : ""}`;
+    `${isEUR ? "" : symbol}${val.toFixed(0)}${isEUR ? symbol : ""}`; //[cite: 1]
 
   const handleApply = () => {
     setDisplayedPrice(customPrice);
-    // Nota: Aquí se podrá emitir un CustomEvent o callback global en el futuro para recalcular el score
   };
+
+  // 🧮 🚀 CORRECCIÓN CRÍTICA DEL MOTOR DE SCORING (2 parámetros como en NotesCard)
+  const precioUSD = useMemo(() => isEUR ? displayedPrice * 1.08 : displayedPrice, [displayedPrice, isEUR]); //
+  const baseNotes = useMemo(() => getComponentNotes(product, precioUSD) || {}, [product, precioUSD]); //
+
+  // Extraemos todas las categorías (mismo enfoque que NotesCard.tsx)
+  const categories = Object.keys(baseNotes);
+
+  // Buscador de la clave "Calidad Precio" (independiente de cómo esté escrita en tu JSON)
+  const calidadPrecioKey = categories.find(cat => 
+    cat.toLowerCase().includes('precio') || 
+    cat.toLowerCase().includes('price') || 
+    cat.toLowerCase().includes('calidad')
+  );
+
+  // Extraemos la nota global de Calidad Precio
+  const finalScore = calidadPrecioKey ? (baseNotes[calidadPrecioKey] || 0) : 0;
+
+  // Filtramos para quedarnos únicamente con las notas técnicas (excluyendo calidad precio)
+  const technicalNotes = categories.filter(cat => cat !== calidadPrecioKey);
+
+  // 🎨 ESTILOS CROMÁTICOS DINÁMICOS EXTRAÍDOS DE TU NOTESCARD
+  const getColorStyles = (score: number) => {
+    if (score >= 9) return { //[cite: 6]
+      border: 'border-blue-500/30',
+      bg: 'bg-blue-950/20',
+      text: 'text-blue-400',
+      label: 'text-blue-500/70'
+    };
+    if (score >= 7) return { //[cite: 6]
+      border: 'border-emerald-500/30',
+      bg: 'bg-emerald-950/20',
+      text: 'text-emerald-400',
+      label: 'text-emerald-500/70'
+    };
+    if (score >= 3) return { //[cite: 6]
+      border: 'border-yellow-500/30',
+      bg: 'bg-yellow-950/20',
+      text: 'text-yellow-400',
+      label: 'text-yellow-500/70'
+    };
+    return {
+      border: 'border-red-500/30',
+      bg: 'bg-red-950/20',
+      text: 'text-red-400',
+      label: 'text-red-500/70'
+    };
+  };
+
+  const valueStyles = getColorStyles(finalScore);
 
   const getLocalImage = () => {
     if (!product.type || !product.brand) return null;
@@ -77,7 +125,7 @@ export default function CompareProductCard({ product, globalCurrency }: CompareP
   const imageSrc = getLocalImage();
 
   return (
-    <div className="relative flex flex-col justify-between p-6 h-full w-full min-h-[420px] group animate-in fade-in duration-300">
+    <div className="relative flex flex-col justify-between p-6 h-full w-full min-h-[600px] group animate-in fade-in duration-300">
       
       {/* Botón de descarte superior derecho (X) */}
       <button 
@@ -87,10 +135,8 @@ export default function CompareProductCard({ product, globalCurrency }: CompareP
         <X size={13} strokeWidth={2.5} />
       </button>
 
-      {/* --- PARTE SUPERIOR TOTALMENTE REESTRUCTURADA --- */}
-      <div className="flex flex-col flex-1 gap-5">
-        
-        {/* FILA 1: Nombre del producto arriba del todo */}
+      {/* --- BLOQUE SUPERIOR (Identidad + Rejilla intermedia) --- */}
+      <div className="flex flex-col gap-5">
         <div className="text-left pr-6">
           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">
             {product.brand} · {product.type}
@@ -100,108 +146,112 @@ export default function CompareProductCard({ product, globalCurrency }: CompareP
           </h2>
         </div>
 
-        {/* REJILLA INTERMEDIA: Mitad Izquierda (Imagen) | Mitad Derecha (Precio Módulos) */}
-        <div className="grid grid-cols-2 gap-4 items-center my-auto">
-          
-          {/* 1. MITAD IZQUIERDA: Contenedor de la Imagen */}
+        <div className="grid grid-cols-2 gap-4 items-center">
+          {/* Mitad Izquierda: Imagen */}
           <div className="flex items-center justify-center">
             {imageSrc && (
-              <div className="relative w-32 h-32 md:w-36 md:h-36 flex items-center justify-center opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300 ease-out">
-                <img 
-                  src={imageSrc} 
-                  alt={product.name}
-                  className="object-contain max-w-full max-h-full drop-shadow-[0_0_25px_rgba(255,255,255,0.03)]"
-                />
+              <div className="relative w-28 h-28 md:w-32 md:h-32 flex items-center justify-center opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300 ease-out">
+                <img src={imageSrc} alt={product.name} className="object-contain max-w-full max-h-full drop-shadow-[0_0_25px_rgba(255,255,255,0.03)]" />
               </div>
             )}
           </div>
 
-          {/* 2. MITAD DERECHA: Selectores de Precio y Botón de Navegación */}
+          {/* Mitad Derecha: Controles de Precio */}
           <div className="flex flex-col gap-3 text-left">
-            
-            {/* Desplegable de Precios Alternativos */}
             <div className="space-y-1">
-              <label className="text-[7px] font-black uppercase tracking-widest text-zinc-600 ml-0.5">
-                Seleccione un pre...
-              </label>
+              <label className="text-[7px] font-black uppercase tracking-widest text-zinc-600 ml-0.5">Seleccione un pre...</label>
               <div className="relative">
                 <select
                   value={selectedMarket}
                   onChange={(e) => {
                     const val = Number(e.target.value);
-                    setSelectedMarket(val);
-                    setCustomPrice(val);
+                    setSelectedMarket(val); //[cite: 1]
+                    setCustomPrice(val); //[cite: 1]
                     setDisplayedPrice(val);
                   }}
                   className="w-full appearance-none rounded-xl border border-zinc-900 bg-black/40 p-2 pr-7 text-[10px] font-bold text-white outline-none transition-all focus:border-zinc-700"
                 >
-                  <option value={basePrice}>MSRP - {format(basePrice)}</option>[cite: 1]
-                  <option value={basePrice * 1.15}>Alto (+15%) - {format(basePrice * 1.15)}</option>
-                  <option value={basePrice * 0.9}>Bajo (-10%) - {format(basePrice * 0.9)}</option>
+                  <option value={basePrice}>MSRP - {format(basePrice)}</option> {/*[cite: 1] */}
+                  <option value={basePrice * 1.15}>Alto (+15%) - {format(basePrice * 1.15)}</option> {/*[cite: 1] */}
+                  <option value={basePrice * 0.9}>Bajo (-10%) - {format(basePrice * 0.9)}</option> {/*[cite: 1] */}
                 </select>
-                <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600">
-                  <ChevronDown size={12} />
-                </div>
+                <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600"><ChevronDown size={12} /></div>
               </div>
             </div>
 
-            {/* Input Manual + Botón Aplicar */}
             <div className="space-y-1">
-              <label className="text-[7px] font-black uppercase tracking-widest text-zinc-600 ml-0.5">
-                Escriba un pre...
-              </label>
+              <label className="text-[7px] font-black uppercase tracking-widest text-zinc-600 ml-0.5">Escriba un pre...</label>
               <div className="flex gap-1">
                 <div className="relative flex-1">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600">
-                    {symbol}
-                  </span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600">{symbol}</span>
                   <input
                     type="number"
-                    value={customPrice === 0 ? "" : customPrice}
-                    onChange={(e) => setCustomPrice(Number(e.target.value))}
+                    value={customPrice === 0 ? "" : customPrice} //[cite: 1]
+                    onChange={(e) => setCustomPrice(Number(e.target.value))} //[cite: 1]
                     className="w-full rounded-xl border border-zinc-900 bg-black/40 p-2 pl-4.5 pr-6 text-[10px] font-bold text-white outline-none transition-all focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[6px] font-black text-zinc-600 uppercase">
-                    {currencyCode}
-                  </div>
+                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[6px] font-black text-zinc-600 uppercase">{currencyCode}</div>
                 </div>
-                <button
-                  onClick={handleApply}
-                  className="px-2 rounded-xl bg-white text-black text-[8px] font-black uppercase tracking-widest transition-all hover:bg-zinc-200 active:scale-95 cursor-pointer"
-                >
-                  aplicar
-                </button>
+                <button onClick={handleApply} className="px-2 rounded-xl bg-white text-black text-[8px] font-black uppercase tracking-widest transition-all hover:bg-zinc-200 active:scale-95 cursor-pointer">aplicar</button> {/*[cite: 1] */}
               </div>
             </div>
 
-            {/* Bloque de Información de Evaluación y Enlace Directo */}
             <div className="mt-1 pt-2 border-t border-zinc-900/40 flex flex-col gap-2">
               <div className="text-[9px] font-black uppercase tracking-wider text-zinc-500">
                 Evaluado: <span className="text-white font-bold tracking-tight normal-case text-xs ml-1">{format(displayedPrice)}</span>
               </div>
-              
-              <Link
-                href={`/catalog/${product.slug}?currency=${globalCurrency}`}
-                className="w-full text-center rounded-xl border border-zinc-900 bg-zinc-900/20 hover:bg-zinc-900 hover:text-white text-[9px] font-black uppercase tracking-widest text-zinc-400 py-2 transition-all active:scale-[0.98] cursor-pointer"
-              >
+              <Link href={`/catalog/${product.slug}?currency=${globalCurrency}`} className="w-full text-center rounded-xl border border-zinc-900 bg-zinc-900/20 hover:bg-zinc-900 hover:text-white text-[9px] font-black uppercase tracking-widest text-zinc-400 py-2 transition-all active:scale-[0.98] cursor-pointer">
                 ver producto
               </Link>
             </div>
-
           </div>
-
         </div>
-
       </div>
 
-      {/* --- PARTE INFERIOR: Notas (Mantenida intacta tal cual la pediste) --- */}
-      <div className="mt-4 pt-4 border-t border-zinc-900/60 flex items-center justify-between px-1">
-        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500">
-          nota
-        </span>
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-black text-white shadow-inner">
-          8
+      {/* --- PARTE INFERIOR TOTALMENTE FIEL A IMAGE_8ACF72.PNG --- */}
+      <div className="mt-8 pt-6 border-t border-zinc-900/50 flex flex-col justify-between flex-1">
+        
+        {/* Bloque "Notas" + Lista Vertical Limpia */}
+        <div className="text-left">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-4">
+            Notas
+          </h4>
+          
+          <div className="flex flex-col gap-3.5 pl-1">
+            {technicalNotes.map(cat => {
+              const currentScore = Number(baseNotes[cat] || 0);
+              return (
+                <div key={cat} className="flex items-center gap-3 animate-in fade-in duration-200">
+                  {/* Puntuación */}
+                  <span className="text-xs font-black text-white tracking-tighter min-w-[22px]">
+                    {currentScore.toFixed(1)}
+                  </span>
+                  {/* Etiqueta de la categoría */}
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-medium">
+                    {cat}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Módulo Destacado de Calidad Precio al pie de la columna */}
+        <div className={`mt-6 p-3.5 rounded-xl border transition-all duration-300 flex items-center justify-between ${valueStyles.bg} ${valueStyles.border}`}>
+          <div className="flex flex-col text-left">
+            <span className={`text-[7.5px] font-black uppercase tracking-[0.2em] ${valueStyles.label}`}>
+              EVALUACIÓN GLOBAL
+            </span>
+            <span className="text-[10px] font-bold text-zinc-200 tracking-tight mt-0.5 uppercase">
+              Calidad Precio
+            </span>
+          </div>
+          
+          <div className={`flex h-9 w-11 items-center justify-center rounded-lg bg-zinc-950 border border-zinc-900 text-sm font-black tracking-tighter shadow-xl transition-colors duration-300 ${valueStyles.text}`}>
+            {finalScore.toFixed(1)}
+          </div>
+        </div>
+
       </div>
 
     </div>
