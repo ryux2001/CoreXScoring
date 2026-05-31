@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import Link from 'next/link'; // 🚀 Importado para redirigir a la vista del producto
 import { useCompareStore } from '@/store/useCompareStore';
+import { getComponentNotes } from '@/lib/scoring/index'; // 🚀 Importamos tu motor de scoring real
 
 interface CompareProductCardProps {
   product: {
@@ -180,7 +181,7 @@ export default function CompareProductCard({ product, globalCurrency }: CompareP
               </div>
               
               <Link
-                href={`/product/${product.slug}`}
+                href={`/catalog/${product.slug}?currency=${globalCurrency}`}
                 className="w-full text-center rounded-xl border border-zinc-900 bg-zinc-900/20 hover:bg-zinc-900 hover:text-white text-[9px] font-black uppercase tracking-widest text-zinc-400 py-2 transition-all active:scale-[0.98] cursor-pointer"
               >
                 ver producto
