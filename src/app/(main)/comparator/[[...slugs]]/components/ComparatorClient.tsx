@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
+import { getComponentNotes } from '@/lib/scoring/index'; // 🚀 Importado para calcular los ganadores globales
 import EmptyState from './EmptyState';
 import SearchModal from './SearchModal';
 import CompareProductCard from './CompareProductCard';
 
 interface ComparatorClientProps {
   initialProducts: any[];
-  globalCurrency: string; // 
+  globalCurrency: string; 
 }
 
 export default function ComparatorClient({ initialProducts, globalCurrency }: ComparatorClientProps) {
@@ -21,6 +22,9 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
   const addItem = useCompareStore((state) => state.addItem);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 🚀 NUEVO ESTADO: Guarda los precios evaluados de cada componente de forma centralizada
+  const [evaluatedPrices, setEvaluatedPrices] = useState<Record<string | number, number>>({});
 
   useEffect(() => {
     if (initialProducts.length > 0 && items.length === 0) {
@@ -45,6 +49,33 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
     }
   }, [items, router, globalCurrency]);
 
+  // 🧮 🚀 LÓGICA DE GANADORES: Calcula la nota máxima de cada categoría cruzando todos los productos activos
+  const maxScoresByCategory = useMemo(() => {
+    const maxes: Record<string, number> = {};
+
+    items.forEach((item) => {
+      const isTargetEUR = globalCurrency === 'EUR';
+      const priceColumn = isTargetEUR ? 'price_base_eur' : 'price_base_usd';
+      const basePrice = item[priceColumn] || item.price || 0;
+      
+      // Obtenemos el precio actual configurado en el panel o el base por defecto
+      const currentPrice = evaluatedPrices[item.id] !== undefined ? evaluatedPrices[item.id] : basePrice;
+      const precioUSD = isTargetEUR ? currentPrice * 1.08 : currentPrice;
+      
+      // Ejecutamos el motor de notas
+      const notes = getComponentNotes(item, precioUSD) || {};
+
+      Object.entries(notes).forEach(([category, score]) => {
+        const numScore = Number(score) || 0;
+        if (maxes[category] === undefined || numScore > maxes[category]) {
+          maxes[category] = numScore;
+        }
+      });
+    });
+
+    return maxes;
+  }, [items, evaluatedPrices, globalCurrency]);
+
   if (items.length === 0) {
     return (
       <>
@@ -54,8 +85,6 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
     );
   }
 
-  // 📐 LÓGICA DE EXPANSIÓN DINÁMICA:
-  // Determinamos el número total de columnas y el ancho máximo del contenedor unificado
   const hasSpace = items.length < 3;
   const totalColumns = hasSpace ? items.length + 1 : 3;
   
@@ -66,19 +95,33 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
   return (
     <div className="flex flex-col items-center w-full px-4 py-8 animate-in fade-in duration-300">
       
-      {/* 👑 EL CONTENEDOR MAESTRO UNIFICADO (Mismo techo visual para todo el "Versus") */}
+      {/* 👑 EL CONTENEDOR MAESTRO UNIFICADO */}
       <div className={`w-full ${maxWidthClass} bg-zinc-950/50 border border-zinc-900 rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ease-out`}>
         
-        {/* REJILLA INTERNA: Divide las columnas limpiamente con líneas verticales en desktop */}
+        {/* REJILLA INTERNA */}
         <div className={`grid grid-cols-1 divide-y divide-zinc-900 md:divide-y-0 md:divide-x md:divide-zinc-900`}
              style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}>
           
           {/* Renderizado de las celdas de productos */}
-          {items.map((item) => (
-            <CompareProductCard key={item.id} product={item} globalCurrency={globalCurrency}/>
-          ))}
+          {items.map((item) => {
+            const isTargetEUR = globalCurrency === 'EUR';
+            const priceColumn = isTargetEUR ? 'price_base_eur' : 'price_base_usd';
+            const basePrice = item[priceColumn] || item.price || 0;
+            const currentPrice = evaluatedPrices[item.id] !== undefined ? evaluatedPrices[item.id] : basePrice;
 
-          {/* Slot de "Añadir" integrado como una sección interna de la misma tarjeta */}
+            return (
+              <CompareProductCard 
+                key={item.id} 
+                product={item} 
+                globalCurrency={globalCurrency}
+                displayedPrice={currentPrice} // 🚀 Pasamos el precio controlado
+                setDisplayedPrice={(newPrice) => setEvaluatedPrices(prev => ({ ...prev, [item.id]: newPrice }))} // 🚀 Callback de actualización
+                maxScores={maxScoresByCategory} // 🚀 Pasamos el mapa de notas máximas globales
+              />
+            );
+          })}
+
+          {/* Slot de "Añadir" */}
           {hasSpace && (
             <button 
               onClick={() => setIsModalOpen(true)}
@@ -99,7 +142,10 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
       {/* BOTÓN INFERIOR DE RESETEO */}
       <div className="mt-12 flex justify-center">
         <button 
-          onClick={() => clearCompare()}
+          onClick={() => {
+            setEvaluatedPrices({}); // Limpiamos los precios modificados
+            clearCompare();
+          }}
           className="rounded-xl border border-zinc-900 hover:border-red-900/20 bg-zinc-950/40 px-5 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-red-400 transition-all cursor-pointer active:scale-95"
         >
           Limpiar Todo
