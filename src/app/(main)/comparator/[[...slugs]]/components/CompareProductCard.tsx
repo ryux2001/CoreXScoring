@@ -139,7 +139,7 @@ export default function CompareProductCard({
   const imageSrc = getLocalImage();
 
   return (
-    <div className="relative flex flex-col justify-between p-6 h-full w-full min-h-[600px] group animate-in fade-in duration-300">
+    <div className="relative flex flex-col justify-between p-2 md:p-6 h-full w-1/2 shrink-0 snap-start md:w-full md:shrink min-h-[600px] group animate-in fade-in duration-300">
       <button
         onClick={() => removeItem(product.id)}
         className="absolute top-4 right-4 z-10 rounded-full bg-zinc-900/80 p-2 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all cursor-pointer active:scale-95"
@@ -148,17 +148,7 @@ export default function CompareProductCard({
       </button>
 
       {/* --- BLOQUE SUPERIOR (Identidad + Imagen + Controles) --- */}
-      <div className="flex flex-col gap-5">
-        <div className="text-left pr-6">
-          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">
-            {product.brand} · {product.type}
-          </span>
-          <h2 className="text-xs font-black text-white tracking-tight mt-0.5 line-clamp-1 leading-snug">
-            {product.name}
-          </h2>
-        </div>
-
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
           <div className="flex items-center justify-center w-full">
             {imageSrc && (
               <div className="relative aspect-square w-full overflow-hidden flex items-center justify-center">
@@ -171,8 +161,9 @@ export default function CompareProductCard({
             )}
           </div>
 
-          <div className="flex gap-3 w-full">
-            <div className="flex flex-col gap-3 flex-1 max-w-[320px]">
+          {/* 📱 SOLUCIÓN: Apilado vertical en móviles, horizontal en escritorio */}
+          <div className="flex flex-col md:flex-row gap-3 w-full items-stretch md:items-end">
+            <div className="flex flex-col gap-3 flex-1 w-full max-w-[320px]">
               <div className="space-y-1">
                 <label className="text-[7px] font-black uppercase tracking-widest text-zinc-600 ml-0.5">
                   Escriba un precio...
@@ -191,7 +182,7 @@ export default function CompareProductCard({
                   </div>
                   <button
                     onClick={handleApply}
-                    className="h-[36px] px-2 rounded-xl bg-white text-black text-[8px] font-black uppercase tracking-widest transition-all hover:bg-zinc-200 active:scale-95 cursor-pointer"
+                    className="h-[36px] px-2 rounded-xl bg-white text-black text-[8px] font-black uppercase tracking-widest transition-all hover:bg-zinc-200 active:scale-95 cursor-pointer shrink-0"
                   >
                     aplicar
                   </button>
@@ -199,15 +190,15 @@ export default function CompareProductCard({
               </div>
             </div>
 
+            {/* 📱 En móvil ocupa el ancho completo del espacio disponible; en escritorio vuelve a w-25 */}
             <Link
               href={`/product/${product.slug}?currency=${globalCurrency}`}
-              className="flex-none w-25 h-9 flex items-center justify-center mt-auto text-center rounded-xl border border-zinc-900 bg-zinc-900/20 hover:bg-zinc-900 hover:text-white text-[9px] font-black uppercase tracking-widest text-zinc-400 py-2 transition-all active:scale-[0.98] cursor-pointer"
+              className="flex-none w-full md:w-25 h-9 flex items-center justify-center text-center rounded-xl border border-zinc-900 bg-zinc-900/20 hover:bg-zinc-900 hover:text-white text-[9px] font-black uppercase tracking-widest text-zinc-400 py-2 transition-all active:scale-[0.98] cursor-pointer"
             >
               ver producto
             </Link>
           </div>
         </div>
-      </div>
 
       {/* --- PARTE INFERIOR (Notas unificadas por el molde maestro) --- */}
       <div className="mt-8 pt-6 border-t border-zinc-900/50 flex flex-col justify-between flex-1">

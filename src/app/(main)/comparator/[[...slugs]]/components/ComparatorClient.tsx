@@ -113,13 +113,13 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
   const maxWidthClass = totalColumns === 2 ? "max-w-2xl" : "max-w-5xl";
 
   return (
-    <div className="flex flex-col items-center w-full px-4 py-8 animate-in fade-in duration-300">
+    <div className="flex flex-col items-center w-full px-0 md:px-4 py-8 animate-in fade-in duration-300">
       
       {/* EL CONTENEDOR MAESTRO UNIFICADO */}
       <div className={`w-full ${maxWidthClass} bg-zinc-950/50 border border-zinc-900 rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ease-out`}>
         
-        {/* REJILLA INTERNA */}
-        <div className={`grid grid-cols-1 divide-y divide-zinc-900 md:divide-y-0 md:divide-x md:divide-zinc-900`}
+        {/* 📱 REJILLA INTERNA: Flex con scroll horizontal en móvil, Grid en escritorio */}
+        <div className="flex overflow-x-auto snap-x snap-mandatory divide-x divide-zinc-900 md:grid md:divide-y-0 md:divide-x md:divide-zinc-900 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
              style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}>
           
           {items.map((item) => {
@@ -136,15 +136,16 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
                 displayedPrice={currentPrice}
                 setDisplayedPrice={(newPrice) => setEvaluatedPrices(prev => ({ ...prev, [item.id]: newPrice }))}
                 maxScores={maxScoresByCategory}
-                masterCategories={masterCategories} // 🚀 Pasamos la lista unificada de filas
+                masterCategories={masterCategories}
               />
             );
           })}
 
           {hasSpace && (
+            /* 📱 Botón de añadir adaptado al ancho del carrusel en móvil */
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="flex flex-col items-center justify-center p-6 h-full min-h-[380px] w-full text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/10 transition-all duration-300 group cursor-pointer"
+              className="flex flex-col items-center justify-center p-6 h-full min-h-[380px] w-1/2 shrink-0 snap-start md:w-full text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/10 transition-all duration-300 group cursor-pointer"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-zinc-800 bg-zinc-950 text-zinc-500 group-hover:text-white group-hover:border-zinc-700 transition-colors">
                 <Plus size={16} />
