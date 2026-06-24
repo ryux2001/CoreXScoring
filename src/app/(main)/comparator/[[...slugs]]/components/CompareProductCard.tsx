@@ -20,9 +20,10 @@ interface CompareProductCardProps {
     [key: string]: any;
   };
   globalCurrency: string;
-  displayedPrice: number; // 🚀 NUEVO: Recibido desde el padre
-  setDisplayedPrice: (price: number) => void; // 🚀 NUEVO: Recibido desde el padre
-  maxScores: Record<string, number>; // 🚀 NUEVO: Mapa de notas máximas globales
+  displayedPrice: number; 
+  setDisplayedPrice: (price: number) => void; 
+  maxScores: Record<string, number>; 
+  masterCategories: string[]; // 🚀 NUEVO PROP: Recibe el molde unificado del padre
 }
 
 export default function CompareProductCard({
@@ -31,9 +32,10 @@ export default function CompareProductCard({
   displayedPrice,
   setDisplayedPrice,
   maxScores,
+  masterCategories, // 🚀 Desestructurado
 }: CompareProductCardProps) {
   const removeItem = useCompareStore((state) => state.removeItem);
-  const itemsCount = useCompareStore((state) => state.items.length); // 🚀 Lo usamos para saber si hay un versus activo
+  const itemsCount = useCompareStore((state) => state.items.length);
 
   // 🪙 GESTIÓN DE DIVISAS Y PRECIOS
   const isEUR = globalCurrency === "EUR";
@@ -47,14 +49,14 @@ export default function CompareProductCard({
 
   useEffect(() => {
     setSelectedMarket(basePrice); 
-    setCustomPrice(displayedPrice); // Mantener el input sincronizado si se cambia desde el select externo
+    setCustomPrice(displayedPrice);
   }, [basePrice, displayedPrice]);
 
   const format = (val: number) =>
     `${isEUR ? "" : symbol}${val.toFixed(0)}${isEUR ? symbol : ""}`; 
 
   const handleApply = () => {
-    setDisplayedPrice(customPrice); // 🚀 Llama al callback del padre actualizando el cálculo global
+    setDisplayedPrice(customPrice); 
   };
 
   // 🧮 MOTOR DE SCORING NATIVO
@@ -77,7 +79,6 @@ export default function CompareProductCard({
   );
 
   const finalScore = calidadPrecioKey ? baseNotes[calidadPrecioKey] || 0 : 0;
-  const technicalNotes = categories.filter((cat) => cat !== calidadPrecioKey);
 
   // 🎨 ESTILOS CROMÁTICOS DINÁMICOS
   const getColorStyles = (score: number) => {
@@ -208,7 +209,7 @@ export default function CompareProductCard({
         </div>
       </div>
 
-      {/* --- PARTE INFERIOR (Notas + Ganador en vivo) --- */}
+      {/* --- PARTE INFERIOR (Notas unificadas por el molde maestro) --- */}
       <div className="mt-8 pt-6 border-t border-zinc-900/50 flex flex-col justify-between flex-1">
         <div className="text-left">
           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-4">
@@ -216,10 +217,12 @@ export default function CompareProductCard({
           </h4>
 
           <div className="flex flex-col gap-3.5 pl-1">
-            {technicalNotes.map((cat) => {
+            {/* 🚀 Recorremos el 'masterCategories' enviado por el padre */}
+            {masterCategories.map((cat) => {
+              // Si la categoría existe en este componente, extrae su nota; si no, por seguridad cae a 0.0
               const currentScore = Number(baseNotes[cat] || 0);
               
-              // 👑 DETERMINACIÓN DEL GANADOR: Es el más alto si hay más de un producto en el versus y la nota supera 0
+              // El indicador '^' se activa comparando contra el valor real unificado
               const isHighest = itemsCount > 1 && currentScore === (maxScores[cat] || 0) && currentScore > 0;
 
               return (
@@ -231,7 +234,6 @@ export default function CompareProductCard({
                     {currentScore.toFixed(1)}
                   </span>
                   
-                  {/* Contenedor flexible de la categoría + icono */}
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-medium flex items-center gap-1.5 select-none">
                     {cat}
                     {isHighest && (
@@ -246,21 +248,17 @@ export default function CompareProductCard({
           </div>
         </div>
 
-        <div
-          className={`mt-6 p-3.5 rounded-xl border transition-all duration-300 flex items-center justify-between ${valueStyles.bg} ${valueStyles.border}`}
-        >
+        <div className={`mt-6 p-3.5 rounded-xl border transition-all duration-300 flex items-center justify-between ${valueStyles.bg} ${valueStyles.border}`}>
           <div className="flex flex-col text-left">
             <span className={`text-[7.5px] font-black uppercase tracking-[0.2em] ${valueStyles.label}`}>
               EVALUACIÓN GLOBAL
             </span>
             <span className="text-[10px] font-bold text-zinc-200 tracking-tight mt-0.5 uppercase">
-              Precio evaluado: {format(displayedPrice)}
+              Calidad Precio
             </span>
           </div>
 
-          <div
-            className={`flex h-9 w-11 items-center justify-center rounded-lg bg-zinc-950 border border-zinc-900 text-sm font-black tracking-tighter shadow-xl transition-colors duration-300 ${valueStyles.text}`}
-          >
+          <div className={`flex h-9 w-11 items-center justify-center rounded-lg bg-zinc-950 border border-zinc-900 text-sm font-black tracking-tighter shadow-xl transition-colors duration-300 ${valueStyles.text}`}>
             {finalScore.toFixed(1)}
           </div>
         </div>

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
-import { getComponentNotes } from '@/lib/scoring/index'; // 🚀 Importado para calcular los ganadores globales
+import { getComponentNotes } from '@/lib/scoring/index'; 
 import EmptyState from './EmptyState';
 import SearchModal from './SearchModal';
 import CompareProductCard from './CompareProductCard';
@@ -22,8 +22,6 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
   const addItem = useCompareStore((state) => state.addItem);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // 🚀 NUEVO ESTADO: Guarda los precios evaluados de cada componente de forma centralizada
   const [evaluatedPrices, setEvaluatedPrices] = useState<Record<string | number, number>>({});
 
   useEffect(() => {
@@ -49,7 +47,7 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
     }
   }, [items, router, globalCurrency]);
 
-  // 🧮 🚀 LÓGICA DE GANADORES: Calcula la nota máxima de cada categoría cruzando todos los productos activos
+  // 🧮 LÓGICA DE GANADORES GLOBALES
   const maxScoresByCategory = useMemo(() => {
     const maxes: Record<string, number> = {};
 
@@ -57,12 +55,9 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
       const isTargetEUR = globalCurrency === 'EUR';
       const priceColumn = isTargetEUR ? 'price_base_eur' : 'price_base_usd';
       const basePrice = item[priceColumn] || item.price || 0;
-      
-      // Obtenemos el precio actual configurado en el panel o el base por defecto
       const currentPrice = evaluatedPrices[item.id] !== undefined ? evaluatedPrices[item.id] : basePrice;
       const precioUSD = isTargetEUR ? currentPrice * 1.08 : currentPrice;
       
-      // Ejecutamos el motor de notas
       const notes = getComponentNotes(item, precioUSD) || {};
 
       Object.entries(notes).forEach(([category, score]) => {
@@ -74,6 +69,32 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
     });
 
     return maxes;
+  }, [items, evaluatedPrices, globalCurrency]);
+
+  // 👑 NUEVA LÓGICA MAESTRA: Crea el molde único de filas técnicas según el componente actual
+  const masterCategories = useMemo(() => {
+    const categoriesSet = new Set<string>();
+
+    items.forEach((item) => {
+      const isTargetEUR = globalCurrency === 'EUR';
+      const priceColumn = isTargetEUR ? 'price_base_eur' : 'price_base_usd';
+      const basePrice = item[priceColumn] || item.price || 0;
+      const currentPrice = evaluatedPrices[item.id] !== undefined ? evaluatedPrices[item.id] : basePrice;
+      const precioUSD = isTargetEUR ? currentPrice * 1.08 : currentPrice;
+      
+      const notes = getComponentNotes(item, precioUSD) || {};
+      
+      Object.keys(notes).forEach((cat) => {
+        const isCalidadPrecio = cat.toLowerCase().includes("precio") || 
+                                cat.toLowerCase().includes("price") || 
+                                cat.toLowerCase().includes("calidad");
+        if (!isCalidadPrecio) {
+          categoriesSet.add(cat); // Guardamos solo las notas técnicas puras
+        }
+      });
+    });
+
+    return Array.from(categoriesSet);
   }, [items, evaluatedPrices, globalCurrency]);
 
   if (items.length === 0) {
@@ -88,21 +109,18 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
   const hasSpace = items.length < 3;
   const totalColumns = hasSpace ? items.length + 1 : 3;
   
-  const maxWidthClass = totalColumns === 2 
-    ? "max-w-2xl" 
-    : "max-w-5xl";
+  const maxWidthClass = totalColumns === 2 ? "max-w-2xl" : "max-w-5xl";
 
   return (
     <div className="flex flex-col items-center w-full px-4 py-8 animate-in fade-in duration-300">
       
-      {/* 👑 EL CONTENEDOR MAESTRO UNIFICADO */}
+      {/* EL CONTENEDOR MAESTRO UNIFICADO */}
       <div className={`w-full ${maxWidthClass} bg-zinc-950/50 border border-zinc-900 rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ease-out`}>
         
         {/* REJILLA INTERNA */}
         <div className={`grid grid-cols-1 divide-y divide-zinc-900 md:divide-y-0 md:divide-x md:divide-zinc-900`}
              style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}>
           
-          {/* Renderizado de las celdas de productos */}
           {items.map((item) => {
             const isTargetEUR = globalCurrency === 'EUR';
             const priceColumn = isTargetEUR ? 'price_base_eur' : 'price_base_usd';
@@ -114,14 +132,14 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
                 key={item.id} 
                 product={item} 
                 globalCurrency={globalCurrency}
-                displayedPrice={currentPrice} // 🚀 Pasamos el precio controlado
-                setDisplayedPrice={(newPrice) => setEvaluatedPrices(prev => ({ ...prev, [item.id]: newPrice }))} // 🚀 Callback de actualización
-                maxScores={maxScoresByCategory} // 🚀 Pasamos el mapa de notas máximas globales
+                displayedPrice={currentPrice}
+                setDisplayedPrice={(newPrice) => setEvaluatedPrices(prev => ({ ...prev, [item.id]: newPrice }))}
+                maxScores={maxScoresByCategory}
+                masterCategories={masterCategories} // 🚀 Pasamos la lista unificada de filas
               />
             );
           })}
 
-          {/* Slot de "Añadir" */}
           {hasSpace && (
             <button 
               onClick={() => setIsModalOpen(true)}
@@ -143,7 +161,7 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
       <div className="mt-12 flex justify-center">
         <button 
           onClick={() => {
-            setEvaluatedPrices({}); // Limpiamos los precios modificados
+            setEvaluatedPrices({});
             clearCompare();
           }}
           className="rounded-xl border border-zinc-900 hover:border-red-900/20 bg-zinc-950/40 px-5 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-red-400 transition-all cursor-pointer active:scale-95"
