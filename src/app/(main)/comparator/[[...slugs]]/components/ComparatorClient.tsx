@@ -8,6 +8,7 @@ import { getComponentNotes } from '@/lib/scoring/index';
 import EmptyState from './EmptyState';
 import SearchModal from './SearchModal';
 import CompareProductCard from './CompareProductCard';
+import CompareSpecsTable from './CompareSpecsTable';
 
 interface ComparatorClientProps {
   initialProducts: any[];
@@ -156,6 +157,9 @@ export default function ComparatorClient({ initialProducts, globalCurrency }: Co
         </div>
 
       </div>
+
+          {/* 🚀 NUEVA TABLA DE ESPECIFICACIONES TÉCNICAS */}
+    <CompareSpecsTable items={items} />
 
       {/* BOTÓN INFERIOR DE RESETEO */}
       <div className="mt-12 flex justify-center">
