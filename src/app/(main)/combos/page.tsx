@@ -1,4 +1,6 @@
 import React from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import ComboCard from './components/ComboCard';
 
 interface CombosPageProps {
   searchParams: Promise<{
@@ -9,32 +11,91 @@ interface CombosPageProps {
 }
 
 export default async function CombosPage({ searchParams }: CombosPageProps) {
-  // En Next.js 15+, searchParams es una promesa que debe resolverse
-  const resolvedParams = await searchParams;
-  const currency = resolvedParams.currency || 'USD';
+  const params = await searchParams;
+  const currency = (params.currency || 'USD').toUpperCase();
+
+  // 1. Consulta SSR a Supabase
+  const { data: combos, error } = await supabase
+    .from('combos')
+    .select(`
+      *,
+      cpu:products!cpu_id(*),
+      gpu:products!gpu_id(*),
+      ram:products!ram_id(*)
+    `)
+    .eq('is_active', true);
+
+  if (error) {
+    console.error("Error al obtener combos:", error);
+  }
+
+  // 2. Agrupación por categorías
+  const combosByCategory = (combos || []).reduce((acc: Record<string, any[]>, combo) => {
+    if (!acc[combo.category]) {
+      acc[combo.category] = [];
+    }
+    acc[combo.category].push(combo);
+    return acc;
+  }, {});
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 animate-in fade-in duration-500">
-      <div className="flex flex-col items-center text-center space-y-4 p-8 rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-2xl">
+    <main className="min-h-screen bg-black p-6 md:p-12 lg:p-16">
+      <div className="mx-auto max-w-7xl">
         
-        <h1 className="text-xl md:text-2xl font-black uppercase tracking-[0.2em] text-white">
-          Página de Combos
-        </h1>
-        
-        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900/50 border border-zinc-800">
-          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-            Moneda activa:
-          </span>
-          <span className="text-[11px] font-bold text-emerald-400 tracking-wider">
-            {currency}
-          </span>
+        {/* CABECERA (Estilo alineado con tu web) */}
+        <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black uppercase text-white tracking-wider">
+              Catálogo de Combos
+            </h1>
+            <p className="text-sm font-medium text-zinc-500 mt-1">
+              Ensambles pre-configurados optimizados.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              Moneda activa:
+            </span>
+            <span className="text-xs font-black text-white">
+              {currency}
+            </span>
+          </div>
         </div>
-        
-        <p className="text-xs font-medium text-zinc-600 max-w-sm mt-4">
-          Espacio preparado para la implementación del sistema de combos.
-        </p>
+
+        {/* RENDERIZADO POR CATEGORÍAS */}
+        {Object.entries(combosByCategory).length === 0 ? (
+          <div className="flex h-96 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 text-center">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-600">
+              No hay combos disponibles
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-14">
+            {Object.entries(combosByCategory).map(([categoryName, categoryCombos]) => (
+              <section key={categoryName}>
+                
+                <h2 className="text-xs font-black uppercase tracking-[0.15em] text-zinc-400 mb-6 border-b border-zinc-900 pb-3">
+                  {categoryName}
+                </h2>
+                
+                {/* Rejilla idéntica a la del catálogo de productos */}
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {categoryCombos.map((combo) => (
+                    <ComboCard 
+                      key={combo.id} 
+                      combo={combo} 
+                      currency={currency} 
+                    />
+                  ))}
+                </div>
+
+              </section>
+            ))}
+          </div>
+        )}
 
       </div>
-    </div>
+    </main>
   );
 }
