@@ -9,6 +9,7 @@ import CompareCartDropdown from "./CompareCartDropdown";
 const navLinks = [
   { name: "Inicio", href: "/" },
   { name: "Catalogo", href: "/catalog" },
+  { name: "Combos", href: "/combos" },
   { name: "Builds", href: "/builds" },
   { name: "Comparador", href: "/comparator" },
   { name: "Boveda", href: "/vault" },
