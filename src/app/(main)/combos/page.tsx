@@ -1,6 +1,7 @@
 import React from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ComboCard from './components/ComboCard';
+import ComboCurrencyToggle from './components/ComboCurrencyToggle';
 
 interface CombosPageProps {
   searchParams: Promise<{
@@ -53,14 +54,9 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
             </p>
           </div>
           
-          <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Moneda activa:
-            </span>
-            <span className="text-xs font-black text-white">
-              {currency}
-            </span>
-          </div>
+          {/* 🚀 2. Sustituimos el div estático por nuestro botón interactivo */}
+          <ComboCurrencyToggle currentCurrency={currency} />
+          
         </div>
 
         {/* RENDERIZADO POR CATEGORÍAS */}
