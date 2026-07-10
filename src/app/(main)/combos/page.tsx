@@ -2,6 +2,7 @@ import React from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ComboCard from './components/ComboCard';
 import ComboCurrencyToggle from './components/ComboCurrencyToggle';
+import MobileComboIsland from './components/MobileComboIsland';
 
 interface CombosPageProps {
   searchParams: Promise<{

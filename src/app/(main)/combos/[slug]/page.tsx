@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import ComboMainCard from '../components/ComboMainCard';
+import ComboMainCard from './components/ComboMainCard';
+import MobileComboIsland from './components/MobileComboIsland';
 
 interface ComboDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -34,23 +35,28 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
   }
 
   return (
-    <main className="min-h-screen bg-black p-4 md:p-8 lg:p-12">
+    <main className="min-h-screen bg-black p-4 md:p-8 lg:p-12 relative">
       <div className="mx-auto max-w-[1600px] animate-in fade-in duration-500">
         
         {/* Botón Volver */}
-        <Link 
+        {/* <Link 
           href={`/combos?currency=${currency}`}
           className="inline-flex items-center gap-2 mb-8 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
         >
           <ChevronLeft size={16} />
           Volver al catálogo
-        </Link>
+        </Link> */}
 
         {/* ESTRUCTURA MODULAR (Igual a la de Productos) */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start mt-6 md:mt-0">
           
-          {/* COLUMNA IZQUIERDA (Ocupa 3 columnas en escritorio) */}
-          <div className="lg:sticky lg:top-8 lg:col-span-4 xl:col-span-3">
+          {/* 📱 VISTA MÓVIL: Botón Isla Flotante (Solo visible en móvil) */}
+          <div className="block lg:hidden">
+            <MobileComboIsland combo={combo} />
+          </div>
+
+          {/* 💻 VISTA ESCRITORIO: Columna Izquierda Fija (Oculta en móvil) */}
+          <div className="hidden lg:block lg:sticky lg:top-8 lg:col-span-4 xl:col-span-3">
             <ComboMainCard combo={combo} />
           </div>
 
