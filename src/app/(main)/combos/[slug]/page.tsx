@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import ComboMainCard from './components/ComboMainCard';
 import MobileComboIsland from './components/MobileComboIsland';
+import ComboNotesCard from './components/ComboNotesCard';
+import RadarChartCardCombo from './components/RadarChartCardCombo';
 
 interface ComboDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -64,14 +66,14 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
           <div className="grid grid-cols-1 gap-6 lg:col-span-8 xl:col-span-9">
             
             {/* Aquí irá el componente del Precio / Evaluación Global */}
-            <div className="min-h-[200px] rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 flex items-center justify-center">
-               <span className="text-xs font-bold uppercase tracking-widest text-zinc-600">Espacio componente 2</span>
+            <div className="lg:col-span-8 xl:col-span-9">
+               <ComboNotesCard combo={combo} currency={currency} />
             </div>
 
             {/* Aquí irán las Notas del Combo u otras gráficas */}
-            <div className="min-h-[300px] rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 flex items-center justify-center">
-               <span className="text-xs font-bold uppercase tracking-widest text-zinc-600">Espacio componente 3</span>
-            </div>
+            <div className="lg:col-span-1">
+            <RadarChartCardCombo combo={combo} currency={currency} />
+          </div>
 
           </div>
 
