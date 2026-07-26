@@ -60,7 +60,7 @@ export default function ComboNotesCard({ combo, currency }: ComboNotesCardProps)
       </div>
 
       {/* 🚀 GRID MAESTRO: Actualizado a 7 columnas en PC */}
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         
         {/* 5 Notas Técnicas */}
         {mockTechnicalNotes.map((note, index) => {

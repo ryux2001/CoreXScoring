@@ -132,7 +132,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
   const activeStyles = activeTooltip ? getColorStyles(activeTooltip.score) : null;
 
   return (
-    <div className="flex flex-col p-5 lg:p-7 rounded-3xl border border-zinc-900 bg-zinc-950/40 shadow-2xl backdrop-blur-sm h-full min-h-[380px] relative justify-between overflow-hidden">
+    <div className="flex flex-col p-0 lg:p-0 rounded-3xl border border-zinc-900 bg-zinc-950/40 shadow-2xl backdrop-blur-sm h-full min-h-[50px] relative justify-between overflow-hidden">
       
       {/* Resplandor de fondo */}
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -141,17 +141,17 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
 
       {/* HEADER */}
       <div className="flex items-center justify-between mb-2 z-10">
-        <div>
+        {/* <div>
           <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">
             Balance
           </h3>
           <p className="mt-1 text-[9px] font-medium uppercase tracking-widest text-zinc-600">
             Equilibrio del Ensamble
           </p>
-        </div>
+        </div> */}
 
         <div className="flex items-center gap-3">
-          {onSwitchView && (
+          {/* {onSwitchView && (
             <button 
               onClick={onSwitchView}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-all active:scale-95"
@@ -159,9 +159,9 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               Ver Notas
             </button>
-          )}
+          )} */}
 
-          <div className="group relative">
+          {/* <div className="group relative">
             <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:text-white relative z-[10000]">
               <Info size={11} strokeWidth={3} />
             </div>
@@ -169,7 +169,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[9px]">Mapa de Rendimiento</div>
               <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 

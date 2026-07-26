@@ -16,7 +16,7 @@ interface ComboDetailPageProps {
 export default async function ComboDetailPage({ params, searchParams }: ComboDetailPageProps) {
   const resolvedParams = await params;
   const comboSlug = resolvedParams.slug;
-  
+
   const resolvedSearch = await searchParams;
   const currency = (resolvedSearch.currency || 'USD').toUpperCase();
 
@@ -39,7 +39,7 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
   return (
     <main className="min-h-screen bg-black p-4 md:p-8 lg:p-12 relative">
       <div className="mx-auto max-w-[1600px] animate-in fade-in duration-500">
-        
+
         {/* Botón Volver */}
         {/* <Link 
           href={`/combos?currency=${currency}`}
@@ -51,7 +51,7 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
 
         {/* ESTRUCTURA MODULAR (Igual a la de Productos) */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start mt-6 md:mt-0">
-          
+
           {/* 📱 VISTA MÓVIL: Botón Isla Flotante (Solo visible en móvil) */}
           <div className="block lg:hidden">
             <MobileComboIsland combo={combo} />
@@ -63,17 +63,20 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
           </div>
 
           {/* COLUMNA DERECHA (Espacio para los demás componentes) */}
-          <div className="grid grid-cols-1 gap-6 lg:col-span-8 xl:col-span-9">
-            
-            {/* Aquí irá el componente del Precio / Evaluación Global */}
-            <div className="lg:col-span-8 xl:col-span-9">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:col-span-9">
+
+
+            {/* Aquí irán las Notas del Combo u otras gráficas */}
+            <div className="lg:col-span-3">
+            <RadarChartCardCombo combo={combo} currency={currency} />
+          </div>
+
+            {/* Aquí ira el componente del Precio / Evaluación Global */}
+            <div className="lg:col-span-9">
                <ComboNotesCard combo={combo} currency={currency} />
             </div>
 
-            {/* Aquí irán las Notas del Combo u otras gráficas */}
-            <div className="lg:col-span-1">
-            <RadarChartCardCombo combo={combo} currency={currency} />
-          </div>
+            
 
           </div>
 
