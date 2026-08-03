@@ -23,19 +23,36 @@ export const getComboNotes = (
   }
 
   const isEUR = currency === 'EUR';
-  const priceKey = isEUR ? 'price_base_eur' : 'price_base_usd';
 
   const cpu = combo.cpu || {};
   const gpu = combo.gpu || {};
   const ram = combo.ram || {};
 
-  // Precios para ponderación porcentual
-  const cpuPrice = cpu[priceKey] || cpu.price_base || 0;
-  const gpuPrice = gpu[priceKey] || gpu.price_base || 0;
-  const ramPrice = ram[priceKey] || ram.price_base || 0;
+  // 1. Precios efectivos en USD (para evaluar la nota individual de calidad/precio de cada pieza)
+  const cpuPriceUSD = Number(
+    combo.custom_price_cpu_usd ?? cpu.price_base_usd ?? cpu.price_base ?? 0
+  );
+  const gpuPriceUSD = Number(
+    combo.custom_price_gpu_usd ?? gpu.price_base_usd ?? gpu.price_base ?? 0
+  );
+  const ramPriceUSD = Number(
+    combo.custom_price_ram_usd ?? ram.price_base_usd ?? ram.price_base ?? 0
+  );
 
-  const comboCustomPrice = combo[isEUR ? 'custom_price_eur' : 'custom_price_usd'] || combo.custom_price;
-  const totalPrice = comboCustomPrice || (cpuPrice + gpuPrice + ramPrice);
+  // 2. Precios efectivos según la divisa activa (para ponderar el combo)
+  const cpuPrice = isEUR
+    ? Number(combo.custom_price_cpu_eur ?? cpu.price_base_eur ?? cpuPriceUSD)
+    : cpuPriceUSD;
+
+  const gpuPrice = isEUR
+    ? Number(combo.custom_price_gpu_eur ?? gpu.price_base_eur ?? gpuPriceUSD)
+    : gpuPriceUSD;
+
+  const ramPrice = isEUR
+    ? Number(combo.custom_price_ram_eur ?? ram.price_base_eur ?? ramPriceUSD)
+    : ramPriceUSD;
+
+  const totalPrice = cpuPrice + gpuPrice + ramPrice;
 
   const prices: ComboPrices = {
     cpuPrice,
@@ -44,16 +61,12 @@ export const getComboNotes = (
     totalPrice,
   };
 
-  // Extraer notas individuales del scoring existente
-  const cpuPriceUSD = cpu.price_base_usd || cpu.price_base || 0;
-  const gpuPriceUSD = gpu.price_base_usd || gpu.price_base || 0;
-  const ramPriceUSD = ram.price_base_usd || ram.price_base || 0;
-
+  // 3. Obtener notas individuales pasando los precios efectivos (Custom ?? Base)
   const cpuNotes = getComponentNotes(cpu, cpuPriceUSD);
   const gpuNotes = getComponentNotes(gpu, gpuPriceUSD);
   const ramNotes = getComponentNotes(ram, ramPriceUSD);
 
-  // Ejecución de cálculos ponderados del combo
+  // 4. Cálculos finales del combo
   const potency = calculateComboPotency(
     cpuNotes['Potencia'] || 0,
     gpuNotes['Potencia'] || 0,
