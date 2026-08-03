@@ -1,70 +1,47 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# CoreX Scoring - Next.js 16.2.4 + Tailwind v4
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+## Commands
+- `pnpm dev` - Dev server (http://localhost:3000)
+- `pnpm build` - Production build
+- `pnpm start` - Production server
+- `pnpm lint` - ESLint (Core Web Vitals + TypeScript)
+- `pnpm lint --fix` - Auto-fix
 
-# Build, Lint & Test Commands
-
-## Development
-- `pnpm dev` - Start development server
-- `pnpm build` - Build for production
-- `pnpm start` - Start production server
-
-## Linting
-- `pnpm lint` - Run ESLint (Core Web Vitals + TypeScript rules)
-- `pnpm lint --fix` - Auto-fix linting issues
-
-## Testing
-No test framework configured yet. Add one as needed:
-- Playwright (in dependencies): `pnpm exec playwright test`
-- Vitest/Jest: Add to `package.json` scripts
-
-# Code Style Guidelines
-
-## Imports
-- Use `@/*` path alias for relative imports (`@/ui/components/Button`)
-- Order: Third-party → Internal components → Styles
-- Use `next/image` for images
-- Default exports for components, named for utilities
-
-## TypeScript
-- Enable `strict: true` - no exceptions
-- Use `any` sparingly; prefer `unknown` for runtime values
-- Type all function parameters and return values
-- Use `ReturnType<T>` for complex return types
-
-## Naming Conventions
-- Components: PascalCase (`UserProfile.tsx`)
-- Utilities: camelCase (`formatCurrency.ts`)
-- Constants: UPPER_SNAKE_CASE (`MAX_RETRY_COUNT`)
-- Files match their exports
-
-## Formatting
-- Next.js ESLint preset enforces Core Web Vitals
-- 2-space indentation
-- Single quotes
-- Semicolons optional (prefer omitting)
-- `eslint-config-next/core-web-vitals`
-
-## Error Handling
-- Use `try/catch` for async operations
-- Return `Error` objects with meaningful messages
-- Validate inputs before processing
-- Handle API failures gracefully
-
-## Components
-- Functional components with `export default`
-- Accept `props` with type definition
-- Use `React.FC` only when necessary
-- Extract complex logic to hooks
+## Tech Stack
+- Next.js 16.2.4 (App Router)
+- React 19.2.4
+- TypeScript 5 (strict mode)
+- Tailwind CSS v4 (PostCSS v4, no config file)
+- Supabase (auth + data)
+- Zustand (state management)
+- Recharts (charts)
+- Lucide React (icons)
 
 ## Project Structure
 - `src/app/` - App Router pages & layouts
+- `src/app/(main)/` - Route group for main app routes
+  - `/catalog/` - Product catalog
+  - `/combos/` - Pre-built combos
+  - `/comparator/` - Product comparison
+  - `/vault/` - Saved items
+- `src/lib/` - Business logic
+  - `/scoring/` - Hardware scoring calculations (CPU, GPU, RAM, etc.)
+  - `/config/` - Scoring configs by component type
+  - `/supabaseClient.ts` - DB client
+- `src/store/` - Zustand stores (auth, compare)
 - `src/ui/` - Reusable components
-- `src/lib/` - Utilities & business logic
+  - `/card/` - Product cards, compare buttons
+  - `/navbar/` - Navigation, search, auth status
 
-## Tailwind CSS v4
-- Uses PostCSS v4
-- No need for `tailwind.config.js`
-- Use CSS variables for theming
+## Key Conventions
+- Path alias: `@/*` → `./src/*`
+- Components: default export, typed props, no `React.FC`
+- Scoring logic: per-component modules in `src/lib/scoring/calculations/`
+- ESLint: `eslint-config-next/core-web-vitals` enforced
+- Tailwind v4: CSS variables for theming, no `tailwind.config.js`
+- Images: use `next/image`
+
+## Auth Flow
+- Supabase Auth Client wrapper: `src/app/auth/AuthClientWrapper.tsx`
+- Auth store: `src/store/useAuthStore.ts`
+- Login/Register forms: `src/app/auth/components/`

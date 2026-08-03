@@ -7,6 +7,7 @@ import {
 import { 
   Info, Zap, Gamepad2, Leaf, CircleDollarSign, Layers, Gauge
 } from 'lucide-react';
+import { getComboNotes } from '@/lib/scoringCombos';
 
 interface RadarChartCardComboProps {
   combo?: any;
@@ -103,17 +104,19 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
     setIsMounted(true);
   }, []);
 
-  // 🛑 DATOS MOCKEADOS (Coincidentes con ComboNotesCard)
-  const mockNotesData: Record<string, number> = {
-    'Potencia': 8.7,
-    'Productividad': 7.4,
-    'Gaming': 9.2,
-    'Eficiencia': 5.5,
-    'Cuello Botella': 9.0,
-    'Calidad Precio': 8.9,
+  // 🚀 OBTENCIÓN DINÁMICA DE LAS NOTAS REALES DEL COMBO
+  const notes = getComboNotes(combo, currency);
+
+  const notesData: Record<string, number> = {
+    'Potencia': notes.Potencia,
+    'Productividad': notes.Productividad,
+    'Gaming': notes.Gaming,
+    'Eficiencia': notes.Eficiencia,
+    'Cuello Botella': notes["Cuello Botella"],
+    'Calidad Precio': notes["Calidad Precio"],
   };
 
-  const chartData = Object.entries(mockNotesData).map(([key, value]) => ({
+  const chartData = Object.entries(notesData).map(([key, value]) => ({
     subject: key,
     A: value,
     fullMark: 10,
@@ -209,15 +212,15 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               <PolarGrid stroke="#27272a" />
               <PolarAngleAxis 
                 dataKey="subject" 
-                tick={<InteractiveTick notesData={mockNotesData} setActiveTooltip={setActiveTooltip} />} 
+                tick={<InteractiveTick notesData={notesData} setActiveTooltip={setActiveTooltip} />} 
               />
               <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
               <Radar
                 name="Combo Performance"
                 dataKey="A"
-                stroke="#10b981"
+                stroke="#fff"
                 strokeWidth={2}
-                fill="#10b981"
+                fill="#fff"
                 fillOpacity={0.15}
                 dot={{ r: 3, fill: "#10b981", strokeWidth: 0 }}
                 isAnimationActive={false}

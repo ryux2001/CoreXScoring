@@ -1,22 +1,25 @@
 "use client";
 
 import React from 'react';
+import { getComboNotes } from '@/lib/scoringCombos';
 
 interface ComboNotesCardProps {
-  combo?: any; 
-  currency?: string;
+  combo?: any;
+  currency?: any;
 }
 
-export default function ComboNotesCard({ combo, currency }: ComboNotesCardProps) {
-  // 🛑 DATOS MOCKEADOS (Temporales)
-  const mockTechnicalNotes = [
-    { label: 'Potencia', score: 5.1 },
-    { label: 'Productividad', score: 7.4 },
-    { label: 'Gaming', score: 9.2 },
-    { label: 'Eficiencia', score: 5.5 },
-    { label: 'Cuello Botella', score: 9.0 }, // 🚀 Nueva métrica añadida
+export default function ComboNotesCard({ combo, currency = 'USD' }: ComboNotesCardProps) {
+  const notes = getComboNotes(combo, currency);
+
+  const technicalNotes = [
+    { label: 'Potencia', score: notes.Potencia },
+    { label: 'Productividad', score: notes.Productividad },
+    { label: 'Gaming', score: notes.Gaming },
+    { label: 'Eficiencia', score: notes.Eficiencia },
+    { label: 'Cuello Botella', score: notes["Cuello Botella"] },
   ];
-  const mockCalidadPrecio = 8.9;
+
+  const calidadPrecio = notes["Calidad Precio"];
 
   const getColorStyles = (score: number) => {
     if (score >= 7)
@@ -44,7 +47,7 @@ export default function ComboNotesCard({ combo, currency }: ComboNotesCardProps)
     };
   };
 
-  const cpStyles = getColorStyles(mockCalidadPrecio);
+  const cpStyles = getColorStyles(calidadPrecio);
 
   return (
     <div className="flex h-full flex-col justify-center rounded-3xl border border-zinc-900 bg-zinc-950/40 p-5 shadow-2xl backdrop-blur-sm lg:p-7">
@@ -63,12 +66,12 @@ export default function ComboNotesCard({ combo, currency }: ComboNotesCardProps)
       <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         
         {/* 5 Notas Técnicas */}
-        {mockTechnicalNotes.map((note, index) => {
+        {technicalNotes.map((note, index) => {
           const styles = getColorStyles(note.score);
           
           // Truco responsivo: Si es la última nota impar (Cuello Botella) en móvil, 
           // le damos 2 columnas de ancho para que no quede un hueco. En PC vuelve a 1.
-          const isLastOddItem = index === mockTechnicalNotes.length - 1;
+          const isLastOddItem = index === technicalNotes.length - 1;
           const colSpanClass = isLastOddItem ? "col-span-2 md:col-span-1" : "col-span-1";
 
           return (
@@ -117,7 +120,7 @@ export default function ComboNotesCard({ combo, currency }: ComboNotesCardProps)
           {/* Número real */}
           <div className="text-center my-1">
              <span className={`text-2xl 2xl:text-3xl font-black tracking-tighter ${cpStyles.text}`}>
-               {mockCalidadPrecio.toFixed(1)}
+               {calidadPrecio.toFixed(1)}
              </span>
           </div>
 
@@ -125,7 +128,7 @@ export default function ComboNotesCard({ combo, currency }: ComboNotesCardProps)
           <div className="w-1/3 h-[2px] bg-zinc-900/60 rounded-full overflow-hidden mt-1">
              <div 
                className={`h-full transition-all duration-1000 ${cpStyles.bar}`} 
-               style={{ width: `${mockCalidadPrecio * 10}%` }} 
+               style={{ width: `${calidadPrecio * 10}%` }} 
              />
           </div>
 

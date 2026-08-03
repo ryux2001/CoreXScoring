@@ -189,6 +189,136 @@ Cada componente se evalúa en **5 categorías técnicas** + **Calidad/Precio**, 
 
 Los puntos se normalizan a escala **0-10** y el precio afecta mediante un coeficiente `VALUE_CEILING` de 0.035 (puntos útiles por dólar).
 
+# Como consumirlas
+
+Aquí te explico cómo NotesCard.tsx obtiene las notas de CPU, GPU y RAM:
+Flujo de Obtención de Notas
+1. Entrada desde NotesCard (linea 40)
+const baseNotes = getComponentNotes(product, precioUSD);
+- product: Objeto del producto desde Supabase (tiene type: 'CPU' | 'GPU' | 'RAM')
+- precioUSD: Precio evaluado en dólares (calculado en lineas 28-29)
+2. Orquestador: index.ts (linea 15-40)
+export const getComponentNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
+  const type = product?.type?.toUpperCase();
+  
+  switch (type) {
+    case 'CPU':    return calculateCpuNotes(product, evaluatedPrice);
+    case 'GPU':    return calculateGpuNotes(product, evaluatedPrice);
+    case 'RAM':    return calculateRamNotes(product, evaluatedPrice);
+    // ... otros componentes
+  }
+};
+3. Para CPU: calculations/cpu/cpu.ts (linea 17-45)
+export const calculateCpuNotes = (product: any, evaluatedPrice: number) => {
+  // 5 notas técnicas
+  const potency = calculatePotencyScore(product);         // Benchmarks + specs
+  const technologies = calculateTechnologiesScore(product); // Tecnologías, APIs
+  const productivity = calculateProductivityScore(product); // Multitarea, núcleos
+  const gaming = calculateGamingScore(product);           // Gaming, cache, PCIe
+  const efficiency = calculateEfficiencyScore(product);   // Rendimiento/Watt
+  
+  // Nota final: Calidad/Precio
+  const valueScore = calculateValueScore(
+    { POTENCIA: potency, TECNOLOGIAS: technologies, PRODUCTIVIDAD: productivity,
+      JUEGOS: gaming, EFICIENCIA: efficiency },
+    evaluatedPrice, product
+  );
+  
+  return {
+    "Potencia": potency,      // Benchmarks: Cinebench, Geekbench + Turbo, Threads, Cache
+    "Tecnologías": technologies,  // PCIe, DirectX, OpenGL + penalización por edad
+    "Productividad": productivity, // Cinebench, PassMark, threads, e-cores, RAM max
+    "Juegos": gaming,           // Geekbench, núcleos, cache, turbo, RAM tipo, PCIe
+    "Eficiencia": efficiency,   // Cinebench/Watt, consumo TDP
+    "Calidad precio": valueScore,  // Ponderada de las 5 anteriores + precio
+  };
+};
+4. Para GPU: calculations/gpu/gpu.ts (linea 17-45)
+export const calculateGpuNotes = (product: any, evaluatedPrice: number) => {
+  const potency = calculatePotencyScore(product);         // Time Spy, VRAM, TFLOPS, Boost Clock
+  const technologies = calculateTechnologiesScore(product); // PCIe, DirectX, OpenGL + IA
+  const productivity = calculateProductivityScore(product); // Blender, VRAM, TFLOPS
+  const gaming = calculateGamingScore(product);           // Time Spy, Port Royal, VRAM
+  const efficiency = calculateEfficiencyScore(product);   // Time Spy/Watt, TDP
+  
+  const valueScore = calculateValueScore(
+    { POTENCIA: potency, TECNOLOGIAS: technologies, PRODUCTIVIDAD: productivity,
+      JUEGOS: gaming, EFICIENCIA: efficiency },
+    evaluatedPrice, product
+  );
+  
+  return {
+    "Potencia": potency,
+    "Tecnologías": technologies,
+    "Productividad": productivity,
+    "Juegos": gaming,
+    "Eficiencia": efficiency,
+    "Calidad precio": valueScore,
+  };
+};
+5. Para RAM: calculations/ram/ram.ts (linea 17-45)
+export const calculateRamNotes = (product: any, evaluatedPrice: number) => {
+  const speed = calculateSpeedScore(product);             // Frecuencia + Ancho de Banda
+  const technologies = calculateTechnologiesScore(product); // DDR5/4/3, XMP/EXPO, ECC
+  const latency = calculateLatencyScore(product);         // Latencia real (ns) + teórica (CL)
+  const games = calculateGamesScore(product);             // VRAM capacity, frecuencia, estabilidad
+  const productivity = calculateProductivityScore(product); // Capacidad + velocidad
+  
+  const valueScore = calculateValueScore(
+    { VELOCIDAD: speed, TECNOLOGIAS: technologies, LATENCIA: latency,
+      JUEGOS: games, PRODUCTIVIDAD: productivity },
+    evaluatedPrice, product
+  );
+  
+  return {
+    "Velocidad": speed,
+    "Tecnologías": technologies,
+    "Latencia": latency,
+    "Juegos": games,
+    "Productividad": productivity,
+    "Calidad precio": valueScore,
+  };
+};
+6. Cálculo de Calidad/Precio (común a todos)
+- CPU (cpu/value.ts): Ponderado por CPU_CONFIG.VALUE_WEIGHTS, resta 3.5 pts, normaliza con techo 0.012 pts/$
+- GPU (gpu/value.ts): Ponderado por GPU_CONFIG.VALUE_WEIGHTS, resta 3.5 pts, normaliza con techo 0.005 pts/$
+- RAM (ram/value.ts): Ponderado por RAM_CONFIG.VALUE_WEIGHTS, resta 3.5 pts, normaliza con RAM_CONFIG.VALUE_CEILING
+Datos de Supabase necesarios
+CPU necesita:
+{
+  type: "CPU",
+  benchmarks: { cinebench_multi: 3000, geekbench_single: 1500, passmark_score: 2500 },
+  specs: { turbo_frequency: 5.5, threads: 16, cache: { l3: 30720 }, 
+          cores: 12, efficacy_cores: 4, ram_max_support: 128 },
+  compatibility: { ram_type: "ddr5", pcie: "5.0" },
+  technologies: [{ name: "ai", description: "AI Boost" }],
+  power_turbo_max: 125,
+  release_year: 2024
+}
+GPU necesita:
+{
+  type: "GPU",
+  benchmarks: { '3dmark_time_spy': 15000, '3dmark_port_royal': 12000, '3dmark_speed_way': 10000,
+               blender_score: 4500 },
+  specs: { vram_capacity: 16, vram_type: "GDDR7", bus_width: 256, 
+           tflops_fp32: 80, tdp: 250, boost_clock: 2600 },
+  compatibility: { pcie_generation: "5.0", directx: "12", opengl: "4.6" },
+  technologies: [{ name: "dlss3", description: "DLSS 3.0 with Frame Gen" }],
+  release_year: 2024
+}
+RAM necesita:
+{
+  type: "RAM",
+  specs: { speed: 6000, capacity: 32, technology: "DDR5", 
+          profile_support: ["XMP 3.0"], cas_latency: 30 },
+  benchmarks: { read_speed: 64000, write_speed: 58000, latency_ns: 65 }
+}
+Configurations
+Los valores máximos y pesos están en:
+- src/lib/scoring/config/cpu.ts
+- src/lib/scoring/config/gpu.ts
+- src/lib/scoring/config/ram.ts
+
 # Inserts actuales en base de datos (cpu, gpu y ram)
 
 ## Inserts CPU
