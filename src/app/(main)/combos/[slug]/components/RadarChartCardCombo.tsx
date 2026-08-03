@@ -150,8 +150,8 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
           </p>
         </div> */}
 
-        <div className="flex items-center gap-3">
-          {/* {onSwitchView && (
+        {/* <div className="flex items-center">
+          {onSwitchView && (
             <button 
               onClick={onSwitchView}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-all active:scale-95"
@@ -159,9 +159,9 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               Ver Notas
             </button>
-          )} */}
+          )}
 
-          {/* <div className="group relative">
+          <div className="group relative">
             <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:text-white relative z-[10000]">
               <Info size={11} strokeWidth={3} />
             </div>
@@ -169,8 +169,8 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[9px]">Mapa de Rendimiento</div>
               <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
             </div>
-          </div> */}
-        </div>
+          </div>
+        </div> */}
       </div>
 
       {/* CONTENEDOR DEL GRÁFICO */}

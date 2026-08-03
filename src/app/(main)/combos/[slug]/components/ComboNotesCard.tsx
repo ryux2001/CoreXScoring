@@ -10,7 +10,7 @@ interface ComboNotesCardProps {
 export default function ComboNotesCard({ combo, currency }: ComboNotesCardProps) {
   // 🛑 DATOS MOCKEADOS (Temporales)
   const mockTechnicalNotes = [
-    { label: 'Potencia', score: 8.7 },
+    { label: 'Potencia', score: 5.1 },
     { label: 'Productividad', score: 7.4 },
     { label: 'Gaming', score: 9.2 },
     { label: 'Eficiencia', score: 5.5 },
