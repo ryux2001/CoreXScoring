@@ -7,6 +7,7 @@ import ComboMainCard from './components/ComboMainCard';
 import MobileComboIsland from './components/MobileComboIsland';
 import ComboNotesCard from './components/ComboNotesCard';
 import RadarChartCardCombo from './components/RadarChartCardCombo';
+import Metrics from './components/Metrics';
 
 interface ComboDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -74,6 +75,10 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
             {/* Aquí ira el componente del Precio / Evaluación Global */}
             <div className="lg:col-span-9">
                <ComboNotesCard combo={combo} currency={currency} />
+            </div>
+            {/* Aquí ira el componente del Precio / Evaluación Global */}
+            <div className="lg:col-span-6">
+               <Metrics combo={combo} />
             </div>
 
             
