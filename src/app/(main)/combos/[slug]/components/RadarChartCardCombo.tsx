@@ -15,7 +15,6 @@ interface RadarChartCardComboProps {
   onSwitchView?: () => void;
 }
 
-// 1. DICCIONARIO DE ICONOS PARA EL COMBO
 const getIconForCategory = (category: string) => {
   const cat = category.toLowerCase();
   if (cat.includes('potencia')) return <Zap size={18} />;
@@ -27,7 +26,6 @@ const getIconForCategory = (category: string) => {
   return <Zap size={18} />; 
 };
 
-// 2. FUNCIÓN DE COLORES DINÁMICOS
 const getColorStyles = (score: number) => {
   if (score >= 9) return {
     border: 'border-blue-500/50',
@@ -55,7 +53,6 @@ const getColorStyles = (score: number) => {
   };
 };
 
-// 3. TICK INTERACTIVO (Iconos en los vértices del radar)
 const InteractiveTick = (props: any) => {
   const { payload, x, y, cx, cy, notesData, setActiveTooltip } = props;
   const [isHovered, setIsHovered] = useState(false);
@@ -104,7 +101,6 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
     setIsMounted(true);
   }, []);
 
-  // 🚀 OBTENCIÓN DINÁMICA DE LAS NOTAS REALES DEL COMBO
   const notes = getComboNotes(combo, currency);
 
   const notesData: Record<string, number> = {
@@ -135,7 +131,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
   const activeStyles = activeTooltip ? getColorStyles(activeTooltip.score) : null;
 
   return (
-    <div className="flex flex-col p-0 lg:p-0 rounded-3xl border border-zinc-900 bg-zinc-950/40 shadow-2xl backdrop-blur-sm h-full min-h-[50px] relative justify-between overflow-hidden">
+    <div className="flex flex-col p-6 lg:p-6 lg:pb-0 rounded-3xl border border-zinc-900 bg-zinc-950/40 shadow-2xl backdrop-blur-sm h-full min-h-[250px] relative justify-between overflow-hidden">
       
       {/* Resplandor de fondo */}
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -143,17 +139,12 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
       </div>
 
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-2 z-10">
-        {/* <div>
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">
-            Balance
-          </h3>
-          <p className="mt-1 text-[9px] font-medium uppercase tracking-widest text-zinc-600">
-            Equilibrio del Ensamble
-          </p>
-        </div> */}
+      <div className="flex items-center justify-between mb-2 z-10 w-full">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
+          Balance
+        </h3>
 
-        {/* <div className="flex items-center">
+        <div className="flex items-center gap-3">
           {onSwitchView && (
             <button 
               onClick={onSwitchView}
@@ -173,13 +164,12 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
             </div>
           </div>
-        </div> */}
+        </div>
       </div>
 
       {/* CONTENEDOR DEL GRÁFICO */}
-      <div className="flex-1 w-full relative min-h-[260px] flex items-center justify-center">
+      <div className="flex-1 w-full relative min-h-[220px] flex items-center justify-center">
         
-        {/* MINI TOOLTIP */}
         {activeTooltip && activeStyles && (
           <div 
             className="absolute z-[10000] pointer-events-none animate-in fade-in zoom-in-95 duration-200"

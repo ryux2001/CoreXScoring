@@ -80,7 +80,7 @@ export default function Metrics({ combo }: MetricsProps) {
 
       {/* FOOTER DISCRETO */}
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
-        <p className="text-[8px] text-zinc-700 uppercase tracking-widest leading-tight text-center lg:text-left">
+        <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest leading-tight text-center lg:text-left">
           * Porcentajes normalizados basados en arquitectura de hilos y capacidades de renderizado.
         </p>
       </div>

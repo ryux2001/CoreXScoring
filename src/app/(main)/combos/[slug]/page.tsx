@@ -1,12 +1,9 @@
 import React from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
 import ComboMainCard from './components/ComboMainCard';
 import MobileComboIsland from './components/MobileComboIsland';
-import ComboNotesCard from './components/ComboNotesCard';
-import RadarChartCardCombo from './components/RadarChartCardCombo';
+import ComboEvaluationSection from './components/ComboEvaluationSection';
 import Metrics from './components/Metrics';
 import FpsCard from './components/FpsCard';
 
@@ -56,26 +53,20 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
           </div>
 
           {/* 💻 VISTA ESCRITORIO: Columna Izquierda Fija */}
-          <div className="hidden lg:block lg:sticky lg:top-8 lg:col-span-4 xl:col-span-3">
-            <ComboMainCard combo={combo} />
+          <div className="hidden lg:block lg:sticky lg:top-8 lg:col-span-4 xl:col-span-4">
+            <ComboMainCard combo={combo} currency={currency} />
           </div>
 
           {/* COLUMNA DERECHA */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:col-span-9">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:col-span-8">
 
-            <div className="lg:col-span-3">
-              <RadarChartCardCombo combo={combo} currency={currency} />
-            </div>
-
-            <div className="lg:col-span-9">
-              <ComboNotesCard combo={combo} currency={currency} />
-            </div>
+            {/* Sección de Evaluación (Radar y Notas con alternancia en móvil) */}
+            <ComboEvaluationSection combo={combo} currency={currency} />
 
             <div className="lg:col-span-6">
               <Metrics combo={combo} />
             </div>
 
-            {/* Pasamos combo y la lista de juegos recuperados */}
             <div className="lg:col-span-6">
               <FpsCard combo={combo} games={games || []} />
             </div>

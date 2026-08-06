@@ -129,7 +129,7 @@ export default function FpsCard({
             FPS 1080p
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl lg:text-5xl font-black text-white tracking-tighter">
+            <span className="text-4xl lg:text-4xl font-black text-white ">
               {fps.fhd}
             </span>
             <span className="text-[10px] font-bold text-zinc-600 uppercase">
@@ -144,7 +144,7 @@ export default function FpsCard({
             FPS 1440p
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl lg:text-5xl font-black text-white tracking-tighter">
+            <span className="text-4xl lg:text-4xl font-black text-white tracking-tighter">
               {fps.qhd}
             </span>
             <span className="text-[10px] font-bold text-zinc-600 uppercase">
@@ -159,7 +159,7 @@ export default function FpsCard({
             FPS 4K
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl lg:text-5xl font-black text-white tracking-tighter">
+            <span className="text-4xl lg:text-4xl font-black text-white tracking-tighter">
               {fps.uhd}
             </span>
             <span className="text-[10px] font-bold text-zinc-600 uppercase">
@@ -172,7 +172,7 @@ export default function FpsCard({
 
       {/* FOOTER */}
       <div className="mt-6 pt-4 border-t border-zinc-900/20">
-        <p className="text-[8px] text-zinc-700 uppercase tracking-widest leading-tight text-center lg:text-left">
+        <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest leading-tight text-center lg:text-left">
           * Rendimiento nativo estimado sin tecnologías de reescalado (DLSS / FSR).
         </p>
       </div>
