@@ -1,18 +1,33 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, X, AlertCircle } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
 import { supabase } from '@/lib/supabaseClient';
+import {
+  getProductPrice,
+  normalizeCombo,
+} from './comparisonUtils';
+import type { ComparisonMode } from './comparisonUtils';
 
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  comparisonMode: ComparisonMode;
+  setComparisonMode: (mode: ComparisonMode) => void;
+  globalCurrency: string;
 }
 
-export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
+export default function SearchModal({
+  isOpen,
+  onClose,
+  comparisonMode,
+  setComparisonMode,
+  globalCurrency,
+}: SearchModalProps) {
   const addItem = useCompareStore((state) => state.addItem);
   const componentType = useCompareStore((state) => state.componentType);
+  const itemsCount = useCompareStore((state) => state.items.length);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -28,7 +43,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   useEffect(() => {
     if (!isOpen) return;
-    
+
     const delayDebounceFn = setTimeout(async () => {
       if (searchTerm.trim().length < 2) {
         setSuggestions([]);
@@ -37,47 +52,65 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
       setLoading(true);
       try {
-        let query = supabase
-  .from('products_with_priority')
-  .select('*') // 🚀 Cambiado de columnas fijas a asterisco
-  .ilike('name', `%${searchTerm}%`)
-  .limit(5);
+        const search = `%${searchTerm}%`;
+        const productQuery = supabase
+          .from('products_with_priority')
+          .select('*')
+          .ilike('name', search)
+          .limit(5);
 
-        if (componentType) {
-          query = query.ilike('type', componentType);
-        }
+        if (componentType) productQuery.ilike('type', componentType);
 
-        const { data } = await query;
-        if (data) setSuggestions(data);
-      } catch (err) {
-        console.error("Error fetching suggestions:", err);
+        const result = comparisonMode === 'combos'
+          ? await supabase
+              .from('combos')
+              .select(`
+                *,
+                cpu:products!cpu_id(*),
+                gpu:products!gpu_id(*),
+                ram:products!ram_id(*)
+              `)
+              .eq('is_active', true)
+              .ilike('title', search)
+              .limit(5)
+          : await productQuery;
+
+        if (result.error) throw result.error;
+        setSuggestions(result.data || []);
+      } catch (error) {
+        console.error('Error fetching comparison suggestions:', error);
+        setSuggestions([]);
       } finally {
         setLoading(false);
       }
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, componentType, isOpen]);
+  }, [searchTerm, comparisonMode, componentType, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSelectProduct = (product: any) => {
-    const priceColumn = product.price_base_eur ? 'price_base_eur' : 'price_base_usd';
-    const normalizedProduct = {
-      ...product,
-      price: product[priceColumn] || 0,
-      currency: product.price_base_eur ? 'EUR' : 'USD'
-    };
+  const handleSelectItem = (item: any) => {
+    const normalizedItem = comparisonMode === 'combos'
+      ? normalizeCombo(item, globalCurrency)
+      : {
+          ...item,
+          comparisonType: 'product',
+          price: getProductPrice(item, globalCurrency),
+          currency: globalCurrency,
+        };
 
-    const result = addItem(normalizedProduct);
+    const result = addItem(normalizedItem);
     if (result.success) {
       onClose();
       setSearchTerm('');
       setSuggestions([]);
     } else {
-      setErrorNotification(result.error || "No se pudo añadir");
+      setErrorNotification(result.error || 'No se pudo añadir');
     }
   };
+
+  const isComboMode = comparisonMode === 'combos';
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -86,8 +119,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       <div className="w-full max-w-md flex flex-col overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-900 shadow-2xl p-5 animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between pb-4 border-b border-zinc-900 mb-4">
           <div className="flex flex-col">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Buscar Componente</h3>
-            {componentType && (
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-white">
+              Buscar {isComboMode ? 'Combo' : 'Componente'}
+            </h3>
+            {!isComboMode && componentType && (
               <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider mt-0.5">
                 Restringido a: <span className="text-zinc-400">{componentType}</span>
               </span>
@@ -98,13 +133,32 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           </button>
         </div>
 
+        <label className="flex flex-col gap-1.5 mb-3">
+          <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">
+            Comparar
+          </span>
+          <select
+            value={comparisonMode}
+            disabled={itemsCount > 0}
+            onChange={(event) => {
+              setComparisonMode(event.target.value as ComparisonMode);
+              setSearchTerm('');
+              setSuggestions([]);
+            }}
+            className="w-full rounded-xl border border-zinc-900 bg-black px-3 py-3 text-xs font-bold text-white outline-none focus:border-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="components">Componentes</option>
+            <option value="combos">Combos</option>
+          </select>
+        </label>
+
         <div className="relative flex items-center mb-2">
-          <input 
+          <input
             type="text"
             autoFocus
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Escribe el nombre del hardware..."
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder={isComboMode ? 'Escribe el nombre del combo...' : 'Escribe el nombre del hardware...'}
             className="w-full bg-black border border-zinc-900 rounded-xl px-4 py-3 pl-10 text-xs font-bold text-white outline-none focus:border-zinc-700 transition-colors placeholder:text-zinc-600"
           />
           <Search size={14} className="absolute left-4 text-zinc-600" />
@@ -115,14 +169,18 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
         <div className="mt-2 space-y-1 max-h-60 overflow-y-auto pr-1">
           {suggestions.length > 0 ? (
-            suggestions.map((product) => (
+            suggestions.map((item) => (
               <button
-                key={product.id}
-                onClick={() => handleSelectProduct(product)}
+                key={item.id}
+                onClick={() => handleSelectItem(item)}
                 className="flex w-full flex-col p-3 rounded-xl border border-transparent hover:border-zinc-800 bg-zinc-900/10 hover:bg-zinc-900/40 text-left transition-all group animate-in fade-in duration-150"
               >
-                <span className="text-xs font-bold text-zinc-300 group-hover:text-white truncate">{product.name}</span>
-                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mt-1">{product.brand} · {product.type}</span>
+                <span className="text-xs font-bold text-zinc-300 group-hover:text-white truncate">
+                  {isComboMode ? item.title : item.name}
+                </span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mt-1">
+                  {isComboMode ? item.category : `${item.brand} · ${item.type}`}
+                </span>
               </button>
             ))
           ) : searchTerm.trim().length >= 2 && !loading ? (
