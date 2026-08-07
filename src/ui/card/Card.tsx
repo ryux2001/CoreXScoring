@@ -1,7 +1,11 @@
-import React from "react";
-import { Eye, BarChart2, Bookmark } from "lucide-react"; // Importamos Bookmark
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { Eye, Bookmark } from "lucide-react"; // Importamos Bookmark
 import Link from "next/link"; // Importamos Link
+import { useRouter } from "next/navigation";
 import CompareButton from "./CompareButton";
+import { supabase } from "@/lib/supabaseClient";
 
 interface ProductProps {
   id: string; // Añadimos el ID
@@ -30,6 +34,81 @@ export const Card = ({
   release_date,
   imageUrl,
 }: ProductProps) => {
+  const router = useRouter();
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSavedState = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("saved_products")
+        .select("product_id")
+        .eq("user_id", user.id)
+        .eq("product_id", id)
+        .maybeSingle();
+
+      if (isMounted && !error) {
+        setIsSaved(Boolean(data));
+      }
+    };
+
+    void loadSavedState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  const handleSave = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isSaving) return;
+
+    setIsSaving(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/auth");
+        return;
+      }
+
+      if (isSaved) {
+        const { error } = await supabase
+          .from("saved_products")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("product_id", id);
+
+        if (error) throw error;
+        setIsSaved(false);
+      } else {
+        const { error } = await supabase
+          .from("saved_products")
+          .insert({ user_id: user.id, product_id: id });
+
+        if (error) throw error;
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error("No se pudo actualizar el producto guardado", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getLocalImage = () => {
     if (!type || !brand) return null;
     const basePath = "/images/catalog/";
@@ -199,8 +278,19 @@ export const Card = ({
           />
 
           {/* Nuevo Botón de Guardar (Solo icono) */}
-          <button className="flex items-center justify-center rounded-lg border border-zinc-800 px-3 py-3 text-zinc-400 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95">
-            <Bookmark size={14} strokeWidth={2.5} />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            aria-label={isSaved ? "Quitar de guardados" : "Guardar producto"}
+            title={isSaved ? "Quitar de guardados" : "Guardar producto"}
+            className={`flex items-center justify-center rounded-lg border px-3 py-3 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
+              isSaved
+                ? "border-white bg-zinc-900 text-white"
+                : "border-zinc-800 text-zinc-400"
+            }`}
+          >
+            <Bookmark size={14} strokeWidth={2.5} fill={isSaved ? "currentColor" : "none"} />
           </button>
         </div>
       </div>
