@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
+import { supabase } from '@/lib/supabaseClient';
 import { getComponentNotes } from '@/lib/scoring/index';
 import { getComboNotes } from '@/lib/scoringCombos';
 import EmptyState from './EmptyState';
@@ -58,6 +59,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
   const items = useCompareStore((state) => state.items);
   const clearCompare = useCompareStore((state) => state.clearCompare);
   const addItem = useCompareStore((state) => state.addItem);
+  const replaceItems = useCompareStore((state) => state.replaceItems);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(() => (
@@ -68,6 +70,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
     Record<string | number, ComboPriceOverrides>
   >({});
   const hasHydratedInitialItems = useRef(false);
+  const hasHydratedStoredProducts = useRef(false);
 
   useEffect(() => {
     if (hasHydratedInitialItems.current || initialItems.length === 0) return;
@@ -84,6 +87,64 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
       });
     }
   }, [initialItems, items.length, addItem, globalCurrency]);
+
+  useEffect(() => {
+    if (hasHydratedStoredProducts.current || items.length === 0) return;
+
+    hasHydratedStoredProducts.current = true;
+
+    const hydrateStoredProducts = async () => {
+      const componentItems = items.filter((item) => !isComboItem(item));
+      if (componentItems.length === 0) return;
+
+      const productIds = componentItems.map((item) => String(item.id));
+      const { data: completeProducts, error } = await supabase
+        .from('products_with_priority')
+        .select('*')
+        .in('id', productIds);
+
+      if (error || !completeProducts) {
+        console.error('Error hydrating comparison products:', error);
+        return;
+      }
+
+      const fullProducts = completeProducts as Array<{
+        id: string | number;
+        slug: string;
+        price?: number;
+        [key: string]: any;
+      }>;
+
+      const productsById = new Map(
+        fullProducts.map((product) => [String(product.id), product]),
+      );
+      const productsBySlug = new Map(
+        fullProducts.map((product) => [product.slug, product]),
+      );
+
+      const hydratedItems = items.map((item) => {
+        if (isComboItem(item)) return item;
+
+        const completeProduct =
+          productsById.get(String(item.id)) || productsBySlug.get(item.slug);
+
+        if (!completeProduct) return item;
+
+        return {
+          ...item,
+          ...completeProduct,
+          price: item.price ?? completeProduct.price,
+          currency: item.currency ?? globalCurrency,
+          comparisonType: 'product',
+        };
+      });
+
+      const changed = hydratedItems.some((item, index) => item !== items[index]);
+      if (changed) replaceItems(hydratedItems);
+    };
+
+    void hydrateStoredProducts();
+  }, [items, replaceItems, globalCurrency]);
 
   useEffect(() => {
     if (items.length === 0) {

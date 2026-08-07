@@ -20,6 +20,7 @@ interface CompareState {
   // Acciones
   addItem: (product: CompareProduct) => { success: boolean; error?: string };
   removeItem: (productId: string | number) => void;
+  replaceItems: (items: CompareProduct[]) => void;
   clearCompare: () => void;
 }
 
@@ -78,6 +79,18 @@ export const useCompareStore = create<CompareState>()(
         set({
           items: updatedItems,
           componentType: newType
+        });
+      },
+
+      replaceItems: (items) => {
+        const firstItem = items[0];
+        const newType = firstItem
+          ? String(firstItem.type || '').toUpperCase() || null
+          : null;
+
+        set({
+          items,
+          componentType: newType,
         });
       },
 

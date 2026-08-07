@@ -268,7 +268,7 @@ export default function CompareProductCard({
               </div>
 
               <Link
-                href={`/product/${product.slug}?currency=${globalCurrency}`}
+                href={`/catalog/${product.slug}?currency=${globalCurrency}`}
                 className="flex-none w-full md:w-25 h-9 flex items-center justify-center text-center rounded-xl border border-zinc-900 bg-zinc-900/20 hover:bg-zinc-900 hover:text-white text-[9px] font-black uppercase tracking-widest text-zinc-400 py-2 transition-all active:scale-[0.98] cursor-pointer"
               >
                 ver producto
