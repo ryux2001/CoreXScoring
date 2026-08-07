@@ -27,11 +27,11 @@ export const calculateComboFps = (
 
   if (!combo || !game || !game.gpu_fps_base) return defaultResult;
 
-  // Acceso directo usando el slug exacto del producto GPU
-  const gpuSlug = combo.gpu?.slug;
-  if (!gpuSlug) return defaultResult;
+  // Acceso directo usando el ID exacto del producto GPU
+  const gpuId = combo.gpu?.id;
+  if (!gpuId) return defaultResult;
 
-  const gpuFpsData = game.gpu_fps_base[gpuSlug];
+  const gpuFpsData = game.gpu_fps_base[gpuId];
   if (!gpuFpsData) return defaultResult;
 
   // 1. Factor RAM (Score normalizado a escala 0-1)
