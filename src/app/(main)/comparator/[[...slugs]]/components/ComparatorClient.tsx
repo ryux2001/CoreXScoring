@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
@@ -67,9 +67,14 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
   const [comboPriceOverrides, setComboPriceOverrides] = useState<
     Record<string | number, ComboPriceOverrides>
   >({});
+  const hasHydratedInitialItems = useRef(false);
 
   useEffect(() => {
-    if (initialItems.length > 0 && items.length === 0) {
+    if (hasHydratedInitialItems.current || initialItems.length === 0) return;
+
+    hasHydratedInitialItems.current = true;
+
+    if (items.length === 0) {
       initialItems.forEach((item) => {
         addItem({
           ...item,

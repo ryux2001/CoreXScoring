@@ -37,6 +37,7 @@ interface CompareProductCardProps {
 }
 
 type NotesMap = Record<string, number>;
+type ComboPriceDraft = Partial<Record<ComboPartKey, string>>;
 
 const comboParts: Array<{ key: ComboPartKey; label: string }> = [
   { key: "cpu", label: "CPU" },
@@ -88,7 +89,7 @@ export default function CompareProductCard({
 
   const [customPrice, setCustomPrice] = useState(basePrice);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
-  const [draftComboPrices, setDraftComboPrices] = useState<ComboPriceOverrides>({});
+  const [draftComboPrices, setDraftComboPrices] = useState<ComboPriceDraft>({});
 
   useEffect(() => {
     if (!isCombo) setCustomPrice(basePrice);
@@ -139,8 +140,8 @@ export default function CompareProductCard({
   const valueStyles = getColorStyles(finalScore);
 
   const openCustomizeModal = () => {
-    const currentPrices = comboParts.reduce<ComboPriceOverrides>((prices, part) => {
-      prices[part.key] = getComboPartPrice(product, part.key, globalCurrency, comboPriceOverrides);
+    const currentPrices = comboParts.reduce<ComboPriceDraft>((prices, part) => {
+      prices[part.key] = String(getComboPartPrice(product, part.key, globalCurrency, comboPriceOverrides));
       return prices;
     }, {});
     setDraftComboPrices(currentPrices);
@@ -148,9 +149,27 @@ export default function CompareProductCard({
   };
 
   const applyComboPrices = () => {
-    setComboPriceOverrides?.(draftComboPrices);
+    const numericPrices = comboParts.reduce<ComboPriceOverrides>((prices, part) => {
+      const rawValue = draftComboPrices[part.key]?.trim();
+      if (rawValue) {
+        const numericValue = Number(rawValue);
+        if (Number.isFinite(numericValue)) prices[part.key] = numericValue;
+      }
+      return prices;
+    }, {});
+
+    setComboPriceOverrides?.(numericPrices);
     setIsCustomizeOpen(false);
   };
+
+  const draftNumericPrices = comboParts.reduce<ComboPriceOverrides>((prices, part) => {
+    const rawValue = draftComboPrices[part.key]?.trim();
+    if (rawValue) {
+      const numericValue = Number(rawValue);
+      if (Number.isFinite(numericValue)) prices[part.key] = numericValue;
+    }
+    return prices;
+  }, {});
 
   return (
     <div className="relative flex flex-col justify-between p-2 md:p-6 h-full w-1/2 shrink-0 snap-start md:w-full md:shrink min-h-[600px] group animate-in fade-in duration-300">
@@ -309,8 +328,8 @@ export default function CompareProductCard({
                     <input
                       type="number"
                       value={draftComboPrices[part.key] ?? ""}
-                      onChange={(event) => setDraftComboPrices((previous) => ({ ...previous, [part.key]: Number(event.target.value) }))}
-                      className="w-full rounded-xl border border-zinc-900 bg-black px-3 py-2 pl-7 text-xs font-bold text-white outline-none focus:border-zinc-700"
+                      onChange={(event) => setDraftComboPrices((previous) => ({ ...previous, [part.key]: event.target.value }))}
+                      className="w-full rounded-xl border border-zinc-900 bg-black px-3 py-2 pl-7 text-xs font-bold text-white outline-none focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                 </label>
@@ -319,7 +338,7 @@ export default function CompareProductCard({
             <div className="mt-5 flex items-center justify-between border-t border-zinc-900 pt-4">
               <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Total</span>
               <span className="text-sm font-black text-white">
-                {format(getComboTotalPrice(product, globalCurrency, draftComboPrices))}
+                {format(getComboTotalPrice(product, globalCurrency, draftNumericPrices))}
               </span>
             </div>
             <button onClick={applyComboPrices} className="mt-5 w-full rounded-xl bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-black hover:bg-zinc-200 transition-colors">
