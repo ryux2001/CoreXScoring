@@ -8,8 +8,13 @@ import { useCompareStore } from "@/store/useCompareStore";
 export default function CompareCartDropdown() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const items = useCompareStore((state) => state.items);
+  const componentType = useCompareStore((state) => state.componentType);
   const removeItem = useCompareStore((state) => state.removeItem);
   const clearCompare = useCompareStore((state) => state.clearCompare);
+  const isComboComparison = componentType === "COMBO" || items.some((item) => (
+    item.comparisonType === "combo" || String(item.type || "").toUpperCase() === "COMBO"
+  ));
+  const comparisonLabel = isComboComparison ? "Combos" : "Componentes";
 
   return (
     <div className="relative">
@@ -38,9 +43,16 @@ export default function CompareCartDropdown() {
             
             {/* Cabecera del Carrito */}
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-3">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                Comparativa ({items.length}/3)
-              </span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                  Comparativa ({items.length}/3)
+                </span>
+                {items.length > 0 && (
+                  <span className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-600">
+                    Comparando: <span className="text-zinc-400">{comparisonLabel}</span>
+                  </span>
+                )}
+              </div>
               {items.length > 0 && (
                 <button 
                   onClick={() => clearCompare()}
