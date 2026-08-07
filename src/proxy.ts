@@ -1,63 +1,72 @@
-import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr';
+import type { User } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
-  const res = NextResponse.next()
-  
-  const supabase = createClient(
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        persistSession: true,
         storageKey: 'sb-auth-token',
-        storage: {
-          getItem: (key: string) => {
-            return request.cookies.get(key)?.value ?? null
-          },
-          // Definimos las funciones aunque no tengan lógica para cumplir con el tipo
-          setItem: (key: string, value: string, options?: any) => {},
-          removeItem: (key: string, options?: any) => {},
+      },
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+
+          response = NextResponse.next({ request });
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
         },
       },
-    }
-  )
+    },
+  );
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const session = !!user
+  let user: User | null = null;
 
-  // --- CONFIGURACIÓN DE RUTAS (OPCIÓN B) ---
-  
-  // 1. Lista de rutas que requieren que el usuario ESTÉ logueado
-  const protectedRoutes = ['/vault', '/profile', '/dashboard', '/settings']
-  
-  // 2. Comprobamos si la ruta actual coincide con alguna de la lista
-  const isProtectedRoute = protectedRoutes.some(route => 
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch {
+    user = null;
+  }
+
+  const session = Boolean(user);
+  const protectedRoutes = ['/vault', '/profile', '/dashboard', '/settings'];
+  const isProtectedRoute = protectedRoutes.some((route) => (
     request.nextUrl.pathname.startsWith(route)
-  )
+  ));
 
-  // LÓGICA DE REDIRECCIÓN:
+  const redirectWithSessionCookies = (url: URL) => {
+    const redirectResponse = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
+  };
 
-  // Caso A: El usuario intenta entrar a una ruta protegida pero NO tiene sesión
   if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL('/auth', request.url))
+    return redirectWithSessionCookies(new URL('/auth', request.url));
   }
 
-  // Caso B: El usuario YA tiene sesión pero intenta entrar a la página de login/registro
   if (request.nextUrl.pathname.startsWith('/auth') && session) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return redirectWithSessionCookies(new URL('/', request.url));
   }
 
-  return res
+  return response;
 }
 
-// El matcher debe incluir todas las rutas que el proxy debe "escuchar"
 export const config = {
   matcher: [
-    '/vault/:path*', 
-    '/profile/:path*', 
-    '/dashboard/:path*', 
-    '/auth/:path*'
+    '/vault/:path*',
+    '/profile/:path*',
+    '/dashboard/:path*',
+    '/auth/:path*',
   ],
-}
+};

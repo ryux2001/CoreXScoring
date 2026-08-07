@@ -7,42 +7,63 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+function getLoginErrorMessage(error: { status?: number; message?: string }) {
+  const message = error.message?.toLowerCase() || "";
+
+  if (message.includes("email not confirmed")) {
+    return "Confirma tu email antes de iniciar sesión.";
+  }
+
+  if (error.status === 400) {
+    return "Credenciales inválidas. Revisa tu email o contraseña.";
+  }
+
+  return error.message || "No se pudo iniciar sesión. Inténtalo de nuevo.";
+}
+
 export default function LoginForm() {
   const setUser = useAuthStore((state) => state.setUser);
-  
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const email = (document.getElementById("email") as HTMLInputElement).value;
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+
+    const email = (document.getElementById("email") as HTMLInputElement).value.trim();
     const password = (document.getElementById("pass") as HTMLInputElement).value;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      // Manejo específico de errores
-      if (error.status === 400) setErrorMsg("Credenciales inválidas. Revisa tu email o contraseña.");
-      else setErrorMsg(error.message);
-      setLoading(false);
-    } else {
+      if (error) {
+        setErrorMsg(getLoginErrorMessage(error));
+        return;
+      }
+
+      if (!data.session || !data.user) {
+        setErrorMsg("No se pudo crear una sesión válida. Inténtalo de nuevo.");
+        return;
+      }
+
       setUser(data.user);
-      router.push("/catalog"); // Redirigimos a la nueva ruta protegida
+      router.push("/catalog");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "No se pudo iniciar sesión.");
+    } finally {
+      setLoading(false);
     }
   };
-
-  
 
   return (
     <form onSubmit={handleLogin} className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tighter text-white">Bienvenido de nuevo</h1>
 
-      {/* Caja de Error Visual */}
       {errorMsg && (
         <div className="flex items-center gap-3 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-500 animate-in fade-in slide-in-from-top-1">
           <AlertCircle className="h-4 w-4" />
@@ -89,8 +110,12 @@ export default function LoginForm() {
       </div>
 
       <div className="space-y-3">
-        <button type="submit" className="cursor-pointer w-full rounded-xl bg-white px-6 py-4 text-lg font-bold text-black hover:bg-zinc-200 transition-colors">
-          {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar Sesion"}
+        <button
+          disabled={loading}
+          type="submit"
+          className="cursor-pointer w-full rounded-xl bg-white px-6 py-4 text-lg font-bold text-black hover:bg-zinc-200 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar Sesión"}
         </button>
       </div>
     </form>
