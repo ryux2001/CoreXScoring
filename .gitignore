@@ -29,6 +29,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.pnpm-store*
+docs
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -43,3 +45,6 @@ next-env.d.ts
 
 #Archivos propios
 explicaciones.md
+CLAUDE.md
+CODEX.md
+AGENTS.md
