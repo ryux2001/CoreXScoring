@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AlertCircle, BarChart2, Bookmark } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
+import { supabase } from '@/lib/supabaseClient';
 
 interface ComboCardProps {
   combo: any;
@@ -16,6 +18,9 @@ export default function ComboCard({ combo, currency }: ComboCardProps) {
   const removeItem = useCompareStore((state) => state.removeItem);
   const items = useCompareStore((state) => state.items);
   const [customError, setCustomError] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const router = useRouter();
   const symbol = isEUR ? '€' : '$';
 
   // Lógica interna para calcular el precio final de cada pieza (Oferta vs Base)
@@ -33,6 +38,33 @@ export default function ComboCard({ combo, currency }: ComboCardProps) {
   
   const totalPrice = cpuPrice + gpuPrice + ramPrice;
   const isInCompare = items.some((item) => item.id === combo.id);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSavedState = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('saved_combos')
+        .select('combo_id')
+        .eq('user_id', user.id)
+        .eq('combo_id', combo.id)
+        .maybeSingle();
+
+      if (isMounted && !error) setIsSaved(Boolean(data));
+    };
+
+    void loadSavedState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [combo.id]);
 
   useEffect(() => {
     if (!customError) return;
@@ -61,6 +93,47 @@ export default function ComboCard({ combo, currency }: ComboCardProps) {
 
     if (!result.success) {
       setCustomError(result.error || 'No se pudo anadir el combo');
+    }
+  };
+
+  const handleSaveClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
+
+      if (isSaved) {
+        const { error } = await supabase
+          .from('saved_combos')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('combo_id', combo.id);
+
+        if (error) throw error;
+        setIsSaved(false);
+      } else {
+        const { error } = await supabase
+          .from('saved_combos')
+          .insert({ user_id: user.id, combo_id: combo.id });
+
+        if (error) throw error;
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error('No se pudo actualizar el combo guardado', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -130,8 +203,19 @@ export default function ComboCard({ combo, currency }: ComboCardProps) {
             <BarChart2 size={14} strokeWidth={2.5} />
             COMPARAR
           </button>
-          <button className="flex items-center justify-center rounded-lg border border-zinc-800 px-3 py-3 text-zinc-400 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95">
-            <Bookmark size={14} strokeWidth={2.5} />
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            disabled={isSaving}
+            aria-label={isSaved ? 'Quitar combo de guardados' : 'Guardar combo'}
+            title={isSaved ? 'Quitar combo de guardados' : 'Guardar combo'}
+            className={`flex items-center justify-center rounded-lg border px-3 py-3 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
+              isSaved
+                ? 'border-white bg-zinc-900 text-white'
+                : 'border-zinc-800 text-zinc-400'
+            }`}
+          >
+            <Bookmark size={14} strokeWidth={2.5} fill={isSaved ? 'currentColor' : 'none'} />
           </button>
         </div>
       </div>
