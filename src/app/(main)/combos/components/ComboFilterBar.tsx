@@ -10,6 +10,8 @@ interface ComboFilterBarProps {
   availableCategories: string[];
   currency: string;
   showCurrencyToggle?: boolean;
+  entityLabel?: string;
+  searchPlaceholder?: string;
 }
 
 export default function ComboFilterBar({
@@ -18,6 +20,8 @@ export default function ComboFilterBar({
   availableCategories,
   currency,
   showCurrencyToggle = true,
+  entityLabel = 'combos',
+  searchPlaceholder = 'Buscar combos',
 }: ComboFilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,8 +89,8 @@ export default function ComboFilterBar({
             type="search"
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Buscar combos"
-            aria-label="Buscar combos"
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
             className="h-12 w-full rounded-xl border border-zinc-700 bg-black px-4 pr-12 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-400"
           />
           <button
@@ -100,7 +104,7 @@ export default function ComboFilterBar({
 
         <div className="flex items-center gap-3 sm:ml-auto">
           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
-            {count} combos
+            {count} {entityLabel}
           </span>
           {showCurrencyToggle && (
             <button
