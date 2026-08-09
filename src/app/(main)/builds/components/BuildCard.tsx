@@ -1,4 +1,5 @@
 import { BarChart2, Bookmark, Eye } from 'lucide-react';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 interface BuildCardProps {
@@ -64,7 +65,13 @@ export default function BuildCard({ build, currency }: BuildCardProps) {
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <BuildActionButton label="Ver" icon={<Eye size={14} />} />
+          <Link
+            href={`/builds/${build.slug}?currency=${currency}`}
+            className="flex items-center justify-center gap-1 rounded-lg border border-zinc-900 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-zinc-300 transition-colors hover:border-zinc-700 hover:text-white"
+          >
+            <Eye size={14} />
+            <span className="hidden sm:inline">Ver</span>
+          </Link>
           <BuildActionButton label="Comparar" icon={<BarChart2 size={14} />} />
           <BuildActionButton label="Guardar" icon={<Bookmark size={14} />} />
         </div>
