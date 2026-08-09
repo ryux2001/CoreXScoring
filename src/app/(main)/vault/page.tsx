@@ -19,13 +19,13 @@ const vaultSections = [
     title: 'Combos guardados',
     description: 'Revisa tus combinaciones favoritas de CPU, GPU y RAM.',
     href: '/vault/combos',
-    icon: Boxes,
+    icon: FolderHeart,
   },
   {
     title: 'Combos creados',
     description: 'Accede a los combos personalizados que has construido.',
     href: '/vault/combos-created',
-    icon: FolderHeart,
+    icon: Boxes,
   },
   {
     title: 'Builds guardadas',

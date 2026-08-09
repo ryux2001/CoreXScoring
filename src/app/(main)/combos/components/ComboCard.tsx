@@ -10,9 +10,10 @@ import { supabase } from '@/lib/supabaseClient';
 interface ComboCardProps {
   combo: any;
   currency: string;
+  detailPath?: string;
 }
 
-export default function ComboCard({ combo, currency }: ComboCardProps) {
+export default function ComboCard({ combo, currency, detailPath = '/combos' }: ComboCardProps) {
   const isEUR = currency === 'EUR';
   const addItem = useCompareStore((state) => state.addItem);
   const removeItem = useCompareStore((state) => state.removeItem);
@@ -184,7 +185,7 @@ export default function ComboCard({ combo, currency }: ComboCardProps) {
             </span>
           </div>
           <Link 
-            href={`/combos/${combo.slug}?currency=${currency}`}
+            href={`${detailPath}/${combo.slug}?currency=${currency}`}
             className="rounded-lg bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 active:scale-95 text-center flex items-center justify-center"
           >
             Ver Combo
