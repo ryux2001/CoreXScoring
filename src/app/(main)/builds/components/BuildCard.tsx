@@ -1,10 +1,18 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { BarChart2, Bookmark, Eye } from 'lucide-react';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import type { MouseEvent, ReactNode } from 'react';
+import { getBuildPartPrice } from '@/lib/scoringBuilds';
+import { supabase } from '@/lib/supabaseClient';
 
 interface BuildCardProps {
   build: any;
   currency: string;
+  detailPath?: string;
+  showSave?: boolean;
 }
 
 const parts = [
@@ -16,14 +24,88 @@ const parts = [
   { key: 'psu', label: 'Fuente' },
 ];
 
-export default function BuildCard({ build, currency }: BuildCardProps) {
+export default function BuildCard({
+  build,
+  currency,
+  detailPath = '/builds',
+  showSave = true,
+}: BuildCardProps) {
+  const router = useRouter();
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const isEUR = currency === 'EUR';
   const symbol = isEUR ? '€' : '$';
   const totalPrice = parts.reduce((total, part) => {
-    const product = build[part.key];
-    const price = isEUR ? product?.price_base_eur : product?.price_base_usd;
-    return total + (Number(price) || 0);
+    return total + getBuildPartPrice(build, part.key, currency);
   }, 0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSavedState = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('saved_builds')
+        .select('build_id')
+        .eq('user_id', user.id)
+        .eq('build_id', build.id)
+        .maybeSingle();
+
+      if (isMounted && !error) setIsSaved(Boolean(data));
+    };
+
+    void loadSavedState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [build.id]);
+
+  const handleSaveClick = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
+
+      if (isSaved) {
+        const { error } = await supabase
+          .from('saved_builds')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('build_id', build.id);
+
+        if (error) throw error;
+        setIsSaved(false);
+      } else {
+        const { error } = await supabase
+          .from('saved_builds')
+          .insert({ user_id: user.id, build_id: build.id });
+
+        if (error) throw error;
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error('No se pudo actualizar el build guardado', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <article className="flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/80">
@@ -64,16 +146,32 @@ export default function BuildCard({ build, currency }: BuildCardProps) {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className={`mt-4 grid gap-2 ${showSave ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <Link
-            href={`/builds/${build.slug}?currency=${currency}`}
+            href={`${detailPath}/${build.slug}?currency=${currency}`}
             className="flex items-center justify-center gap-1 rounded-lg border border-zinc-900 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-zinc-300 transition-colors hover:border-zinc-700 hover:text-white"
           >
             <Eye size={14} />
             <span className="hidden sm:inline">Ver</span>
           </Link>
           <BuildActionButton label="Comparar" icon={<BarChart2 size={14} />} />
-          <BuildActionButton label="Guardar" icon={<Bookmark size={14} />} />
+          {showSave && (
+            <button
+              type="button"
+              onClick={handleSaveClick}
+              disabled={isSaving}
+              aria-label={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
+              title={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
+              className={`flex items-center justify-center gap-1 rounded-lg border px-2 py-2.5 text-[9px] font-black uppercase tracking-wider transition-all hover:bg-zinc-900 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
+                isSaved
+                  ? 'border-white bg-zinc-900 text-white'
+                  : 'border-zinc-900 text-zinc-400'
+              }`}
+            >
+              <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
+              <span className="hidden sm:inline">Guardar</span>
+            </button>
+          )}
         </div>
       </div>
     </article>

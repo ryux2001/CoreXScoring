@@ -1,18 +1,10 @@
 import { Info } from 'lucide-react';
+import { getBuildNotes, getBuildPartPrice } from '@/lib/scoringBuilds';
 
 interface BuildNotesCardProps {
   build: any;
   currency?: string;
 }
-
-const mockNotes = [
-  { label: 'Potencia', score: 8.6 },
-  { label: 'Productividad', score: 8.1 },
-  { label: 'Gaming', score: 8.9 },
-  { label: 'Eficiencia', score: 7.8 },
-  { label: 'Cuello botella', score: 9.1 },
-  { label: 'Calidad precio', score: 8.4 },
-];
 
 const parts = ['cpu', 'gpu', 'ram', 'motherboard', 'storage', 'psu'];
 
@@ -62,10 +54,19 @@ export default function BuildNotesCard({
 }: BuildNotesCardProps) {
   const isEUR = currency === 'EUR';
   const symbol = isEUR ? '€' : '$';
+  const notes = getBuildNotes(build, currency);
+  const buildNotes = [
+    { label: 'Potencia', score: notes.potencia },
+    { label: 'Productividad', score: notes.productividad },
+    { label: 'Gaming', score: notes.gaming },
+    { label: 'Eficiencia', score: notes.eficiencia },
+    { label: 'Cuello botella', score: notes.cuelloBotella },
+    { label: 'Compatibilidad', score: notes.compatibilidad },
+    { label: 'Actualizaciones', score: notes.actualizaciones },
+    { label: 'Calidad precio', score: notes.calidadPrecio },
+  ];
   const totalPrice = parts.reduce((total, part) => {
-    const product = build?.[part];
-    const price = isEUR ? product?.price_base_eur : product?.price_base_usd;
-    return total + (Number(price) || 0);
+    return total + getBuildPartPrice(build, part, currency);
   }, 0);
 
   return (
@@ -98,8 +99,8 @@ export default function BuildNotesCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-        {mockNotes.map((note) => {
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8 lg:gap-3">
+        {buildNotes.map((note) => {
           const styles = getScoreStyles(note.score);
 
           return (

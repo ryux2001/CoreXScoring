@@ -4,11 +4,6 @@ import { calculateGraphicsPower } from "./calculations/graphicsPower";
 import { calculateBalance } from "./calculations/balance";
 
 export const getComboMetrics = (combo: any): ComboMetrics => {
-  console.log("🔍 DATOS DEL COMBO EN METRICS:", {
-    cpu: combo?.cpu,
-    gpu: combo?.gpu,
-  });
-
   if (!combo) {
     return {
       logicalPower: 0,

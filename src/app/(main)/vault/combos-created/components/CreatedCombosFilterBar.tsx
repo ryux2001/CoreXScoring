@@ -10,15 +10,23 @@ interface CreatedCombosFilterBarProps {
   availableCpuBrands: string[];
   availableGpuBrands: string[];
   currency: string;
+  route?: string;
+  entityLabel?: string;
+  searchPlaceholder?: string;
+  createLabel?: string;
+  createPath?: string;
 }
-
-const route = '/vault/combos-created';
 
 export default function CreatedCombosFilterBar({
   count,
   availableCpuBrands,
   availableGpuBrands,
   currency,
+  route = '/vault/combos-created',
+  entityLabel = 'combos',
+  searchPlaceholder = 'Buscar combos creados',
+  createLabel = 'Crear combo',
+  createPath = '/vault/combos-created/new',
 }: CreatedCombosFilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -102,8 +110,8 @@ export default function CreatedCombosFilterBar({
             type="search"
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Buscar combos creados"
-            aria-label="Buscar combos creados"
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
             className="h-12 w-full rounded-xl border border-zinc-700 bg-black px-4 pr-12 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-400"
           />
           <button
@@ -116,16 +124,16 @@ export default function CreatedCombosFilterBar({
         </form>
 
         <Link
-          href="/vault/combos-created/new"
+          href={createPath}
           className="flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 text-[10px] font-black uppercase tracking-wider text-zinc-300 transition-colors hover:border-white hover:bg-zinc-900 hover:text-white"
         >
-          Crear combo
+          {createLabel}
           <Plus size={15} />
         </Link>
 
         <div className="flex items-center gap-3 sm:ml-auto">
           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
-            {count} combos
+            {count} {entityLabel}
           </span>
           <button
             type="button"

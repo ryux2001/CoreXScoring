@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getBuildPartPrice } from '@/lib/scoringBuilds';
 
 interface BuildMainCardProps {
   build: any;
@@ -21,11 +22,8 @@ export default function BuildMainCard({
   const isEUR = currency === 'EUR';
   const symbol = isEUR ? '€' : '$';
 
-  const getPrice = (item: any) =>
-    Number(isEUR ? item?.price_base_eur : item?.price_base_usd) || 0;
-
   const totalPrice = parts.reduce(
-    (total, part) => total + getPrice(build?.[part.key]),
+    (total, part) => total + getBuildPartPrice(build, part.key, currency),
     0,
   );
 
@@ -71,7 +69,9 @@ export default function BuildMainCard({
                   </div>
 
                   <span className="shrink-0 whitespace-nowrap pl-1 text-xs font-black tracking-tight text-white sm:pl-2 sm:text-sm">
-                    {isEUR ? `${getPrice(item)}${symbol}` : `${symbol}${getPrice(item)}`}
+                    {isEUR
+                      ? `${getBuildPartPrice(build, part.key, currency)}${symbol}`
+                      : `${symbol}${getBuildPartPrice(build, part.key, currency)}`}
                   </span>
                 </div>
 
