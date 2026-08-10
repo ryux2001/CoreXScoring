@@ -13,7 +13,6 @@ const navLinks = [
   { name: "Builds", href: "/builds" },
   { name: "Comparador", href: "/comparator" },
   { name: "Boveda", href: "/vault" },
-  { name: "Perfil", href: "/profile" },
 ];
 
 export default function Navbar() {

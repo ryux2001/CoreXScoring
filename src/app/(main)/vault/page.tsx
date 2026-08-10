@@ -40,9 +40,9 @@ const vaultSections = [
     icon: Hammer,
   },
   {
-    title: 'Gestionar perfil',
-    description: 'Administra tus datos y preferencias de usuario.',
-    href: '/profile',
+    title: 'Gestionar cuenta',
+    description: 'Administra tu acceso y cambia tu contraseña.',
+    href: '/vault/account',
     icon: UserRound,
   },
 ];

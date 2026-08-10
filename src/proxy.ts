@@ -40,10 +40,12 @@ export async function proxy(request: NextRequest) {
   }
 
   const session = Boolean(user);
-  const protectedRoutes = ['/vault', '/profile', '/dashboard', '/settings'];
+  const protectedRoutes = ['/vault', '/dashboard', '/settings'];
   const isProtectedRoute = protectedRoutes.some((route) => (
     request.nextUrl.pathname.startsWith(route)
   ));
+  const authFlowRoutes = ['/auth/confirm', '/auth/update-password'];
+  const isAuthFlowRoute = authFlowRoutes.includes(request.nextUrl.pathname);
 
   const redirectWithSessionCookies = (url: URL) => {
     const redirectResponse = NextResponse.redirect(url);
@@ -55,7 +57,11 @@ export async function proxy(request: NextRequest) {
     return redirectWithSessionCookies(new URL('/auth', request.url));
   }
 
-  if (request.nextUrl.pathname.startsWith('/auth') && session) {
+  if (request.nextUrl.pathname === '/auth/update-password' && !session) {
+    return redirectWithSessionCookies(new URL('/auth', request.url));
+  }
+
+  if (request.nextUrl.pathname.startsWith('/auth') && session && !isAuthFlowRoute) {
     return redirectWithSessionCookies(new URL('/', request.url));
   }
 
@@ -65,7 +71,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     '/vault/:path*',
-    '/profile/:path*',
     '/dashboard/:path*',
     '/auth/:path*',
   ],

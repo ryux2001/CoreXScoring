@@ -4,11 +4,17 @@ import { useState } from "react";
 import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
 
-export default function AuthClientWrapper() {
+export default function AuthClientWrapper({ initialNotice }: { initialNotice?: string }) {
   const [showLogin, setShowLogin] = useState(true);
 
   return (
     <>
+      {initialNotice && (
+        <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-300">
+          {initialNotice}
+        </div>
+      )}
+
       {/* Botones superiores de cambio (Como en image_8.png) */}
       <div className="flex border border-white/10 rounded-xl overflow-hidden mb-8">
         <button
