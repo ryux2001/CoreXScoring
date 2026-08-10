@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AuthStatus({ isMobile = false }: { isMobile?: boolean }) {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
+  const router = useRouter();
 
   useEffect(() => {
     let isMounted = true;
@@ -36,7 +38,11 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
         <button
           onClick={async () => {
             const { error } = await supabase.auth.signOut();
-            if (!error) logout();
+            if (!error) {
+              logout();
+              router.replace("/");
+              router.refresh();
+            }
           }}
           className="text-xs text-zinc-500 hover:text-white transition-colors cursor-pointer"
         >

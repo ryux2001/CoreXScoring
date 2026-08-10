@@ -7,13 +7,15 @@ export const metadata: Metadata = {
 };
 
 interface AuthPageProps {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; deleted?: string }>;
 }
 
 export default async function AuthPage({ searchParams }: AuthPageProps) {
   const params = await searchParams;
   const initialNotice =
-    params.error === "invalid-link"
+    params.deleted === "1"
+      ? "Tu cuenta se ha eliminado correctamente."
+      : params.error === "invalid-link"
       ? "El enlace ya no es válido o ha caducado. Solicita uno nuevo para continuar."
       : undefined;
 

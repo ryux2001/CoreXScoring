@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import DeleteAccountForm from '@/app/auth/components/DeleteAccountForm';
+import NameChangeForm from '@/app/auth/components/NameChangeForm';
 import PasswordChangeForm from '@/app/auth/components/PasswordChangeForm';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
@@ -42,10 +44,7 @@ export default async function VaultAccountPage() {
             Datos de acceso
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Nombre</p>
-              <p className="mt-2 text-sm font-medium text-zinc-200">{fullName}</p>
-            </div>
+            <NameChangeForm initialName={fullName} />
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
               <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Email</p>
               <p className="mt-2 break-all text-sm font-medium text-zinc-200">{user.email}</p>
@@ -61,6 +60,16 @@ export default async function VaultAccountPage() {
             Confirma tu contraseña actual antes de establecer una nueva.
           </p>
           <PasswordChangeForm requireCurrentPassword />
+        </section>
+
+        <section className="mt-8 border-t border-zinc-800 pt-6">
+          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-red-400">
+            Zona peligrosa
+          </h2>
+          <p className="mb-5 mt-2 text-sm text-zinc-500">
+            Eliminar tu cuenta borra tu acceso y tus datos personales de autenticación.
+          </p>
+          <DeleteAccountForm />
         </section>
       </div>
     </main>
