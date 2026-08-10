@@ -202,10 +202,33 @@ export const Card = ({
   const techDetails = getTechnicalDetails();
   const currencySymbol = currency === "EUR" ? "€" : "$";
 
+  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!window.matchMedia("(max-width: 639px)").matches) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest("button")) return;
+
+    router.push(`/catalog/${slug}?currency=${currency}`);
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!window.matchMedia("(max-width: 639px)").matches) return;
+    if ((event.target as HTMLElement).closest("button")) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    router.push(`/catalog/${slug}?currency=${currency}`);
+  };
+
   return (
-    <div className="group flex w-full flex-col bg-black border border-zinc-900 rounded-2xl p-0 overflow-hidden transition-all hover:border-zinc-700 font-sans">
-      <div className="relative aspect-square w-full overflow-hidden bg-zinc-950 flex items-center justify-center border-b border-zinc-800">
-        <span className="absolute left-3 top-3 z-10 rounded-md border border-white bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+    <div
+      className="group flex w-full cursor-pointer flex-row overflow-hidden rounded-2xl border border-zinc-900 bg-black p-0 font-sans transition-all hover:border-zinc-700 sm:cursor-default sm:flex-col"
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      tabIndex={0}
+    >
+      <div className="relative flex min-h-[180px] w-[42%] shrink-0 items-center justify-center overflow-hidden border-r border-zinc-800 bg-zinc-950 sm:aspect-square sm:min-h-0 sm:h-60 sm:w-full sm:border-r-0 sm:border-b">
+        <span className="absolute left-3 top-3 z-10 rounded-md border border-zinc-600 bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-300">
           {type}
         </span>
 
@@ -213,7 +236,7 @@ export const Card = ({
           <img
             src={finalImageUrl}
             alt={name}
-            className="h-full w-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+            className="absolute inset-0 h-full w-full object-contain opacity-80 transition-opacity group-hover:opacity-100"
           />
         ) : (
           <div className="flex flex-col items-center gap-3">
@@ -225,57 +248,59 @@ export const Card = ({
         )}
       </div>
 
-      <div className="flex flex-col p-5 pt-0">
-        <div className="mt-5 min-h-[56px]">
-          <h3 className="text-lg font-bold tracking-tight text-white line-clamp-2 leading-tight uppercase">
+      <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-5 sm:pt-0 sm:max-h-75">
+        <div className="min-h-[34px] sm:mt-5 sm:min-h-[36px]">
+          <h3 className="text-base font-bold tracking-tight text-white line-clamp-2 leading-tight uppercase sm:text-lg">
             {name}
           </h3>
         </div>
 
-        <div className="mt-4 space-y-2.5">
+        <div className="mt-2 space-y-1.5 sm:mt-2 sm:space-y-2.5">
           {techDetails.map((detail, index) => (
             <div
               key={index}
-              className="flex justify-between items-center border-b border-zinc-900/50 pb-1.5"
+              className="flex items-center justify-between border-b border-zinc-900/50 pb-1 sm:pb-1"
             >
-              <span className="text-[10px] uppercase text-zinc-500 font-semibold tracking-wider">
+              <span className="text-[9px] uppercase text-zinc-500 font-semibold tracking-wider sm:text-[10px]">
                 {detail.label}
               </span>
-              <span className="text-[11px] text-zinc-300 font-medium">
+              <span className="text-[10px] text-zinc-300 font-medium sm:text-[11px]">
                 {detail.value}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="mt-6 flex items-baseline gap-1">
-          <span className="text-2xl font-black text-white tracking-tighter">
+        <div className="mt-3 flex items-baseline gap-1 sm:mt-3">
+          <span className="text-xl font-black tracking-tighter text-white sm:text-2xl">
             {currencySymbol}
             {Number(price).toLocaleString("es-ES")}
           </span>
         </div>
 
         {/* FOOTER DE LA CARD ACTUALIZADO */}
-        <div className="mt-6 flex gap-2">
+        <div className="mt-3 flex min-w-0 gap-1 sm:mt-3 sm:gap-2">
           <Link
             href={`/catalog/${slug}?currency=${currency}`}
-            className="flex-none w-19 flex items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 cursor-pointer active:scale-95"
+            className="hidden w-19 flex-none items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 active:scale-95 sm:flex"
           >
             <Eye size={14} strokeWidth={2.5} />
             VER
           </Link>
-          <CompareButton
-            id={id}
-            slug={slug}
-            type={type}
-            brand={brand}
-            name={name}
-            price={price}
-            currency={currency}
-            specs={specs}
-            compatibility={compatibility}
-            release_date={release_date}
-          />
+          <div className="flex min-w-0 flex-1">
+            <CompareButton
+              id={id}
+              slug={slug}
+              type={type}
+              brand={brand}
+              name={name}
+              price={price}
+              currency={currency}
+              specs={specs}
+              compatibility={compatibility}
+              release_date={release_date}
+            />
+          </div>
 
           {/* Nuevo Botón de Guardar (Solo icono) */}
           <button
@@ -284,7 +309,7 @@ export const Card = ({
             disabled={isSaving}
             aria-label={isSaved ? "Quitar de guardados" : "Guardar producto"}
             title={isSaved ? "Quitar de guardados" : "Guardar producto"}
-            className={`flex items-center justify-center rounded-lg border px-3 py-3 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
+            className={`flex shrink-0 items-center justify-center rounded-lg border px-2 py-2 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95 disabled:cursor-wait disabled:opacity-60 sm:px-3 sm:py-3 ${
               isSaved
                 ? "border-white bg-zinc-900 text-white"
                 : "border-zinc-800 text-zinc-400"

@@ -26,7 +26,6 @@ export default function CompareButton(product: CompareButtonProps) {
   const [customError, setCustomError] = useState<string | null>(null);
 
   const isInCompare = items.some((item) => item.id === product.id);
-
   // 🚀 TEMPORIZADOR: Limpia el mensaje automáticamente después de 4 segundos
   useEffect(() => {
     if (customError) {
@@ -53,9 +52,9 @@ export default function CompareButton(product: CompareButtonProps) {
 
   return (
     <>
-      <button 
+      <button
         onClick={handleCompareClick}
-        className={`flex-1 flex items-center justify-center gap-2 rounded-lg border py-3 text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+        className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-2 text-[10px] font-bold transition-all cursor-pointer active:scale-95 sm:gap-2 sm:py-3 sm:text-xs ${
           isInCompare 
             ? "border-white bg-zinc-900 text-white" 
             : "border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white"

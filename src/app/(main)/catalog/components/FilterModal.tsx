@@ -88,10 +88,10 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-24 px-4 sm:pt-32">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-hidden px-4 pt-4 sm:pt-32">
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      
-      <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-950 p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+
+      <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl touch-pan-y animate-in fade-in zoom-in-95 duration-200 sm:max-h-none sm:overflow-visible sm:p-8">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-xl font-bold text-white tracking-tighter uppercase">Filtros</h2>
           <button onClick={onClose} className="text-zinc-500 hover:text-white"><X size={20} /></button>

@@ -62,7 +62,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   if (error) return <div className="text-white p-20 text-center">Error: {error.message}</div>;
 
   return (
-    <main className="min-h-screen bg-black p-6 md:p-12 lg:p-16">
+    <main className="min-h-screen bg-black py-3 px-2.5 sm:p-6 md:p-12 lg:p-16">
       <div className="mx-auto max-w-7xl">
         
         <FilterBar 
@@ -72,7 +72,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
           currency={currency}
         />
 
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products?.map((product: any) => (
             <Card 
               key={product.id}
