@@ -58,15 +58,15 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
   );
 
   return (
-    <main className="min-h-screen bg-black p-6 md:p-12 lg:p-16">
+    <main className="min-h-screen bg-black p-3 sm:p-6 md:p-12 lg:p-16">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-black uppercase tracking-wider text-white">
               Catálogo de Combos
             </h1>
-            <p className="mt-1 text-sm font-medium text-zinc-500">
-              Ensambles pre-configurados optimizados.
+            <p className="mt-1 text-sm font-medium text-zinc-400">
+              Combos (CPU - GPU - RAM) pre-configurados optimizados.
             </p>
           </div>
           <ComboCurrencyToggle currentCurrency={currency} />
@@ -87,7 +87,7 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
             </p>
           </div>
         ) : (
-          <div className="mt-10 flex flex-col gap-14">
+          <div className="mt-5 sm:mt-10 flex flex-col gap-14">
             {Object.entries(combosByCategory).map(([categoryName, categoryCombos]) => (
               <section key={categoryName}>
                 <h2 className="mb-6 border-b border-zinc-900 pb-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-400">

@@ -69,7 +69,7 @@ export default function ComboFilterBar({
 
   return (
     <>
-      <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mt-7 flex gap-3 sm:flex-row sm:items-center">
         <button
           type="button"
           onClick={openFilters}
@@ -102,8 +102,10 @@ export default function ComboFilterBar({
           </button>
         </form>
 
-        <div className="flex items-center gap-3 sm:ml-auto">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+        
+      </div>
+      <div className="flex items-center gap-3 sm:ml-auto mt-3 sm:mt-5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
             {count} {entityLabel}
           </span>
           {showCurrencyToggle && (
@@ -118,7 +120,6 @@ export default function ComboFilterBar({
             </button>
           )}
         </div>
-      </div>
 
       {(searchParams.get('q') || hasCategoryFilter) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">

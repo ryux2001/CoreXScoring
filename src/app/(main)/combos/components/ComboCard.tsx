@@ -132,27 +132,27 @@ export default function ComboCard({ combo, currency, detailPath = '/combos' }: C
   };
 
   return (
-    <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/80">
+    <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-5 transition-all duration-300 hover:border-zinc-800 hover:bg-zinc-900/50">
       
       {/* Cabecera de la tarjeta */}
-      <div className="mb-5">
+      <div className="mb-1.5 sm:mb-3">
         <h3 className="text-sm font-bold text-white leading-snug line-clamp-2">
           {combo.title}
         </h3>
       </div>
 
       {/* Lista de Componentes */}
-      <div className="flex flex-col gap-2.5 flex-1">
+      <div className="flex flex-col gap-0.5 flex-1">
         {[
           { label: 'CPU', item: combo.cpu, price: cpuPrice },
           { label: 'GPU', item: combo.gpu, price: gpuPrice },
           { label: 'RAM', item: combo.ram, price: ramPrice }
         ].map((part, idx) => (
           part.item && (
-            <div key={idx} className="flex items-center justify-between rounded-xl bg-black/50 p-3 border border-zinc-900/50">
+            <div key={idx} className="flex items-center justify-between rounded-xl bg-black/50 p-3 border border-zinc-900/50 hover:border hover:border-zinc-600">
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">
-                  {part.label} · {part.item.brand}
+                <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider ">
+                  {part.label} ·
                 </span>
                 <span className="text-xs font-medium text-zinc-300 mt-0.5 truncate max-w-[160px]">
                   {part.item.name}
@@ -167,7 +167,7 @@ export default function ComboCard({ combo, currency, detailPath = '/combos' }: C
       </div>
 
       {/* Pie de la tarjeta */}
-      <div className="mt-6 pt-5 border-t border-zinc-800/80">
+      <div className="mt-2 sm:mt-2.5 pt-3 border-t border-zinc-800/80">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">

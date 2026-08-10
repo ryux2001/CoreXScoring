@@ -153,16 +153,14 @@ export default function BuildCard({
           {build.title}
         </h2>
 
-        <div className="mt-5 space-y-2 border-l border-zinc-800 pl-4">
+        <div className="mt-5 space-y-2 border-l-2 border-zinc-600 py-1.5 pl-4">
           {parts.map((part) => {
             const product = build[part.key];
             if (!product) return null;
 
             return (
               <div key={part.key} className="flex min-w-0 items-baseline gap-2">
-                <span className="w-24 shrink-0 text-[9px] font-black uppercase tracking-wider text-zinc-600">
-                  {part.label}
-                </span>
+                
                 <span className="truncate text-xs font-bold text-zinc-300" title={product.name}>
                   {product.name}
                 </span>

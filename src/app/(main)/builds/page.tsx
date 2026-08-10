@@ -93,13 +93,13 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
             </p>
           </div>
         ) : (
-          <div className="mt-10 flex flex-col gap-14">
+          <div className="mt-10 flex flex-col gap-14 sm:gap-8">
             {Object.entries(buildsByCategory).map(([categoryName, categoryBuilds]) => (
               <section key={categoryName}>
                 <h2 className="mb-6 border-b border-zinc-900 pb-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-400">
                   {categoryName}
                 </h2>
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-8 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   {categoryBuilds.map((build) => (
                     <BuildCard key={build.id} build={build} currency={currency} />
                   ))}
