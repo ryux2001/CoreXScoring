@@ -2,18 +2,21 @@
 
 import React from "react";
 import { COMPONENT_SPECS, getProductSpecValue } from "@/lib/config/specs-mapping";
-import { isComboItem } from "./comparisonUtils";
+import { isBuildItem, isComboItem } from "./comparisonUtils";
+import type { BuildPartKey, ComboPartKey } from "./comparisonUtils";
 
 interface CompareSpecsTableProps {
   items: any[];
 }
 
 interface ComboSpecDefinition {
-  part: 'cpu' | 'gpu' | 'ram';
+  part: ComboPartKey | BuildPartKey;
   label: string;
   key: string;
   format?: (value: any) => string;
 }
+
+const formatList = (value: any) => Array.isArray(value) ? value.join(" · ") : String(value);
 
 const COMBO_SPECS: ComboSpecDefinition[] = [
   { part: "cpu", label: "CPU · Socket", key: "socket" },
@@ -35,10 +38,26 @@ const COMBO_SPECS: ComboSpecDefinition[] = [
   { part: "ram", label: "RAM · Frecuencia", key: "speed", format: (value: any) => `${value} MHz` },
 ];
 
+const BUILD_SPECS: ComboSpecDefinition[] = [
+  ...COMBO_SPECS,
+  { part: "storage", label: "STORAGE · Almacenamiento", key: "capacity", format: (value: any) => Number(value) >= 1000 ? `${Number(value) / 1000} TB` : `${value} GB` },
+  { part: "storage", label: "STORAGE · Velocidad lectura", key: "read_speed", format: (value: any) => `${value} MB/s` },
+  { part: "storage", label: "STORAGE · Velocidad escritura", key: "write_speed", format: (value: any) => `${value} MB/s` },
+  { part: "motherboard", label: "MOTHERBOARD · PCIe", key: "pcie_generation", format: (value: any) => `PCIe Gen ${value}` },
+  { part: "motherboard", label: "MOTHERBOARD · Slots SSD", key: "m2_slots", format: formatList },
+  { part: "motherboard", label: "MOTHERBOARD · RAM soportada", key: "ram_support", format: formatList },
+  { part: "psu", label: "PSU · Certificacion", key: "efficiency" },
+  { part: "psu", label: "PSU · Watts", key: "wattage", format: (value: any) => `${value} W` },
+];
+
 export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
   if (items.length === 0) return null;
 
-  if (isComboItem(items[0])) {
+  if (isComboItem(items[0]) || isBuildItem(items[0])) {
+    const isBuild = isBuildItem(items[0]);
+    const specs = isBuild ? BUILD_SPECS : COMBO_SPECS;
+    const itemTypeLabel = isBuild ? 'Build' : 'Combo';
+
     return (
       <div className="mt-12 w-full rounded-2xl border border-zinc-900 bg-zinc-950/20 backdrop-blur-sm overflow-x-auto md:overflow-x-visible animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-255 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="grid grid-cols-12 border-b border-zinc-900 bg-zinc-950/60 px-6 py-4 items-center min-w-[650px] md:min-w-0">
@@ -49,7 +68,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
             {items.map((item) => (
               <div key={item.id} className="truncate pr-2">
                 <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tight truncate block">{item.title || item.name}</span>
-                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mt-0.5">Combo</span>
+                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mt-0.5">{itemTypeLabel}</span>
               </div>
             ))}
             {Array.from({ length: 3 - items.length }).map((_, index) => <div key={`empty-combo-head-${index}`} className="hidden md:block" />)}
@@ -57,7 +76,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
         </div>
 
         <div className="divide-y divide-zinc-900/50">
-          {COMBO_SPECS.map((spec) => (
+          {specs.map((spec) => (
             <div key={`${spec.part}-${spec.key}`} className="grid grid-cols-12 px-6 py-3.5 items-center hover:bg-zinc-900/10 transition-colors duration-200 group min-w-[650px] md:min-w-0">
               <div className="col-span-3 pr-4">
                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">{spec.label}</span>

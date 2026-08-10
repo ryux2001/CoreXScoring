@@ -1,7 +1,7 @@
 import React from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ComparatorClient from './components/ComparatorClient';
-import { normalizeCombo } from './components/comparisonUtils';
+import { normalizeBuild, normalizeCombo } from './components/comparisonUtils';
 
 interface ComparatorPageProps {
   params: Promise<{ slugs?: string[] }>;
@@ -17,7 +17,7 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
   let initialItems: any[] = [];
 
   if (slugs.length > 0) {
-    const [{ data: products }, { data: combos }] = await Promise.all([
+    const [{ data: products }, { data: combos }, { data: builds }] = await Promise.all([
       supabase
         .from('products_with_priority')
         .select('*')
@@ -32,6 +32,19 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
         `)
         .eq('is_active', true)
         .in('slug', slugs),
+      supabase
+        .from('builds')
+        .select(`
+          *,
+          cpu:products!cpu_id(*),
+          gpu:products!gpu_id(*),
+          ram:products!ram_id(*),
+          motherboard:products!motherboard_id(*),
+          storage:products!storage_id(*),
+          psu:products!psu_id(*)
+        `)
+        .eq('is_active', true)
+        .in('slug', slugs),
     ]);
 
     initialItems = slugs
@@ -40,7 +53,10 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
         if (product) return product;
 
         const combo = combos?.find((item) => item.slug === slug);
-        return combo ? normalizeCombo(combo, currency) : null;
+        if (combo) return normalizeCombo(combo, currency);
+
+        const build = builds?.find((item) => item.slug === slug);
+        return build ? normalizeBuild(build, currency) : null;
       })
       .filter(Boolean);
   }

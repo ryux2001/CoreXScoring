@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart2, Bookmark, Eye } from 'lucide-react';
+import { AlertCircle, BarChart2, Bookmark, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { MouseEvent, ReactNode } from 'react';
 import { getBuildPartPrice } from '@/lib/scoringBuilds';
 import { supabase } from '@/lib/supabaseClient';
+import { useCompareStore } from '@/store/useCompareStore';
 
 interface BuildCardProps {
   build: any;
@@ -31,13 +32,18 @@ export default function BuildCard({
   showSave = true,
 }: BuildCardProps) {
   const router = useRouter();
+  const addItem = useCompareStore((state) => state.addItem);
+  const removeItem = useCompareStore((state) => state.removeItem);
+  const compareItems = useCompareStore((state) => state.items);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
   const isEUR = currency === 'EUR';
   const symbol = isEUR ? '€' : '$';
   const totalPrice = parts.reduce((total, part) => {
     return total + getBuildPartPrice(build, part.key, currency);
   }, 0);
+  const isInCompare = compareItems.some((item) => item.id === build.id);
 
   useEffect(() => {
     let isMounted = true;
@@ -65,6 +71,36 @@ export default function BuildCard({
       isMounted = false;
     };
   }, [build.id]);
+
+  useEffect(() => {
+    if (!customError) return;
+
+    const timer = setTimeout(() => setCustomError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [customError]);
+
+  const handleCompareClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+
+    if (isInCompare) {
+      removeItem(build.id);
+      return;
+    }
+
+    const result = addItem({
+      ...build,
+      type: 'BUILD',
+      comparisonType: 'build',
+      name: build.title,
+      brand: 'Build',
+      price: totalPrice,
+      currency,
+    });
+
+    if (!result.success) {
+      setCustomError(result.error || 'No se pudo anadir el build');
+    }
+  };
 
   const handleSaveClick = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -154,7 +190,18 @@ export default function BuildCard({
             <Eye size={14} />
             <span className="hidden sm:inline">Ver</span>
           </Link>
-          <BuildActionButton label="Comparar" icon={<BarChart2 size={14} />} />
+          <button
+            type="button"
+            onClick={handleCompareClick}
+            className={`flex items-center justify-center gap-1 rounded-lg border px-2 py-2.5 text-[9px] font-black uppercase tracking-wider transition-all hover:bg-zinc-900 hover:text-white active:scale-95 cursor-pointer ${
+              isInCompare
+                ? 'border-white bg-zinc-900 text-white'
+                : 'border-zinc-900 text-zinc-400'
+            }`}
+          >
+            <BarChart2 size={14} />
+            <span className="hidden sm:inline">Comparar</span>
+          </button>
           {showSave && (
             <button
               type="button"
@@ -174,6 +221,22 @@ export default function BuildCard({
           )}
         </div>
       </div>
+
+      {customError && (
+        <div className="fixed bottom-6 left-1/2 z-[10000] flex w-[90vw] max-w-sm -translate-x-1/2 items-center gap-3 rounded-xl border border-red-900/40 bg-zinc-950 px-4 py-3 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-red-800 bg-red-950/50 text-red-400">
+            <AlertCircle size={12} strokeWidth={3} />
+          </div>
+          <div className="flex min-w-0 flex-col">
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-red-500">
+              Sistema de comparacion
+            </span>
+            <span className="mt-0.5 text-xs font-medium leading-tight tracking-tight text-zinc-300">
+              {customError}
+            </span>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

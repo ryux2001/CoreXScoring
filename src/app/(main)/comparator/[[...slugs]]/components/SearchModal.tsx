@@ -6,6 +6,7 @@ import { useCompareStore } from '@/store/useCompareStore';
 import { supabase } from '@/lib/supabaseClient';
 import {
   getProductPrice,
+  normalizeBuild,
   normalizeCombo,
 } from './comparisonUtils';
 import type { ComparisonMode } from './comparisonUtils';
@@ -61,8 +62,10 @@ export default function SearchModal({
 
         if (componentType) productQuery.ilike('type', componentType);
 
-        const result = comparisonMode === 'combos'
-          ? await supabase
+        const result = comparisonMode === 'components'
+          ? await productQuery
+          : comparisonMode === 'combos'
+            ? await supabase
               .from('combos')
               .select(`
                 *,
@@ -73,7 +76,20 @@ export default function SearchModal({
               .eq('is_active', true)
               .ilike('title', search)
               .limit(5)
-          : await productQuery;
+            : await supabase
+              .from('builds')
+              .select(`
+                *,
+                cpu:products!cpu_id(*),
+                gpu:products!gpu_id(*),
+                ram:products!ram_id(*),
+                motherboard:products!motherboard_id(*),
+                storage:products!storage_id(*),
+                psu:products!psu_id(*)
+              `)
+              .eq('is_active', true)
+              .ilike('title', search)
+              .limit(5);
 
         if (result.error) throw result.error;
         setSuggestions(result.data || []);
@@ -93,7 +109,9 @@ export default function SearchModal({
   const handleSelectItem = (item: any) => {
     const normalizedItem = comparisonMode === 'combos'
       ? normalizeCombo(item, globalCurrency)
-      : {
+      : comparisonMode === 'builds'
+        ? normalizeBuild(item, globalCurrency)
+        : {
           ...item,
           comparisonType: 'product',
           price: getProductPrice(item, globalCurrency),
@@ -111,6 +129,7 @@ export default function SearchModal({
   };
 
   const isComboMode = comparisonMode === 'combos';
+  const isBuildMode = comparisonMode === 'builds';
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -120,7 +139,7 @@ export default function SearchModal({
         <div className="flex items-center justify-between pb-4 border-b border-zinc-900 mb-4">
           <div className="flex flex-col">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-white">
-              Buscar {isComboMode ? 'Combo' : 'Componente'}
+              Buscar {isComboMode ? 'Combo' : isBuildMode ? 'Build' : 'Componente'}
             </h3>
             {!isComboMode && componentType && (
               <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-wider mt-0.5">
@@ -149,6 +168,7 @@ export default function SearchModal({
           >
             <option value="components">Componentes</option>
             <option value="combos">Combos</option>
+            <option value="builds">Builds</option>
           </select>
         </label>
 
@@ -158,7 +178,7 @@ export default function SearchModal({
             autoFocus
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder={isComboMode ? 'Escribe el nombre del combo...' : 'Escribe el nombre del hardware...'}
+            placeholder={isComboMode ? 'Escribe el nombre del combo...' : isBuildMode ? 'Escribe el nombre del build...' : 'Escribe el nombre del hardware...'}
             className="w-full bg-black border border-zinc-900 rounded-xl px-4 py-3 pl-10 text-xs font-bold text-white outline-none focus:border-zinc-700 transition-colors placeholder:text-zinc-600"
           />
           <Search size={14} className="absolute left-4 text-zinc-600" />
@@ -176,10 +196,10 @@ export default function SearchModal({
                 className="flex w-full flex-col p-3 rounded-xl border border-transparent hover:border-zinc-800 bg-zinc-900/10 hover:bg-zinc-900/40 text-left transition-all group animate-in fade-in duration-150"
               >
                 <span className="text-xs font-bold text-zinc-300 group-hover:text-white truncate">
-                  {isComboMode ? item.title : item.name}
+                  {isComboMode || isBuildMode ? item.title : item.name}
                 </span>
                 <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mt-1">
-                  {isComboMode ? item.category : `${item.brand} · ${item.type}`}
+                  {isComboMode || isBuildMode ? item.category : `${item.brand} · ${item.type}`}
                 </span>
               </button>
             ))

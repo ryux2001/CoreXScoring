@@ -14,7 +14,10 @@ export default function CompareCartDropdown() {
   const isComboComparison = componentType === "COMBO" || items.some((item) => (
     item.comparisonType === "combo" || String(item.type || "").toUpperCase() === "COMBO"
   ));
-  const comparisonLabel = isComboComparison ? "Combos" : "Componentes";
+  const isBuildComparison = componentType === "BUILD" || items.some((item) => (
+    item.comparisonType === "build" || String(item.type || "").toUpperCase() === "BUILD"
+  ));
+  const comparisonLabel = isBuildComparison ? "Builds" : isComboComparison ? "Combos" : "Componentes";
 
   return (
     <div className="relative">

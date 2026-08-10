@@ -8,17 +8,25 @@ import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
 import { getComponentNotes } from '@/lib/scoring/index';
 import { getComboNotes } from '@/lib/scoringCombos';
+import { getBuildNotes } from '@/lib/scoringBuilds';
 import EmptyState from './EmptyState';
 import SearchModal from './SearchModal';
 import CompareProductCard from './CompareProductCard';
 import CompareSpecsTable from './CompareSpecsTable';
 import {
+  applyBuildPriceOverrides,
   applyComboPriceOverrides,
+  getBuildTotalPrice,
   getComboTotalPrice,
   getProductPrice,
+  isBuildItem,
   isComboItem,
 } from './comparisonUtils';
-import type { ComparisonMode, ComboPriceOverrides } from './comparisonUtils';
+import type {
+  BuildPriceOverrides,
+  ComparisonMode,
+  ComboPriceOverrides,
+} from './comparisonUtils';
 
 interface ComparatorClientProps {
   initialItems: any[];
@@ -30,9 +38,14 @@ function getCurrentPrice(
   currency: string,
   evaluatedPrices: Record<string | number, number>,
   comboPriceOverrides: Record<string | number, ComboPriceOverrides>,
+  buildPriceOverrides: Record<string | number, BuildPriceOverrides>,
 ): number {
   if (isComboItem(item)) {
     return getComboTotalPrice(item, currency, comboPriceOverrides[item.id] || {});
+  }
+
+  if (isBuildItem(item)) {
+    return getBuildTotalPrice(item, currency, buildPriceOverrides[item.id] || {});
   }
 
   return evaluatedPrices[item.id] !== undefined
@@ -45,9 +58,14 @@ function getItemNotes(
   currency: string,
   currentPrice: number,
   comboOverrides: ComboPriceOverrides,
+  buildOverrides: BuildPriceOverrides,
 ) {
   if (isComboItem(item)) {
     return getComboNotes(applyComboPriceOverrides(item, currency, comboOverrides), currency) || {};
+  }
+
+  if (isBuildItem(item)) {
+    return getBuildNotes(applyBuildPriceOverrides(item, currency, buildOverrides), currency) || {};
   }
 
   const priceUSD = convertPrice(currentPrice, currency, 'USD');
@@ -64,11 +82,18 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(() => (
-    items.some((item) => isComboItem(item)) ? 'combos' : 'components'
+    items.some((item) => isBuildItem(item))
+      ? 'builds'
+      : items.some((item) => isComboItem(item))
+        ? 'combos'
+        : 'components'
   ));
   const [evaluatedPrices, setEvaluatedPrices] = useState<Record<string | number, number>>({});
   const [comboPriceOverrides, setComboPriceOverrides] = useState<
     Record<string | number, ComboPriceOverrides>
+  >({});
+  const [buildPriceOverrides, setBuildPriceOverrides] = useState<
+    Record<string | number, BuildPriceOverrides>
   >({});
   const hasHydratedInitialItems = useRef(false);
   const hasHydratedStoredProducts = useRef(false);
@@ -82,7 +107,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
       initialItems.forEach((item) => {
         addItem({
           ...item,
-          price: getCurrentPrice(item, globalCurrency, {}, {}),
+          price: getCurrentPrice(item, globalCurrency, {}, {}, {}),
           currency: globalCurrency,
         });
       });
@@ -95,7 +120,9 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
     hasHydratedStoredProducts.current = true;
 
     const hydrateStoredProducts = async () => {
-      const componentItems = items.filter((item) => !isComboItem(item));
+      const componentItems = items.filter(
+        (item) => !isComboItem(item) && !isBuildItem(item),
+      );
       if (componentItems.length === 0) return;
 
       const productIds = componentItems.map((item) => String(item.id));
@@ -124,7 +151,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
       );
 
       const hydratedItems = items.map((item) => {
-        if (isComboItem(item)) return item;
+        if (isComboItem(item) || isBuildItem(item)) return item;
 
         const completeProduct =
           productsById.get(String(item.id)) || productsBySlug.get(item.slug);
@@ -160,12 +187,19 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
     const maxes: Record<string, number> = {};
 
     items.forEach((item) => {
-      const currentPrice = getCurrentPrice(item, globalCurrency, evaluatedPrices, comboPriceOverrides);
+      const currentPrice = getCurrentPrice(
+        item,
+        globalCurrency,
+        evaluatedPrices,
+        comboPriceOverrides,
+        buildPriceOverrides,
+      );
       const notes = getItemNotes(
         item,
         globalCurrency,
         currentPrice,
         comboPriceOverrides[item.id] || {},
+        buildPriceOverrides[item.id] || {},
       );
 
       Object.entries(notes).forEach(([category, score]) => {
@@ -177,18 +211,25 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
     });
 
     return maxes;
-  }, [items, evaluatedPrices, comboPriceOverrides, globalCurrency]);
+  }, [items, evaluatedPrices, comboPriceOverrides, buildPriceOverrides, globalCurrency]);
 
   const masterCategories = useMemo(() => {
     const categoriesSet = new Set<string>();
 
     items.forEach((item) => {
-      const currentPrice = getCurrentPrice(item, globalCurrency, evaluatedPrices, comboPriceOverrides);
+      const currentPrice = getCurrentPrice(
+        item,
+        globalCurrency,
+        evaluatedPrices,
+        comboPriceOverrides,
+        buildPriceOverrides,
+      );
       const notes = getItemNotes(
         item,
         globalCurrency,
         currentPrice,
         comboPriceOverrides[item.id] || {},
+        buildPriceOverrides[item.id] || {},
       );
 
       Object.keys(notes).forEach((category) => {
@@ -204,7 +245,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
     });
 
     return Array.from(categoriesSet);
-  }, [items, evaluatedPrices, comboPriceOverrides, globalCurrency]);
+  }, [items, evaluatedPrices, comboPriceOverrides, buildPriceOverrides, globalCurrency]);
 
   if (items.length === 0) {
     return (
@@ -234,11 +275,13 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
         >
           {items.map((item) => {
             const itemComboOverrides = comboPriceOverrides[item.id] || {};
+            const itemBuildOverrides = buildPriceOverrides[item.id] || {};
             const currentPrice = getCurrentPrice(
               item,
               globalCurrency,
               evaluatedPrices,
               comboPriceOverrides,
+              buildPriceOverrides,
             );
 
             return (
@@ -248,13 +291,17 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
                 globalCurrency={globalCurrency}
                 displayedPrice={currentPrice}
                 setDisplayedPrice={(newPrice) => {
-                  if (!isComboItem(item)) {
+                  if (!isComboItem(item) && !isBuildItem(item)) {
                     setEvaluatedPrices((previous) => ({ ...previous, [item.id]: newPrice }));
                   }
                 }}
                 comboPriceOverrides={itemComboOverrides}
                 setComboPriceOverrides={(overrides) => {
                   setComboPriceOverrides((previous) => ({ ...previous, [item.id]: overrides }));
+                }}
+                buildPriceOverrides={itemBuildOverrides}
+                setBuildPriceOverrides={(overrides) => {
+                  setBuildPriceOverrides((previous) => ({ ...previous, [item.id]: overrides }));
                 }}
                 maxScores={maxScoresByCategory}
                 masterCategories={masterCategories}
@@ -271,7 +318,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
                 <Plus size={16} />
               </div>
               <span className="text-[9px] font-black uppercase tracking-[0.2em] mt-4">
-                Añadir {comparisonMode === 'combos' ? 'Combo' : 'Componente'}
+                Añadir {comparisonMode === 'combos' ? 'Combo' : comparisonMode === 'builds' ? 'Build' : 'Componente'}
               </span>
             </button>
           )}
@@ -285,6 +332,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
           onClick={() => {
             setEvaluatedPrices({});
             setComboPriceOverrides({});
+            setBuildPriceOverrides({});
             clearCompare();
           }}
           className="rounded-xl border border-zinc-900 hover:border-red-900/20 bg-zinc-950/40 px-5 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-red-400 transition-all cursor-pointer active:scale-95"
