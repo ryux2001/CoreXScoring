@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, BarChart2, Bookmark } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
 import { supabase } from '@/lib/supabaseClient';
+import { getComboPartPrice } from '@/lib/scoringCombos';
 
 interface ComboCardProps {
   combo: any;
@@ -25,17 +26,9 @@ export default function ComboCard({ combo, currency, detailPath = '/combos' }: C
   const symbol = isEUR ? '€' : '$';
 
   // Lógica interna para calcular el precio final de cada pieza (Oferta vs Base)
-  const getComponentPrice = (component: any, customUsd: number | null, customEur: number | null) => {
-    if (!component) return 0;
-    if (isEUR) {
-      return customEur !== null && customEur !== undefined ? customEur : (component.price_base_eur || 0);
-    }
-    return customUsd !== null && customUsd !== undefined ? customUsd : (component.price_base_usd || 0);
-  };
-
-  const cpuPrice = getComponentPrice(combo.cpu, combo.custom_price_cpu_usd, combo.custom_price_cpu_eur);
-  const gpuPrice = getComponentPrice(combo.gpu, combo.custom_price_gpu_usd, combo.custom_price_gpu_eur);
-  const ramPrice = getComponentPrice(combo.ram, combo.custom_price_ram_usd, combo.custom_price_ram_eur);
+  const cpuPrice = getComboPartPrice(combo, 'cpu', currency);
+  const gpuPrice = getComboPartPrice(combo, 'gpu', currency);
+  const ramPrice = getComboPartPrice(combo, 'ram', currency);
   
   const totalPrice = cpuPrice + gpuPrice + ramPrice;
   const isInCompare = items.some((item) => item.id === combo.id);

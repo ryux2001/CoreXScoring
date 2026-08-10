@@ -1,4 +1,5 @@
 import { getComponentNotes } from '@/lib/scoring';
+import { convertPrice, normalizeCurrency } from '@/lib/currency';
 
 export interface BuildNotes {
   potencia: number;
@@ -78,12 +79,24 @@ export const getBuildPartPrice = (
   build: Build,
   part: string,
   currency: string,
+  draftCurrency?: string,
 ): number => {
   const item = build?.[part];
-  const normalizedCurrency = currency.toLowerCase() === 'eur' ? 'eur' : 'usd';
+  const normalizedCurrency = normalizeCurrency(currency);
+  const normalizedSuffix = normalizedCurrency.toLowerCase();
+
+  const draftPrice = numberValue(build?.customPrices?.[part], -1);
+  if (build?.priceModes?.[part] === 'custom' && draftPrice >= 0) {
+    return convertPrice(
+      draftPrice,
+      draftCurrency || normalizedCurrency,
+      normalizedCurrency,
+    );
+  }
+
   const customKeys = [
-    `custom_price_${part}_${normalizedCurrency}`,
-    `price_${part}_${normalizedCurrency}`,
+    `custom_price_${part}_${normalizedSuffix}`,
+    `price_${part}_${normalizedSuffix}`,
   ];
 
   for (const key of customKeys) {
@@ -91,19 +104,37 @@ export const getBuildPartPrice = (
     if (customPrice >= 0) return customPrice;
   }
 
-  const basePrice = numberValue(item?.[`price_base_${normalizedCurrency}`], -1);
+  const otherCurrency = normalizedCurrency === 'EUR' ? 'USD' : 'EUR';
+  const otherSuffix = otherCurrency.toLowerCase();
+  const otherCustomKeys = [
+    `custom_price_${part}_${otherSuffix}`,
+    `price_${part}_${otherSuffix}`,
+  ];
+
+  for (const key of otherCustomKeys) {
+    const customPrice = numberValue(build?.[key], -1);
+    if (customPrice >= 0) {
+      return convertPrice(customPrice, otherCurrency, normalizedCurrency);
+    }
+  }
+
+  const basePrice = numberValue(item?.[`price_base_${normalizedSuffix}`], -1);
   if (basePrice >= 0) return basePrice;
 
   return numberValue(item?.price_base_usd, 0);
 };
 
-const getComponentScores = (build: Build, currency: string) => {
+const getComponentScores = (
+  build: Build,
+  currency: string,
+  draftCurrency?: string,
+) => {
   const scores: Record<string, Build> = {};
 
   for (const part of buildParts) {
     const product = build?.[part];
     scores[part] = product
-      ? getComponentNotes(product, getBuildPartPrice(build, part, currency))
+      ? getComponentNotes(product, getBuildPartPrice(build, part, currency, draftCurrency))
       : {};
   }
 
@@ -584,7 +615,7 @@ const getBuildValue = (
 };
 
 export const getBuildNotes = (build: Build, currency = 'USD'): BuildNotes => {
-  const scores = getComponentScores(build, currency);
+  const scores = getComponentScores(build, 'USD', currency);
   const potencia = getBuildPower(scores);
   const productividad = getBuildProductivity(scores);
   const gaming = getBuildGaming(scores);

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, CircleHelp, Search, Settings2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { convertPrice } from '@/lib/currency';
 import ComboEvaluationSection from '@/app/(main)/combos/[slug]/components/ComboEvaluationSection';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
 import Metrics from '@/app/(main)/combos/[slug]/components/Metrics';
@@ -59,7 +60,18 @@ function parseJson(value: any) {
 function getInitialPrice(combo: any, slot: SlotKey, currency: string) {
   const suffix = currency === 'EUR' ? 'eur' : 'usd';
   const customPrice = combo?.[`custom_price_${slot}_${suffix}`];
-  return customPrice === null || customPrice === undefined ? '' : String(customPrice);
+  if (customPrice !== null && customPrice !== undefined && customPrice !== '') {
+    return String(customPrice);
+  }
+
+  const otherSuffix = suffix === 'eur' ? 'usd' : 'eur';
+  const otherCustomPrice = combo?.[`custom_price_${slot}_${otherSuffix}`];
+  if (otherCustomPrice !== null && otherCustomPrice !== undefined && otherCustomPrice !== '') {
+    const otherCurrency = suffix === 'eur' ? 'USD' : 'EUR';
+    return String(convertPrice(Number(otherCustomPrice), otherCurrency, currency));
+  }
+
+  return '';
 }
 
 function createInitialDraft(combo: any, currency: string): DraftState {
@@ -297,13 +309,30 @@ export default function CreatedComboWorkspace({
 
       const suffix = currency === 'EUR' ? 'eur' : 'usd';
       const getCustomPrice = (slot: SlotKey, targetSuffix: 'usd' | 'eur') => {
+        if (draft.priceModes[slot] !== 'custom') return null;
+
+        const customPrice = Number(draft.customPrices[slot]);
+        if (!Number.isFinite(customPrice)) return null;
+
         if (targetSuffix === suffix) {
-          return draft.priceModes[slot] === 'custom'
-            ? Number(draft.customPrices[slot])
-            : null;
+          return customPrice;
         }
 
-        return initialCombo?.[`custom_price_${slot}_${targetSuffix}`] ?? null;
+        const initialProductId = initialCombo?.[slot]?.id || initialCombo?.[`${slot}_id`];
+        const currentProductId = draft[slot]?.id;
+        const existingPrice = initialCombo?.[`custom_price_${slot}_${targetSuffix}`];
+        const hasExistingPrice =
+          initialProductId === currentProductId &&
+          existingPrice !== null &&
+          existingPrice !== undefined &&
+          existingPrice !== '';
+
+        if (hasExistingPrice && Number.isFinite(Number(existingPrice))) {
+          return Number(existingPrice);
+        }
+
+        const targetCurrency = targetSuffix === 'eur' ? 'EUR' : 'USD';
+        return convertPrice(customPrice, currency, targetCurrency);
       };
       const payload = {
         user_id: user.id,
@@ -327,7 +356,7 @@ export default function CreatedComboWorkspace({
       if (response.error) throw response.error;
 
       setNotification({ type: 'success', message: 'Combo guardado exitosamente.' });
-      setTimeout(() => router.push('/vault/combos-created'), 700);
+      setTimeout(() => router.push(`/vault/combos-created?currency=${currency}`), 700);
     } catch (error) {
       console.error('Error saving created combo:', error);
       setNotification({ type: 'error', message: 'No se pudo guardar el combo.' });

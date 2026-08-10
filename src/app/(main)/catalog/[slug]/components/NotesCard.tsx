@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
+import { convertPrice } from '@/lib/currency';
 import { getComponentNotes } from '@/lib/scoring/index';
 
 interface NotesCardProps {
@@ -25,16 +26,16 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
   useEffect(() => {
     setIsMounted(true);
     setEvaluatedPrice(initialPrice);
-    setPrecioUSD(isEUR ? initialPrice * 1.08 : initialPrice);
+    setPrecioUSD(convertPrice(initialPrice, currency, 'USD'));
 
     const handlePriceUpdate = (e: any) => {
       setEvaluatedPrice(e.detail);
-      setPrecioUSD(isEUR ? e.detail * 1.08 : e.detail);
+      setPrecioUSD(convertPrice(e.detail, currency, 'USD'));
     };
 
     window.addEventListener('updateProductPrice', handlePriceUpdate);
     return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
-  }, [initialPrice, isEUR, product]);
+  }, [initialPrice, currency, product]);
 
   // Obtenemos las 5 notas principales (el precio ya está en USD)
   const baseNotes = getComponentNotes(product, precioUSD);

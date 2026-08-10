@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { getComboPartPrice } from '@/lib/scoringCombos';
 
 interface ComboMainCardProps {
   combo: any;
@@ -15,12 +16,10 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
   ].filter((p) => p.item);
 
   // Helper para obtener el precio de cada componente respetando custom_price o base_price
-  const getPartPrice = (key: string, item: any) => {
+  const getPartPrice = (key: string) => {
     const isEur = currency === 'EUR';
-    const customKey = isEur ? `custom_price_${key}_eur` : `custom_price_${key}_usd`;
-    const baseKey = isEur ? 'price_base_eur' : 'price_base_usd';
+    const price = getComboPartPrice(combo, key as 'cpu' | 'gpu' | 'ram', currency);
 
-    const price = combo?.[customKey] ?? item?.[baseKey] ?? 0;
     const symbol = isEur ? '€' : '$';
 
     return isEur ? `${price}${symbol}` : `${symbol}${price}`;
@@ -42,7 +41,7 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
       {/* Lista de Componentes */}
       <div className="flex flex-col gap-4 sm:gap-5 mt-auto w-full">
         {parts.map((part) => {
-          const priceFormatted = getPartPrice(part.key, part.item);
+          const priceFormatted = getPartPrice(part.key);
 
           return (
             <div key={part.key} className="flex flex-col gap-1.5 w-full min-w-0">

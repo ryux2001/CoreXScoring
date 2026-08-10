@@ -1,12 +1,10 @@
-export function getCreatedComboPrice(combo: any, currency: string): number {
-  const suffix = currency === 'EUR' ? 'eur' : 'usd';
-  const getPartPrice = (part: 'cpu' | 'gpu' | 'ram') => {
-    const customPrice = combo?.[`custom_price_${part}_${suffix}`];
-    const basePrice = combo?.[part]?.[`price_base_${suffix}`];
-    return Number(customPrice ?? basePrice ?? 0);
-  };
+import { getComboPartPrice } from '@/lib/scoringCombos';
 
-  return getPartPrice('cpu') + getPartPrice('gpu') + getPartPrice('ram');
+export function getCreatedComboPrice(combo: any, currency: string): number {
+  return (['cpu', 'gpu', 'ram'] as const).reduce(
+    (total, part) => total + getComboPartPrice(combo, part, currency),
+    0,
+  );
 }
 
 export function getAvailableCreatedComboBrands(combos: any[]) {

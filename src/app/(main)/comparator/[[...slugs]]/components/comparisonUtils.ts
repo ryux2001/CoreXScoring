@@ -1,9 +1,10 @@
+import { convertPrice } from '@/lib/currency';
+import { getComboPartPrice as getStoredComboPartPrice } from '@/lib/scoringCombos';
+
 export type ComparisonMode = 'components' | 'combos';
 export type ComboPartKey = 'cpu' | 'gpu' | 'ram';
 
 export type ComboPriceOverrides = Partial<Record<ComboPartKey, number>>;
-
-export const EUR_TO_USD_RATE = 1.08;
 
 export function isComboItem(item: any): boolean {
   return item?.comparisonType === 'combo' || String(item?.type || '').toUpperCase() === 'COMBO';
@@ -23,11 +24,7 @@ export function getComboPartPrice(
   const override = overrides[part];
   if (override !== undefined) return Number(override);
 
-  const currencySuffix = currency === 'EUR' ? 'eur' : 'usd';
-  const customPrice = combo?.[`custom_price_${part}_${currencySuffix}`];
-  const basePrice = combo?.[part]?.[`price_base_${currencySuffix}`];
-
-  return Number(customPrice ?? basePrice ?? 0);
+  return getStoredComboPartPrice(combo, part, currency);
 }
 
 export function getComboTotalPrice(
@@ -52,14 +49,14 @@ export function applyComboPriceOverrides(
     const value = overrides[part];
     if (value === undefined || !Number.isFinite(Number(value))) return;
 
-    const currentCurrencyKey = `custom_price_${part}_${currency === 'EUR' ? 'eur' : 'usd'}`;
-    const otherCurrencyKey = `custom_price_${part}_${currency === 'EUR' ? 'usd' : 'eur'}`;
+    const currentCurrency = currency === 'EUR' ? 'EUR' : 'USD';
+    const otherCurrency = currentCurrency === 'EUR' ? 'USD' : 'EUR';
+    const currentCurrencyKey = `custom_price_${part}_${currentCurrency.toLowerCase()}`;
+    const otherCurrencyKey = `custom_price_${part}_${otherCurrency.toLowerCase()}`;
     const activeValue = Number(value);
 
     effectiveCombo[currentCurrencyKey] = activeValue;
-    effectiveCombo[otherCurrencyKey] = currency === 'EUR'
-      ? activeValue * EUR_TO_USD_RATE
-      : activeValue / EUR_TO_USD_RATE;
+    effectiveCombo[otherCurrencyKey] = convertPrice(activeValue, currentCurrency, otherCurrency);
   });
 
   return effectiveCombo;

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, CircleHelp, Search, Settings2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { convertPrice } from '@/lib/currency';
 import BuildNotesCard from '@/app/(main)/builds/[slug]/components/BuildNotesCard';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
 import Metrics from '@/app/(main)/combos/[slug]/components/Metrics';
@@ -86,7 +87,16 @@ function getRamCapacity(product: Product | null) {
 function getInitialPrice(build: any, slot: SlotKey, currency: string) {
   const suffix = currency === 'EUR' ? 'eur' : 'usd';
   const value = build?.[`custom_price_${slot}_${suffix}`];
-  return value === null || value === undefined ? '' : String(value);
+  if (value !== null && value !== undefined && value !== '') return String(value);
+
+  const otherSuffix = suffix === 'eur' ? 'usd' : 'eur';
+  const otherValue = build?.[`custom_price_${slot}_${otherSuffix}`];
+  if (otherValue !== null && otherValue !== undefined && otherValue !== '') {
+    const otherCurrency = suffix === 'eur' ? 'USD' : 'EUR';
+    return String(convertPrice(Number(otherValue), otherCurrency, currency));
+  }
+
+  return '';
 }
 
 function createInitialDraft(build: any, currency: string): DraftState {
@@ -331,10 +341,30 @@ export default function CreatedBuildWorkspace({
       }
       const suffix = currency === 'EUR' ? 'eur' : 'usd';
       const getCustomPrice = (slot: SlotKey, targetSuffix: 'usd' | 'eur') => {
+        if (draft.priceModes[slot] !== 'custom') return null;
+
+        const customPrice = Number(draft.customPrices[slot]);
+        if (!Number.isFinite(customPrice)) return null;
+
         if (targetSuffix === suffix) {
-          return draft.priceModes[slot] === 'custom' ? Number(draft.customPrices[slot]) : null;
+          return customPrice;
         }
-        return initialBuild?.[`custom_price_${slot}_${targetSuffix}`] ?? null;
+
+        const initialProductId = initialBuild?.[slot]?.id || initialBuild?.[`${slot}_id`];
+        const currentProductId = draft[slot]?.id;
+        const existingPrice = initialBuild?.[`custom_price_${slot}_${targetSuffix}`];
+        const hasExistingPrice =
+          initialProductId === currentProductId &&
+          existingPrice !== null &&
+          existingPrice !== undefined &&
+          existingPrice !== '';
+
+        if (hasExistingPrice && Number.isFinite(Number(existingPrice))) {
+          return Number(existingPrice);
+        }
+
+        const targetCurrency = targetSuffix === 'eur' ? 'EUR' : 'USD';
+        return convertPrice(customPrice, currency, targetCurrency);
       };
       const payload = {
         user_id: user.id,
@@ -366,7 +396,7 @@ export default function CreatedBuildWorkspace({
         : await supabase.from('created_builds').insert(payload);
       if (response.error) throw response.error;
       setNotification({ type: 'success', message: 'Build guardada exitosamente.' });
-      setTimeout(() => router.push('/vault/builds-created'), 700);
+      setTimeout(() => router.push(`/vault/builds-created?currency=${currency}`), 700);
     } catch (error) {
       console.error('Error saving created build:', error);
       setNotification({ type: 'error', message: 'No se pudo guardar la build.' });

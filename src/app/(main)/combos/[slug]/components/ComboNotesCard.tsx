@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Info } from 'lucide-react';
-import { getComboNotes } from '@/lib/scoringCombos';
+import { getComboNotes, getComboPartPrice } from '@/lib/scoringCombos';
 
 interface ComboNotesCardProps {
   combo?: any;
@@ -17,17 +17,15 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
   const symbol = isEUR ? '€' : '$';
 
   // Helper para obtener el precio de un componente respetando custom_price o base_price
-  const getPartPrice = (key: string, item: any) => {
-    const customKey = isEUR ? `custom_price_${key}_eur` : `custom_price_${key}_usd`;
-    const baseKey = isEUR ? 'price_base_eur' : 'price_base_usd';
-    return combo?.[customKey] ?? item?.[baseKey] ?? 0;
+  const getPartPrice = (key: string) => {
+    return getComboPartPrice(combo, key as 'cpu' | 'gpu' | 'ram', currency, currency);
   };
 
   // Suma total de los componentes del combo
   const totalPrice = combo
-    ? getPartPrice('cpu', combo.cpu) +
-      getPartPrice('gpu', combo.gpu) +
-      getPartPrice('ram', combo.ram)
+    ? getPartPrice('cpu') +
+      getPartPrice('gpu') +
+      getPartPrice('ram')
     : 0;
 
   const formatPrice = (val: number) => {

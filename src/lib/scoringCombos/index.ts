@@ -6,6 +6,50 @@ import { calculateComboGaming } from './calculations/gaming';
 import { calculateComboEfficiency } from './calculations/efficiency';
 import { calculateComboBottleneck } from './calculations/bottleneck';
 import { calculateComboValue } from './calculations/value';
+import { convertPrice, normalizeCurrency } from '@/lib/currency';
+
+type ComboPartKey = 'cpu' | 'gpu' | 'ram';
+
+const getNumericPrice = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+export const getComboPartPrice = (
+  combo: any,
+  part: ComboPartKey,
+  currency: string,
+  draftCurrency?: string,
+): number => {
+  const targetCurrency = normalizeCurrency(currency);
+  const targetSuffix = targetCurrency.toLowerCase();
+
+  const draftPrice = combo?.customPrices?.[part];
+  const isDraftCustom = combo?.priceModes?.[part] === 'custom';
+  const draftNumericPrice = getNumericPrice(draftPrice);
+  if (isDraftCustom && draftNumericPrice !== null) {
+    return convertPrice(
+      draftNumericPrice,
+      draftCurrency || targetCurrency,
+      targetCurrency,
+    );
+  }
+
+  const customPrice = getNumericPrice(combo?.[`custom_price_${part}_${targetSuffix}`]);
+  if (customPrice !== null) return customPrice;
+
+  const otherCurrency = targetCurrency === 'EUR' ? 'USD' : 'EUR';
+  const otherSuffix = otherCurrency.toLowerCase();
+  const otherCustomPrice = getNumericPrice(combo?.[`custom_price_${part}_${otherSuffix}`]);
+  if (otherCustomPrice !== null) {
+    return convertPrice(otherCustomPrice, otherCurrency, targetCurrency);
+  }
+
+  return getNumericPrice(combo?.[part]?.[`price_base_${targetSuffix}`])
+    ?? getNumericPrice(combo?.[part]?.price_base)
+    ?? 0;
+};
 
 export const getComboNotes = (
   combo: any,
@@ -22,35 +66,23 @@ export const getComboNotes = (
     };
   }
 
-  const isEUR = currency === 'EUR';
+  const activeCurrency = normalizeCurrency(currency);
 
   const cpu = combo.cpu || {};
   const gpu = combo.gpu || {};
   const ram = combo.ram || {};
 
+  const draftCurrency = combo?.priceModes ? activeCurrency : undefined;
+
   // 1. Precios efectivos en USD (para evaluar la nota individual de calidad/precio de cada pieza)
-  const cpuPriceUSD = Number(
-    combo.custom_price_cpu_usd ?? cpu.price_base_usd ?? cpu.price_base ?? 0
-  );
-  const gpuPriceUSD = Number(
-    combo.custom_price_gpu_usd ?? gpu.price_base_usd ?? gpu.price_base ?? 0
-  );
-  const ramPriceUSD = Number(
-    combo.custom_price_ram_usd ?? ram.price_base_usd ?? ram.price_base ?? 0
-  );
+  const cpuPriceUSD = getComboPartPrice(combo, 'cpu', 'USD', draftCurrency);
+  const gpuPriceUSD = getComboPartPrice(combo, 'gpu', 'USD', draftCurrency);
+  const ramPriceUSD = getComboPartPrice(combo, 'ram', 'USD', draftCurrency);
 
   // 2. Precios efectivos según la divisa activa (para ponderar el combo)
-  const cpuPrice = isEUR
-    ? Number(combo.custom_price_cpu_eur ?? cpu.price_base_eur ?? cpuPriceUSD)
-    : cpuPriceUSD;
-
-  const gpuPrice = isEUR
-    ? Number(combo.custom_price_gpu_eur ?? gpu.price_base_eur ?? gpuPriceUSD)
-    : gpuPriceUSD;
-
-  const ramPrice = isEUR
-    ? Number(combo.custom_price_ram_eur ?? ram.price_base_eur ?? ramPriceUSD)
-    : ramPriceUSD;
+  const cpuPrice = getComboPartPrice(combo, 'cpu', activeCurrency, draftCurrency);
+  const gpuPrice = getComboPartPrice(combo, 'gpu', activeCurrency, draftCurrency);
+  const ramPrice = getComboPartPrice(combo, 'ram', activeCurrency, draftCurrency);
 
   const totalPrice = cpuPrice + gpuPrice + ramPrice;
 

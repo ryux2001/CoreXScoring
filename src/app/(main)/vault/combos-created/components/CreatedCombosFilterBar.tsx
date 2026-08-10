@@ -124,7 +124,7 @@ export default function CreatedCombosFilterBar({
         </form>
 
         <Link
-          href={createPath}
+          href={`${createPath}?currency=${currency}`}
           className="flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 text-[10px] font-black uppercase tracking-wider text-zinc-300 transition-colors hover:border-white hover:bg-zinc-900 hover:text-white"
         >
           {createLabel}

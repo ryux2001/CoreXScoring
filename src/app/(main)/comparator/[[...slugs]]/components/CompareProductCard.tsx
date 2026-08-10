@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCompareStore } from "@/store/useCompareStore";
 import { getComponentNotes } from "@/lib/scoring/index";
 import { getComboNotes } from "@/lib/scoringCombos";
+import { convertPrice } from "@/lib/currency";
 import {
   applyComboPriceOverrides,
   getComboPartPrice,
@@ -104,8 +105,8 @@ export default function CompareProductCard({
   );
 
   const precioUSD = useMemo(
-    () => (isEUR ? displayedPrice * 1.08 : displayedPrice),
-    [displayedPrice, isEUR],
+    () => convertPrice(displayedPrice, globalCurrency, 'USD'),
+    [displayedPrice, globalCurrency],
   );
 
   const baseNotes = useMemo<NotesMap>(

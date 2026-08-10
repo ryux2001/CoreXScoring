@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
 import { supabase } from '@/lib/supabaseClient';
+import { convertPrice } from '@/lib/currency';
 import { getComponentNotes } from '@/lib/scoring/index';
 import { getComboNotes } from '@/lib/scoringCombos';
 import EmptyState from './EmptyState';
@@ -49,7 +50,7 @@ function getItemNotes(
     return getComboNotes(applyComboPriceOverrides(item, currency, comboOverrides), currency) || {};
   }
 
-  const priceUSD = currency === 'EUR' ? currentPrice * 1.08 : currentPrice;
+  const priceUSD = convertPrice(currentPrice, currency, 'USD');
   return getComponentNotes(item, priceUSD) || {};
 }
 
