@@ -91,37 +91,39 @@ export default function CreatedCombosFilterBar({
   return (
     <>
       <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button
-          type="button"
-          onClick={openFilters}
-          className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:border-white hover:text-white"
-          aria-label="Abrir filtros"
-        >
-          <Settings2 size={18} />
-          {activeFilterCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-black">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-
-        <form onSubmit={handleSearch} className="relative w-full sm:max-w-sm">
-          <input
-            type="search"
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-            className="h-12 w-full rounded-xl border border-zinc-700 bg-black px-4 pr-12 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-400"
-          />
+        <div className="flex max-w-200 gap-3">
           <button
-            type="submit"
-            className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center text-zinc-500 transition-colors hover:text-white"
-            aria-label="Buscar"
+            type="button"
+            onClick={openFilters}
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:border-white hover:text-white"
+            aria-label="Abrir filtros"
           >
-            <Search size={18} />
+            <Settings2 size={18} />
+            {activeFilterCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-black">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
-        </form>
+
+          <form onSubmit={handleSearch} className="relative w-full">
+            <input
+              type="search"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+              className="h-12 w-full rounded-xl border border-zinc-700 bg-black px-4 pr-12 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-400"
+            />
+            <button
+              type="submit"
+              className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center text-zinc-500 transition-colors hover:text-white"
+              aria-label="Buscar"
+            >
+              <Search size={18} />
+            </button>
+          </form>
+        </div>
 
         <Link
           href={`${createPath}?currency=${currency}`}

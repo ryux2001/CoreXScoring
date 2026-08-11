@@ -84,7 +84,8 @@ export default function SavedProductsFilterBar({
   return (
     <>
       <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button
+        <div className='flex gap-3 max-w-200'>
+          <button
           type="button"
           onClick={openFilters}
           className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:border-white hover:text-white"
@@ -98,7 +99,7 @@ export default function SavedProductsFilterBar({
           )}
         </button>
 
-        <form onSubmit={handleSearch} className="relative w-full sm:max-w-sm">
+        <form onSubmit={handleSearch} className="relative w-full">
           <input
             type="search"
             value={searchValue}
@@ -115,6 +116,8 @@ export default function SavedProductsFilterBar({
             <Search size={18} />
           </button>
         </form>
+        </div>
+        
 
         <div className="flex items-center gap-3 sm:ml-auto">
           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">

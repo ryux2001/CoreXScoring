@@ -18,8 +18,8 @@ export default async function VaultAccountPage() {
   const fullName = user.user_metadata.full_name || 'Usuario';
 
   return (
-    <main className="min-h-screen bg-black p-6 md:p-12 lg:p-16">
-      <div className="mx-auto max-w-3xl rounded-[2rem] border border-zinc-800 bg-zinc-950/40 p-5 shadow-2xl md:p-8">
+    <main className="min-h-screen bg-black p-3.5 sm:p-6 md:p-12 lg:p-16">
+      <div className="mx-auto max-w-3xl rounded-[1rem] border border-zinc-900 bg-zinc-950/40 p-5 shadow-2xl md:p-8">
         <Link
           href="/vault"
           className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-white"

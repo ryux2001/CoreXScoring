@@ -15,6 +15,7 @@ interface BuildCardProps {
   detailPath?: string;
   showSave?: boolean;
   wholeCardClickable?: boolean;
+  compactSave?: boolean;
 }
 
 const parts = [
@@ -32,6 +33,7 @@ export default function BuildCard({
   detailPath = '/builds',
   showSave = true,
   wholeCardClickable = false,
+  compactSave = false,
 }: BuildCardProps) {
   const router = useRouter();
   const addItem = useCompareStore((state) => state.addItem);
@@ -234,7 +236,7 @@ export default function BuildCard({
               aria-label={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
               title={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
               className={wholeCardClickable
-                ? `flex cursor-pointer items-center justify-center rounded-lg border px-3 py-3 transition-all hover:bg-zinc-900 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
+                ? `flex cursor-pointer items-center justify-center rounded-lg border ${compactSave ? 'px-2 py-2.5' : 'px-3 py-3'} transition-all hover:bg-zinc-900 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
                     isSaved
                       ? 'border-white bg-zinc-900 text-white'
                       : 'border-zinc-800 text-zinc-400'

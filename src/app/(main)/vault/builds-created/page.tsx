@@ -70,7 +70,7 @@ export default async function CreatedBuildsPage({ searchParams }: CreatedBuildsP
 
   if (error) {
     return (
-      <main className="min-h-screen bg-black p-6 md:p-12 lg:p-16">
+      <main className="min-h-screen bg-black p-0 sm:p-6 md:p-12 lg:p-16">
         <div className="mx-auto max-w-7xl rounded-[2rem] border border-zinc-800 bg-zinc-950 p-8 text-center text-sm text-zinc-500">
           No se pudieron cargar tus builds creadas.
         </div>
@@ -94,8 +94,8 @@ export default async function CreatedBuildsPage({ searchParams }: CreatedBuildsP
   );
 
   return (
-    <main className="min-h-screen bg-black p-6 md:p-12 lg:p-16">
-      <div className="mx-auto max-w-7xl rounded-[2rem] border border-zinc-800 bg-zinc-950/40 p-5 shadow-2xl md:p-8">
+    <main className="min-h-screen bg-black px-3 py-6 sm:p6 md:p-12 lg:p-16">
+      <div className="mx-auto max-w-7xl rounded-[2rem] py-5 px-1.5 sm:p-5 shadow-2xl md:p-8">
         <header>
           <span className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-600">
             Bóveda
@@ -131,6 +131,7 @@ export default async function CreatedBuildsPage({ searchParams }: CreatedBuildsP
                   currency={currency}
                   detailPath="/vault/builds-created"
                   showSave={false}
+                  wholeCardClickable
                 />
               ))}
             </div>
