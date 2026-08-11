@@ -49,9 +49,9 @@ const vaultSections = [
 
 export default function VaultPage() {
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-black px-4 py-8 md:px-8 md:py-12 lg:px-12">
-      <div className="mx-auto max-w-5xl rounded-[2rem] border border-zinc-800/80 bg-zinc-950/40 p-4 shadow-2xl md:p-7">
-        <header className="rounded-2xl border border-zinc-800 bg-zinc-900/30 px-5 py-5 md:px-7 md:py-6">
+    <main className="min-h-[calc(100vh-4rem)] bg-black px-2 py-8 sm:p4 md:px-8 md:py-12 lg:px-12">
+      <div className="mx-auto max-w-5xl rounded-[2rem] py-4 px-2 sm:p-4 shadow-2xl md:p-7">
+        <header className="rounded-2xl px-2 py-5 md:px-7 md:py-6">
           <span className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-600">
             Espacio personal
           </span>
@@ -68,16 +68,16 @@ export default function VaultPage() {
             <Link
               key={title}
               href={href}
-              className="group flex min-h-[150px] items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/20 p-4 transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/60 md:min-h-[170px] md:gap-4 md:p-5"
+              className="group grid min-h-[150px] grid-cols-[36px_minmax(0,1fr)] items-start gap-x-3 gap-y-0 rounded-2xl border border-zinc-900 bg-zinc-900/20 p-4 transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/60 md:flex md:min-h-[170px] md:gap-4 md:px-5 md:py-8"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-black text-zinc-500 transition-colors group-hover:border-zinc-600 group-hover:text-white md:h-11 md:w-11">
                 <Icon size={17} strokeWidth={2} className="md:h-5 md:w-5" />
               </div>
-              <div className="min-w-0 pt-0.5">
-                <h2 className="text-[11px] font-black uppercase leading-tight tracking-wide text-zinc-200 md:text-xs">
+              <div className="contents min-w-0 md:block md:flex-1">
+                <h2 className="pt-0.5 text-[11px] font-black uppercase leading-tight tracking-wide text-zinc-200 md:text-xs">
                   {title}
                 </h2>
-                <p className="mt-3 text-[10px] leading-relaxed text-zinc-600 transition-colors group-hover:text-zinc-400 md:text-[11px]">
+                <p className="col-span-2 mt-3 pt-0.5 text-[10px] leading-relaxed text-zinc-600 transition-colors group-hover:text-zinc-400 md:text-[11px]">
                   {description}
                 </p>
               </div>

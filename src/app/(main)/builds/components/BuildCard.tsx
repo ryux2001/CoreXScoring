@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { AlertCircle, BarChart2, Bookmark, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { MouseEvent, ReactNode } from 'react';
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { getBuildPartPrice } from '@/lib/scoringBuilds';
 import { supabase } from '@/lib/supabaseClient';
 import { useCompareStore } from '@/store/useCompareStore';
@@ -14,6 +14,7 @@ interface BuildCardProps {
   currency: string;
   detailPath?: string;
   showSave?: boolean;
+  wholeCardClickable?: boolean;
 }
 
 const parts = [
@@ -30,6 +31,7 @@ export default function BuildCard({
   currency,
   detailPath = '/builds',
   showSave = true,
+  wholeCardClickable = false,
 }: BuildCardProps) {
   const router = useRouter();
   const addItem = useCompareStore((state) => state.addItem);
@@ -143,8 +145,33 @@ export default function BuildCard({
     }
   };
 
+  const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+    if (!wholeCardClickable) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('button')) return;
+
+    router.push(`${detailPath}/${build.slug}?currency=${currency}`);
+  };
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!wholeCardClickable) return;
+
+    if ((event.target as HTMLElement).closest('button')) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+
+    event.preventDefault();
+    router.push(`${detailPath}/${build.slug}?currency=${currency}`);
+  };
+
   return (
-    <article className="flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/80">
+    <article
+      className={`flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition-all duration-300 hover:border-zinc-600 hover:bg-zinc-900/80 ${wholeCardClickable ? 'cursor-pointer' : ''}`}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role={wholeCardClickable ? 'link' : undefined}
+      tabIndex={wholeCardClickable ? 0 : undefined}
+    >
       <div>
         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
           {build.category || 'Build'}
@@ -170,7 +197,7 @@ export default function BuildCard({
         </div>
       </div>
 
-      <div className="mt-6 border-t border-zinc-800/80 pt-5">
+      <div className="mt-4 border-t border-zinc-800/80 pt-2.5 sm:pt-3.5">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Precio</span>
@@ -180,25 +207,24 @@ export default function BuildCard({
           </div>
         </div>
 
-        <div className={`mt-4 grid gap-2 ${showSave ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <Link
-            href={`${detailPath}/${build.slug}?currency=${currency}`}
-            className="flex items-center justify-center gap-1 rounded-lg border border-zinc-900 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-zinc-300 transition-colors hover:border-zinc-700 hover:text-white"
-          >
-            <Eye size={14} />
-            <span className="hidden sm:inline">Ver</span>
-          </Link>
+        <div className={wholeCardClickable ? 'mt-3 flex gap-2' : `mt-4 grid gap-2 ${showSave ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <button
             type="button"
             onClick={handleCompareClick}
-            className={`flex items-center justify-center gap-1 rounded-lg border px-2 py-2.5 text-[9px] font-black uppercase tracking-wider transition-all hover:bg-zinc-900 hover:text-white active:scale-95 cursor-pointer ${
-              isInCompare
-                ? 'border-white bg-zinc-900 text-white'
-                : 'border-zinc-900 text-zinc-400'
-            }`}
+            className={wholeCardClickable
+              ? `flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border py-3 text-xs font-bold transition-all active:scale-95 ${
+                  isInCompare
+                    ? 'border-white bg-zinc-900 text-white'
+                    : 'border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white'
+                }`
+              : `flex items-center justify-center gap-1 rounded-lg border px-2 py-2.5 text-[9px] font-black uppercase tracking-wider transition-all hover:bg-zinc-900 hover:text-white active:scale-95 cursor-pointer ${
+                  isInCompare
+                    ? 'border-white bg-zinc-900 text-white'
+                    : 'border-zinc-900 text-zinc-400'
+                }`}
           >
-            <BarChart2 size={14} />
-            <span className="hidden sm:inline">Comparar</span>
+            <BarChart2 size={14} strokeWidth={wholeCardClickable ? 2.5 : undefined} />
+            {wholeCardClickable ? 'COMPARAR' : <span className="hidden sm:inline">Comparar</span>}
           </button>
           {showSave && (
             <button
@@ -207,14 +233,19 @@ export default function BuildCard({
               disabled={isSaving}
               aria-label={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
               title={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
-              className={`flex items-center justify-center gap-1 rounded-lg border px-2 py-2.5 text-[9px] font-black uppercase tracking-wider transition-all hover:bg-zinc-900 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
-                isSaved
-                  ? 'border-white bg-zinc-900 text-white'
-                  : 'border-zinc-900 text-zinc-400'
-              }`}
+              className={wholeCardClickable
+                ? `flex cursor-pointer items-center justify-center rounded-lg border px-3 py-3 transition-all hover:bg-zinc-900 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
+                    isSaved
+                      ? 'border-white bg-zinc-900 text-white'
+                      : 'border-zinc-800 text-zinc-400'
+                  }`
+                : `flex items-center justify-center gap-1 rounded-lg border px-2 py-2.5 text-[9px] font-black uppercase tracking-wider transition-all hover:bg-zinc-900 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
+                    isSaved
+                      ? 'border-white bg-zinc-900 text-white'
+                      : 'border-zinc-900 text-zinc-400'
+                  }`}
             >
-              <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
-              <span className="hidden sm:inline">Guardar</span>
+              <Bookmark size={14} strokeWidth={wholeCardClickable ? 2.5 : undefined} fill={isSaved ? 'currentColor' : 'none'} />
             </button>
           )}
         </div>

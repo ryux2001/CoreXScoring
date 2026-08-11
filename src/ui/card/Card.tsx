@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Eye, Bookmark } from "lucide-react"; // Importamos Bookmark
+import { Bookmark, Eye } from "lucide-react"; // Importamos Bookmark
 import Link from "next/link"; // Importamos Link
 import { useRouter } from "next/navigation";
 import CompareButton from "./CompareButton";
@@ -19,6 +19,7 @@ interface ProductProps {
   compatibility: any;
   release_date: string;
   imageUrl?: string;
+  wholeCardClickable?: boolean;
 }
 
 export const Card = ({
@@ -33,6 +34,7 @@ export const Card = ({
   compatibility,
   release_date,
   imageUrl,
+  wholeCardClickable = false,
 }: ProductProps) => {
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);
@@ -203,7 +205,7 @@ export const Card = ({
   const currencySymbol = currency === "EUR" ? "€" : "$";
 
   const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!window.matchMedia("(max-width: 639px)").matches) return;
+    if (!wholeCardClickable && !window.matchMedia("(max-width: 639px)").matches) return;
 
     const target = event.target as HTMLElement;
     if (target.closest("button")) return;
@@ -212,7 +214,7 @@ export const Card = ({
   };
 
   const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!window.matchMedia("(max-width: 639px)").matches) return;
+    if (!wholeCardClickable && !window.matchMedia("(max-width: 639px)").matches) return;
     if ((event.target as HTMLElement).closest("button")) return;
     if (event.key !== "Enter" && event.key !== " ") return;
 
@@ -222,9 +224,10 @@ export const Card = ({
 
   return (
     <div
-      className="group flex w-full cursor-pointer flex-row overflow-hidden rounded-2xl border border-zinc-900 bg-black p-0 font-sans transition-all hover:border-zinc-700 sm:cursor-default sm:flex-col"
+      className={`group flex w-full cursor-pointer flex-row overflow-hidden rounded-2xl border border-zinc-900 bg-black p-0 font-sans transition-all hover:border-zinc-700 ${wholeCardClickable ? "sm:flex-col" : "sm:cursor-default sm:flex-col"}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
+      role={wholeCardClickable ? "link" : undefined}
       tabIndex={0}
     >
       <div className="relative flex min-h-[180px] w-[42%] shrink-0 items-center justify-center overflow-hidden border-r border-zinc-800 bg-zinc-950 sm:aspect-square sm:min-h-0 sm:h-60 sm:w-full sm:border-r-0 sm:border-b">
@@ -280,13 +283,15 @@ export const Card = ({
 
         {/* FOOTER DE LA CARD ACTUALIZADO */}
         <div className="mt-3 flex min-w-0 gap-1 sm:mt-3 sm:gap-2">
-          <Link
-            href={`/catalog/${slug}?currency=${currency}`}
-            className="hidden w-19 flex-none items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 active:scale-95 sm:flex"
-          >
-            <Eye size={14} strokeWidth={2.5} />
-            VER
-          </Link>
+          {!wholeCardClickable && (
+            <Link
+              href={`/catalog/${slug}?currency=${currency}`}
+              className="hidden w-19 flex-none items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 active:scale-95 sm:flex"
+            >
+              <Eye size={14} strokeWidth={2.5} />
+              VER
+            </Link>
+          )}
           <div className="flex min-w-0 flex-1">
             <CompareButton
               id={id}

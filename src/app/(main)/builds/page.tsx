@@ -62,7 +62,7 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
   );
 
   return (
-    <main className="min-h-screen bg-black p-6 md:p-12 lg:p-16">
+    <main className="min-h-screen bg-black px-4 py-6 sm:px-6 md:p-12 lg:p-16">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -101,7 +101,12 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
                 </h2>
                 <div className="grid grid-cols-1 gap-8 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   {categoryBuilds.map((build) => (
-                    <BuildCard key={build.id} build={build} currency={currency} />
+                    <BuildCard
+                      key={build.id}
+                      build={build}
+                      currency={currency}
+                      wholeCardClickable
+                    />
                   ))}
                 </div>
               </section>

@@ -86,6 +86,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
               specs={product.specs}
               compatibility={product.compatibility}
               release_date={product.release_date}
+              wholeCardClickable
             />
           ))}
         </div>

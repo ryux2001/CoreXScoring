@@ -12,9 +12,15 @@ interface ComboCardProps {
   combo: any;
   currency: string;
   detailPath?: string;
+  wholeCardClickable?: boolean;
 }
 
-export default function ComboCard({ combo, currency, detailPath = '/combos' }: ComboCardProps) {
+export default function ComboCard({
+  combo,
+  currency,
+  detailPath = '/combos',
+  wholeCardClickable = false,
+}: ComboCardProps) {
   const isEUR = currency === 'EUR';
   const addItem = useCompareStore((state) => state.addItem);
   const removeItem = useCompareStore((state) => state.removeItem);
@@ -131,8 +137,33 @@ export default function ComboCard({ combo, currency, detailPath = '/combos' }: C
     }
   };
 
+  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!wholeCardClickable) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('button')) return;
+
+    router.push(`${detailPath}/${combo.slug}?currency=${currency}`);
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!wholeCardClickable) return;
+
+    if ((event.target as HTMLElement).closest('button')) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+
+    event.preventDefault();
+    router.push(`${detailPath}/${combo.slug}?currency=${currency}`);
+  };
+
   return (
-    <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 sm:p-5 transition-all duration-300 hover:border-zinc-800 hover:bg-zinc-900/50">
+    <div
+      className={`flex w-full flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition-all duration-300 hover:border-zinc-800 hover:bg-zinc-900/50 sm:p-5 ${wholeCardClickable ? 'cursor-pointer' : ''}`}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role={wholeCardClickable ? 'link' : undefined}
+      tabIndex={wholeCardClickable ? 0 : undefined}
+    >
       
       {/* Cabecera de la tarjeta */}
       <div className="mb-1.5 sm:mb-3">
@@ -177,12 +208,14 @@ export default function ComboCard({ combo, currency, detailPath = '/combos' }: C
               {symbol}{totalPrice.toFixed(2)}
             </span>
           </div>
-          <Link 
-            href={`${detailPath}/${combo.slug}?currency=${currency}`}
-            className="rounded-lg bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 active:scale-95 text-center flex items-center justify-center"
-          >
-            Ver Combo
-          </Link>
+          {!wholeCardClickable && (
+            <Link
+              href={`${detailPath}/${combo.slug}?currency=${currency}`}
+              className="flex items-center justify-center rounded-lg bg-white px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 active:scale-95"
+            >
+              Ver Combo
+            </Link>
+          )}
         </div>
 
         <div className="mt-3 flex gap-2">
