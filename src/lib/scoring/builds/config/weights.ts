@@ -1,0 +1,138 @@
+/**
+ * Build scoring configuration.
+ *
+ * This file is the manual editing surface for build weights, ceilings and
+ * correction factors. Every value mirrors the former inline constant exactly.
+ * Moving a number here does not change the formula or its order of operations.
+ */
+export const BUILD_SCORING_CONFIG = {
+  PERFORMANCE: {
+    STORAGE_PRODUCTIVITY: { SPEED: 0.7, DURABILITY: 0.2, TEMPERATURES: 0.1 },
+    STORAGE_GAMING: { SPEED: 0.85, TEMPERATURES: 0.15 },
+    POWER: {
+      CPU: 0.375,
+      GPU: 0.425,
+      RAM_SPEED: 0.075,
+      RAM_LATENCY: 0.05,
+      STORAGE_SPEED: 0.075,
+    },
+    PRODUCTIVITY: { CPU: 0.35, GPU: 0.3, RAM: 0.2, STORAGE: 0.15 },
+    GAMING: { GPU: 0.525, CPU: 0.275, RAM: 0.15, STORAGE: 0.05 },
+    EFFICIENCY: { GPU: 0.4, CPU: 0.3, PSU: 0.2, STORAGE: 0.1 },
+    BOTTLENECK: {
+      CPU_GPU_DELTA: 0.7,
+      RAM_DELTA: 0.2,
+      STORAGE_DELTA: 0.1,
+      FRICTION_MULTIPLIER: 1.15,
+    },
+  },
+  COMPATIBILITY: {
+    CPU_BOARD: { SOCKET: 0.7, CHIPSET: 0.3, UNKNOWN_SOCKET: 5, UNKNOWN_CHIPSET: 6 },
+    RAM_PLATFORM: {
+      TYPE: 0.55,
+      CAPACITY: 0.2,
+      FREQUENCY: 0.25,
+      UNKNOWN_TYPE: 5,
+      UNKNOWN_CAPACITY: 7,
+      UNKNOWN_FREQUENCY: 7,
+      MIN_FREQUENCY_SCORE: 5,
+    },
+    PSU: {
+      WATTAGE: 0.75,
+      CONNECTIVITY: 0.25,
+      RECOMMENDED_MARGIN: 1.3,
+      PARTIAL_BASE_SCORE: 6,
+      CRITICAL_FACTOR: 0.85,
+    },
+    GPU_BOARD: {
+      SLOT: 0.6,
+      GENERATION: 0.4,
+      UNKNOWN_SLOT: 6,
+      UNKNOWN_GENERATION: 7,
+    },
+    STORAGE_BOARD: {
+      SLOT: 0.6,
+      GENERATION: 0.3,
+      MARGIN: 0.1,
+      UNKNOWN_SLOT: 6,
+      UNKNOWN_GENERATION: 7,
+      SINGLE_SLOT_MARGIN: 7,
+      EMPTY_BOARD_MARGIN: 5,
+    },
+    BUILD: {
+      CPU_BOARD: 0.3,
+      RAM_PLATFORM: 0.2,
+      PSU: 0.25,
+      GPU_BOARD: 0.1,
+      STORAGE_BOARD: 0.1,
+      MOTHERBOARD_BASE: 0.05,
+    },
+    CAPS: {
+      SOCKET_MISMATCH: 3,
+      RAM_TYPE_MISMATCH: 4,
+      PSU_BELOW_ESTIMATED: 5,
+      PSU_CRITICALLY_BELOW: 3,
+      MISSING_PSU_CONNECTOR: 4,
+      MISSING_GPU_SLOT: 4,
+      MISSING_STORAGE_SLOT: 6,
+    },
+  },
+  UPGRADEABILITY: {
+    PLATFORM: { SOCKET: 0.55, RAM: 0.25, PCIE: 0.2 },
+    BUILD: {
+      PLATFORM: 0.3,
+      INTERNAL_EXPANSION: 0.25,
+      PSU: 0.2,
+      RAM: 0.15,
+      STORAGE: 0.1,
+    },
+    PSU_MARGIN: { WATTAGE: 0.7, CONNECTIVITY: 0.3, MIN_IDEAL_MARGIN: 250, CONSUMPTION_FACTOR: 0.5 },
+    RAM_MARGIN: {
+      CAPACITY: 0.6,
+      GENERATION: 0.25,
+      SLOTS: 0.15,
+      CAPACITY_DIVISOR: 0.75,
+      UNKNOWN_CAPACITY: 5,
+      UNKNOWN_SLOTS: 5,
+    },
+    STORAGE_MARGIN: { SLOTS: 0.7, GENERATION: 0.3 },
+    CAPS: {
+      SOCKET_MISMATCH: 2,
+      RAM_TYPE_MISMATCH: 3,
+      PSU_BELOW_ESTIMATED: 4,
+      MISSING_GPU_SLOT: 3,
+      MISSING_STORAGE_SLOT: 6,
+    },
+  },
+  VALUE: {
+    BASE_FACTOR: 0.8,
+    COMPATIBILITY_FACTOR: 0.02,
+    BOTTLENECK_FACTOR: 0.01,
+    UPGRADES_FACTOR: 0.005,
+    BOTTLENECK_BASE_FACTOR: 0.9,
+    UPGRADES_BASE_FACTOR: 0.95,
+    LOW_COMPATIBILITY_THRESHOLD: 5,
+    CRITICAL_COMPATIBILITY_THRESHOLD: 3,
+    LOW_BOTTLENECK_THRESHOLD: 4,
+    CRITICAL_VALUE_CAP: 2,
+    LOW_BOTTLENECK_CAP: 6,
+  },
+  POWER_ESTIMATION: { STORAGE_DEFAULT_WATTS: 8, PLATFORM_WATTS: 10, HEADROOM_WATTS: 50 },
+  DEFAULTS: {
+    UNKNOWN_COMPATIBILITY: 5,
+    UNKNOWN_CAPACITY: 7,
+    UNKNOWN_FREQUENCY: 7,
+    UNKNOWN_PSU_CONNECTIVITY: 5,
+    UNKNOWN_MOTHERBOARD_EXPANSION: 5,
+    UNKNOWN_STORAGE_SLOTS: 5,
+  },
+  GENERATION_SCORES: {
+    GEN5: 10,
+    GEN4: 8,
+    GEN3: 5,
+    UNKNOWN: 5,
+    ONE_LEVEL_BEHIND: 8,
+    TWO_LEVELS_BEHIND: 6,
+    MORE_THAN_TWO_LEVELS_BEHIND: 4,
+  },
+} as const;

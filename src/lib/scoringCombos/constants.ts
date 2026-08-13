@@ -1,27 +1,2 @@
-export const SCORING_WEIGHTS = {
-  POTENCY: {
-    CPU: 0.40,
-    GPU: 0.45,
-    RAM_SPEED: 0.075,
-    RAM_LATENCY: 0.075,
-  },
-  PRODUCTIVITY: {
-    CPU: 0.40,
-    GPU: 0.40,
-    RAM: 0.20,
-  },
-  GAMING: {
-    CPU: 0.30,
-    GPU: 0.55,
-    RAM: 0.15,
-  },
-  EFFICIENCY: {
-    GPU: 0.60,
-    CPU: 0.40,
-  },
-  BOTTLENECK: {
-    DELTA_CPU_GPU: 0.75,
-    DELTA_RAM: 0.25,
-    FRICTION_MULTIPLIER: 1.2,
-  },
-};
+/** Backwards-compatible location for combo scoring configuration. */
+export { SCORING_WEIGHTS } from '@/lib/scoring/combos/config';
