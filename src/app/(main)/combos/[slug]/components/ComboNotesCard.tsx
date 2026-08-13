@@ -78,8 +78,8 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
     <div className="flex flex-col p-6 lg:p-8 rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-xl h-full justify-between overflow-hidden">
       
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-6">
+      <div className="relative mb-8">
+        <div className="flex min-w-0 flex-wrap items-center gap-6 pr-28">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
             Notas
           </h3>
@@ -95,7 +95,7 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
         </div>
         
         {/* ACCIONES DE HEADER (INFO + SWAP MÓVIL) */}
-        <div className="flex items-center gap-3">
+        <div className="absolute right-0 top-0 flex items-center gap-3">
           {onSwitchView && (
             <button 
               onClick={onSwitchView}
@@ -107,10 +107,14 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
           )}
 
           <div className="group relative">
-            <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:text-white">
+            <button
+              type="button"
+              aria-label="Información sobre los criterios de evaluación"
+              className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
+            >
               <Info size={11} strokeWidth={3} />
-            </div>
-            <div className="invisible absolute right-0 top-7 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+            </button>
+            <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">
                 Criterios de Evaluación
               </div>
@@ -161,7 +165,7 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
 
       {/* FOOTER */}
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
-        <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest leading-tight text-center lg:text-left">
+        <p className="text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
           * Todas las evaluaciones se basan en el rendimiento relativo frente a la competencia.
         </p>
       </div>

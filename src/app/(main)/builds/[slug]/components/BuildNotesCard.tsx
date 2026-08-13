@@ -71,8 +71,8 @@ export default function BuildNotesCard({
 
   return (
     <div className="flex h-full flex-col justify-between overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="relative mb-8">
+        <div className="flex min-w-0 flex-wrap items-center gap-4 pr-10">
           <h2 className="shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
             Notas
           </h2>
@@ -86,11 +86,15 @@ export default function BuildNotesCard({
           </div>
         </div>
 
-        <div className="group relative">
-          <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:text-white">
+        <div className="group absolute right-0 top-0">
+          <button
+            type="button"
+            aria-label="Información sobre la evaluación provisional"
+            className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
+          >
             <Info size={11} strokeWidth={3} />
-          </div>
-          <div className="invisible absolute right-0 top-7 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+          </button>
+          <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-white">
               Evaluación provisional
             </div>
@@ -125,7 +129,7 @@ export default function BuildNotesCard({
       </div>
 
       <div className="mt-8 border-t border-zinc-900/20 pt-4">
-        <p className="text-center text-[8px] font-bold uppercase leading-tight tracking-widest text-zinc-500 lg:text-left">
+        <p className="text-center text-[9px] font-bold uppercase leading-tight tracking-widest text-zinc-500 lg:text-left">
           * Datos mockeados pendientes de evaluación dinámica.
         </p>
       </div>

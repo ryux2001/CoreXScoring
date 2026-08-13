@@ -139,12 +139,12 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
       </div>
 
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-2 z-10 w-full">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
+      <div className="relative mb-2 z-10 w-full">
+        <h3 className="pr-28 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
           Balance
         </h3>
 
-        <div className="flex items-center gap-3">
+        <div className="absolute right-0 top-0 flex items-center gap-3">
           {onSwitchView && (
             <button 
               onClick={onSwitchView}
@@ -156,10 +156,14 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
           )}
 
           <div className="group relative">
-            <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:text-white relative z-[10000]">
+            <button
+              type="button"
+              aria-label="Información sobre el mapa de rendimiento"
+              className="relative z-[10000] flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
+            >
               <Info size={11} strokeWidth={3} />
-            </div>
-            <div className="invisible absolute right-0 top-7 z-[10000] w-64 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+            </button>
+            <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[9px]">Mapa de Rendimiento</div>
               <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
             </div>
