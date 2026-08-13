@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeftRight, X, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCompareStore } from "@/store/useCompareStore";
@@ -19,12 +19,27 @@ export default function CompareCartDropdown() {
   ));
   const comparisonLabel = isBuildComparison ? "Builds" : isComboComparison ? "Combos" : "Componentes";
 
+  useEffect(() => {
+    if (!isCartOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsCartOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isCartOpen]);
+
   return (
     <div className="relative">
       {/* Botón de la balanza - Siempre visible (flex) y protegido contra deformaciones (shrink-0) */}
-      <button 
+      <button
+        type="button"
         onClick={() => setIsCartOpen(!isCartOpen)}
-        className="flex cursor-pointer h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-zinc-900 text-zinc-300 hover:border-white/40 hover:text-white transition-all relative"
+        aria-label={`Abrir comparativa${items.length > 0 ? ` (${items.length} seleccionados)` : ""}`}
+        aria-expanded={isCartOpen}
+        aria-controls="comparison-dropdown"
+        className="relative flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-zinc-900 text-zinc-300 transition-all hover:border-white/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
       >
         <ArrowLeftRight className="h-4 w-4" />
         
@@ -40,9 +55,18 @@ export default function CompareCartDropdown() {
       {isCartOpen && (
         <>
           {/* Capa invisible para cerrar el menú al hacer clic fuera */}
-          <div className="fixed inset-0 z-40" onClick={() => setIsCartOpen(false)} />
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => setIsCartOpen(false)}
+          />
           
-          <div className="fixed top-[72px] left-4 right-4 sm:absolute sm:top-12 sm:right-0 sm:left-auto sm:w-80 z-50 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200">
+          <div
+            id="comparison-dropdown"
+            role="dialog"
+            aria-label="Comparativa de productos"
+            className="fixed left-4 right-4 top-[72px] z-50 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-80"
+          >
             
             {/* Cabecera del Carrito */}
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-3">
@@ -57,9 +81,10 @@ export default function CompareCartDropdown() {
                 )}
               </div>
               {items.length > 0 && (
-                <button 
+                <button
+                  type="button"
                   onClick={() => clearCompare()}
-                  className="text-[9px] font-bold text-zinc-600 hover:text-red-400 transition-colors uppercase tracking-tight flex items-center gap-1 cursor-pointer"
+                  className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-[9px] font-bold uppercase tracking-tight text-zinc-600 transition-colors hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   <Trash2 size={10} />
                   Limpiar
@@ -92,9 +117,11 @@ export default function CompareCartDropdown() {
                         {item.brand} · {item.type}
                       </span>
                     </div>
-                    <button 
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${item.name} de la comparativa`}
                       onClick={() => removeItem(item.id)}
-                      className="rounded-lg p-1 text-zinc-600 hover:bg-zinc-900 hover:text-white transition-all cursor-pointer"
+                      className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-600 transition-all hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                     >
                       <X size={12} />
                     </button>
@@ -113,6 +140,8 @@ export default function CompareCartDropdown() {
                     ? "bg-zinc-900 text-zinc-600 cursor-not-allowed border border-zinc-900" 
                     : "bg-white text-black hover:bg-zinc-200 active:scale-[0.98]"
                 }`}
+                aria-disabled={items.length < 2}
+                tabIndex={items.length < 2 ? -1 : undefined}
                 style={{ pointerEvents: items.length < 2 ? 'none' : 'auto' }}
               >
                 {items.length < 2 ? "Añade al menos 2 productos" : "Comparar Componentes"}
