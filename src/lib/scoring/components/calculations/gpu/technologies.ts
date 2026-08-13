@@ -4,6 +4,7 @@
 
 import { GPU_CONFIG } from '../../config/gpu';
 import { safeExtract } from '../../../shared/validators';
+import { includesAnyGpuKeyword } from '../../../shared/keyword-matching';
 
 function parseJsonbString(value: any): any {
   if (typeof value === 'string') {
@@ -18,6 +19,7 @@ function parseJsonbString(value: any): any {
 
 export const calculateTechnologiesScore = (product: any): number => {
   const compatibility = parseJsonbString(product?.compatibility || '{}');
+  const specs = parseJsonbString(product?.specs || '{}');
   const technologies = parseJsonbString(product?.technologies || '[]');
   const releaseYear = product?.release_year || 0;
   const description = product?.description || '';
@@ -26,8 +28,9 @@ export const calculateTechnologiesScore = (product: any): number => {
   const pcieGen = parseFloat(safeExtract(compatibility?.pcie_generation, 0).toString());
   
   // Extraer APIs
-  const directx = safeExtract(compatibility?.directx, 0).toString();
-  const opengl = safeExtract(compatibility?.opengl, 0).toString();
+  // Compatibilidad con el parche SQL que puede haber guardado estas APIs en specs.
+  const directx = safeExtract(compatibility?.directx ?? specs?.directx, 0).toString();
+  const opengl = safeExtract(compatibility?.opengl ?? specs?.opengl, 0).toString();
   
   // 1. Plataforma (3000 pts)
   let platformPoints = 0;
@@ -62,26 +65,26 @@ export const calculateTechnologiesScore = (product: any): number => {
   const vipConfig = GPU_CONFIG.TECNOLOGIAS.VIP_SOFTWARE;
 
   // --- Categoría 1: Generación de Fotogramas y escalado ---
-  if (vipConfig.CAT_1_PREMIUM_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_1_PREMIUM_KEYWORDS)) {
     vipPoints += vipConfig.CAT_1_PREMIUM_POINTS; // Se lleva el máximo (1250)
-  } else if (vipConfig.CAT_1_STANDARD_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  } else if (includesAnyGpuKeyword(searchText, vipConfig.CAT_1_STANDARD_KEYWORDS)) {
     vipPoints += vipConfig.CAT_1_STANDARD_POINTS; // Se lleva el estándar (750)
   }
   
   // --- Categoría 2: IA Avanzada ---
-  if (vipConfig.CAT_2_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_2_KEYWORDS)) {
     vipPoints += vipConfig.CAT_2_POINTS; // (1250)
   }
   
   // --- Categoría 3: Trazado de Rayos ---
-  if (vipConfig.CAT_3_PREMIUM_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_3_PREMIUM_KEYWORDS)) {
     vipPoints += vipConfig.CAT_3_PREMIUM_POINTS; // Se lleva el máximo por Path Tracing / RR (1250)
-  } else if (vipConfig.CAT_3_STANDARD_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  } else if (includesAnyGpuKeyword(searchText, vipConfig.CAT_3_STANDARD_KEYWORDS)) {
     vipPoints += vipConfig.CAT_3_STANDARD_POINTS; // Se lleva el estándar por RT básico (600)
   }
   
   // --- Categoría 4: Latencia y ecosistema ---
-  if (vipConfig.CAT_4_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_4_KEYWORDS)) {
     vipPoints += vipConfig.CAT_4_POINTS; // (1250)
   }
   

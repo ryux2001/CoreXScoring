@@ -9,6 +9,7 @@ import {
   ThermometerSnowflake, Shield, Activity, Layers, Network, Wrench 
 } from 'lucide-react';
 import { getComponentNotes } from '@/lib/scoring/index';
+import { convertPrice } from '@/lib/currency';
 
 interface RadarChartProps {
   product: any;
@@ -120,7 +121,8 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
     return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
   }, [initialPrice]);
 
-  const notesData = getComponentNotes(product, evaluatedPrice);
+  const evaluatedPriceUSD = convertPrice(evaluatedPrice, currency, 'USD');
+  const notesData = getComponentNotes(product, evaluatedPriceUSD);
   
   const chartData = Object.entries(notesData).map(([key, value]) => ({
     subject: key,

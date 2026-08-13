@@ -4,6 +4,7 @@
 
 import { GPU_CONFIG } from '../../config/gpu';
 import { safeExtract } from '../../../shared/validators';
+import { includesAnyGpuKeyword } from '../../../shared/keyword-matching';
 
 // Función para parsear JSONB strings de Supabase
 function parseJsonbString(value: any): any {
@@ -45,7 +46,7 @@ export const calculateProductivityScore = (product: any): number => {
   
   // 4. Aceleración Profesional (1000 pts)
   let accelerationPoints = 0;
-  if (GPU_CONFIG.PRODUCTIVIDAD.ACCELERATION.KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  if (includesAnyGpuKeyword(searchText, GPU_CONFIG.PRODUCTIVIDAD.ACCELERATION.KEYWORDS)) {
     accelerationPoints = GPU_CONFIG.PRODUCTIVIDAD.ACCELERATION.POINTS;
   }
   

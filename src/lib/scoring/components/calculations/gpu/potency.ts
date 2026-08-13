@@ -58,8 +58,27 @@ export const calculatePotencyScore = (product: any): number => {
   // Ancho de banda (1000 pts)
   let bandwidthPoints = 0;
   const bandwidthNum = parseFloat(busWidth.toString());
-  if (GPU_CONFIG.POTENCIA.VRAM.BANDWIDTH_SCORES.hasOwnProperty(bandwidthNum)) {
-    bandwidthPoints = GPU_CONFIG.POTENCIA.VRAM.BANDWIDTH_SCORES[bandwidthNum as keyof typeof GPU_CONFIG.POTENCIA.VRAM.BANDWIDTH_SCORES];
+  if (Number.isFinite(bandwidthNum) && bandwidthNum > 0) {
+    const bandwidthAnchors = Object.entries(GPU_CONFIG.POTENCIA.VRAM.BANDWIDTH_SCORES)
+      .map(([width, points]) => ({ width: Number(width), points }))
+      .sort((a, b) => a.width - b.width);
+
+    const firstAnchor = bandwidthAnchors[0];
+    const lastAnchor = bandwidthAnchors[bandwidthAnchors.length - 1];
+
+    if (firstAnchor && lastAnchor) {
+      if (bandwidthNum <= firstAnchor.width) {
+        bandwidthPoints = firstAnchor.points;
+      } else if (bandwidthNum >= lastAnchor.width) {
+        bandwidthPoints = lastAnchor.points;
+      } else {
+        const upperIndex = bandwidthAnchors.findIndex((anchor) => bandwidthNum <= anchor.width);
+        const lower = bandwidthAnchors[upperIndex - 1];
+        const upper = bandwidthAnchors[upperIndex];
+        const progress = (bandwidthNum - lower.width) / (upper.width - lower.width);
+        bandwidthPoints = lower.points + (upper.points - lower.points) * progress;
+      }
+    }
   }
   
   const vramTotal = capacityPoints + typePoints + bandwidthPoints;

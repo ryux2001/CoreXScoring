@@ -4,6 +4,7 @@
 
 import { GPU_CONFIG } from '../../config/gpu';
 import { safeExtract } from '../../../shared/validators';
+import { includesAnyGpuKeyword } from '../../../shared/keyword-matching';
 
 // Función para parsear JSONB strings de Supabase
 function parseJsonbString(value: any): any {
@@ -50,15 +51,15 @@ export const calculateGamingScore = (product: any): number => {
   let fpsTechPoints = 0;
   
   // Nivel máximo (1500 pts)
-  if (GPU_CONFIG.JUEGOS.FPS_TECH.TIER_1_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  if (includesAnyGpuKeyword(searchText, GPU_CONFIG.JUEGOS.FPS_TECH.TIER_1_KEYWORDS)) {
     fpsTechPoints = GPU_CONFIG.JUEGOS.FPS_TECH.POINTS;
   }
   // Nivel medio (1200 pts)
-  else if (GPU_CONFIG.JUEGOS.FPS_TECH.TIER_2_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  else if (includesAnyGpuKeyword(searchText, GPU_CONFIG.JUEGOS.FPS_TECH.TIER_2_KEYWORDS)) {
     fpsTechPoints = 1200;
   }
   // Nivel básico (800 pts)
-  else if (GPU_CONFIG.JUEGOS.FPS_TECH.TIER_3_KEYWORDS.some(keyword => searchText.includes(keyword))) {
+  else if (includesAnyGpuKeyword(searchText, GPU_CONFIG.JUEGOS.FPS_TECH.TIER_3_KEYWORDS)) {
     fpsTechPoints = 800;
   }
   
