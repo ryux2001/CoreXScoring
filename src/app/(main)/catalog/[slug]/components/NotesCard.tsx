@@ -84,16 +84,16 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-6">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 shrink-0">
             Notas
           </h3>
           
           <div className="hidden sm:flex items-center gap-2 whitespace-nowrap bg-zinc-900/30 px-3 py-1 rounded-full border border-zinc-900/50">
-            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-zinc-700">Precio Evaluado:</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-zinc-600">Precio Evaluado:</span>
             <span className="text-xs font-black text-zinc-400">
                {isMounted ? formatPrice(evaluatedPrice) : '---'}
             </span>
-            <span className="text-[9px] font-bold text-zinc-800 uppercase ml-1">{currency}</span>
+            <span className="text-[9px] font-bold text-zinc-600 uppercase ml-1">{currency}</span>
           </div>
         </div>
         
@@ -162,7 +162,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
 
       {/* FOOTER */}
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
-        <p className="text-[8px] text-zinc-700 uppercase tracking-widest leading-tight text-center lg:text-left">
+        <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest leading-tight text-center lg:text-left">
           * Todas las evaluaciones se basan en el rendimiento relativo frente a la competencia.
         </p>
       </div>

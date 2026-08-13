@@ -60,7 +60,7 @@ export default function BenchmarksCard({ product }: BenchmarksCardProps) {
       </div>
 
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
-        <p className="text-[8px] text-zinc-700 uppercase tracking-widest leading-tight text-center lg:text-left">
+        <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest leading-tight text-center lg:text-left">
           * Valores normalizados bajo entornos estables y techos globales de laboratorio.
         </p>
       </div>

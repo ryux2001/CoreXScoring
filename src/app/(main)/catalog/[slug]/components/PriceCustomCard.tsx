@@ -72,7 +72,7 @@ export default function PriceCustomCard({
               <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:text-white transition-colors">
                 <Info size={10} strokeWidth={3} />
               </div>
-              <div className="invisible absolute right-0 top-7 z-50 w-64 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute right-0 top-7 z-50 w-64 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-300 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
                 Ajusta el precio para recalcular automáticamente la relación
                 Calidad/Precio.
               </div>
@@ -93,9 +93,9 @@ export default function PriceCustomCard({
         />
 
         <div className="pt-3 border-t border-zinc-900/50">
-          <p className="text-[8px] text-zinc-700 uppercase tracking-wider leading-tight">
+          <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-wider leading-tight">
             * Evalúa la{" "}
-            <span className="text-zinc-600 font-bold">Calidad/Precio</span>.
+            <span className="text-zinc-400 font-bold">Calidad/Precio</span>.
           </p>
         </div>
       </div>
@@ -245,7 +245,7 @@ const PriceForm = ({
         </div>
         <button
           onClick={handleApply}
-          className="px-4 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest transition-all hover:bg-zinc-200 active:scale-95"
+          className="px-4 rounded-xl bg-zinc-900 text-[#ffffffbe] text-[10px] font-black uppercase tracking-widest transition-all hover:bg-zinc-800 hover:cursor-pointer active:scale-95"
         >
           APLICAR
         </button>
