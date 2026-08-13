@@ -1,4 +1,5 @@
 import { getComponentNotes } from '@/lib/scoring/index';
+import { getGpuGamingScore } from '@/lib/scoring/components/calculations/gpu/gpu';
 import { ComboScores, ComboPrices } from './types';
 import { calculateComboPotency } from './calculations/potency';
 import { calculateComboProductivity } from './calculations/productivity';
@@ -59,11 +60,12 @@ export const getComboNotes = (
   const cpuNotes = getComponentNotes(cpu, cpuPriceUSD);
   const gpuNotes = getComponentNotes(gpu, gpuPriceUSD);
   const ramNotes = getComponentNotes(ram, ramPriceUSD);
+  const gpuGaming = getGpuGamingScore(gpuNotes);
 
   // 4. Cálculos finales del combo
   const potency = calculateComboPotency(
     cpuNotes['Potencia'] || 0,
-    gpuNotes['Potencia'] || 0,
+    gpuNotes['Rasterización'] || 0,
     ramNotes['Velocidad'] || 0,
     ramNotes['Latencia'] || 0
   );
@@ -76,7 +78,7 @@ export const getComboNotes = (
 
   const gaming = calculateComboGaming(
     cpuNotes['Juegos'] || 0,
-    gpuNotes['Juegos'] || 0,
+    gpuGaming,
     ramNotes['Juegos'] || 0
   );
 
@@ -87,7 +89,7 @@ export const getComboNotes = (
 
   const bottleneck = calculateComboBottleneck(
     cpuNotes['Juegos'] || 0,
-    gpuNotes['Juegos'] || 0,
+    gpuGaming,
     ramNotes['Juegos'] || 0
   );
 

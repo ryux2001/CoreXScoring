@@ -10,6 +10,11 @@ import {
 } from 'lucide-react';
 import { getComponentNotes } from '@/lib/scoring/index';
 import { convertPrice } from '@/lib/currency';
+import {
+  GPU_VALUE_PROFILE_EVENT,
+  isGpuValueProfile,
+  type GpuValueProfile,
+} from '@/lib/scoring/components/calculations/gpu/profiles';
 
 interface RadarChartProps {
   product: any;
@@ -21,15 +26,16 @@ interface RadarChartProps {
 // 1. DICCIONARIO DE ICONOS
 const getIconForCategory = (category: string) => {
   const cat = category.toLowerCase();
-  if (cat.includes('potencia') || cat.includes('rendimiento') || cat.includes('velocidad')) return <Zap size={20} />;
-  if (cat.includes('juego')) return <Gamepad2 size={20} />;
+  if (cat.includes('raster') || cat.includes('potencia') || cat.includes('rendimiento') || cat.includes('velocidad')) return <Zap size={20} />;
+  if (cat.includes('ray tracing') || cat.includes('juego')) return <Gamepad2 size={20} />;
   if (cat.includes('eficiencia')) return <Leaf size={20} />;
   if (cat.includes('precio')) return <CircleDollarSign size={20} />;
   if (cat.includes('tecnología')) return <Cpu size={20} />;
   if (cat.includes('temperatura')) return <ThermometerSnowflake size={20} />;
   if (cat.includes('durabilidad') || cat.includes('proteccion')) return <Shield size={20} />;
   if (cat.includes('estabilidad') || cat.includes('latencia')) return <Activity size={20} />;
-  if (cat.includes('productividad')) return <Layers size={20} />;
+  if (cat.includes('productividad') || cat.includes('memoria')) return <Layers size={20} />;
+  if (cat.includes('software')) return <Cpu size={20} />;
   if (cat.includes('conectividad') || cat.includes('compatibilidad') || cat.includes('expansión')) return <Network size={20} />;
   if (cat.includes('construcción')) return <Wrench size={20} />;
   return <Activity size={20} />; 
@@ -106,12 +112,14 @@ const InteractiveTick = (props: any) => {
 
 export default function RadarChartCard({ product, currency = 'USD', onSwitchView }: RadarChartProps) {
   const isEUR = currency === 'EUR';
+  const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
   const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const initialPrice = product[priceColumn] || 0;
 
   const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
   const [activeTooltip, setActiveTooltip] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [gpuValueProfile, setGpuValueProfile] = useState<GpuValueProfile>('balanced');
 
   useEffect(() => {
     setIsMounted(true);
@@ -121,8 +129,24 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
     return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
   }, [initialPrice]);
 
+  useEffect(() => {
+    setGpuValueProfile('balanced');
+  }, [product?.id]);
+
+  useEffect(() => {
+    if (!isGpu) return;
+
+    const handleGpuValueProfileUpdate = (event: Event) => {
+      const value = (event as CustomEvent<unknown>).detail;
+      if (isGpuValueProfile(value)) setGpuValueProfile(value);
+    };
+
+    window.addEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
+    return () => window.removeEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
+  }, [isGpu]);
+
   const evaluatedPriceUSD = convertPrice(evaluatedPrice, currency, 'USD');
-  const notesData = getComponentNotes(product, evaluatedPriceUSD);
+  const notesData = getComponentNotes(product, evaluatedPriceUSD, isGpu ? gpuValueProfile : undefined);
   
   const chartData = Object.entries(notesData).map(([key, value]) => ({
     subject: key,

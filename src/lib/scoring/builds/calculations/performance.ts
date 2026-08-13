@@ -1,6 +1,7 @@
 import { BUILD_SCORING_CONFIG } from '../config';
 import { Build, BuildScores } from '../types';
 import { clamp, getNote } from '../utils';
+import { getGpuGamingScore } from '@/lib/scoring/components/calculations/gpu/gpu';
 
 /** Storage contributes secondary notes to build productivity and gaming. */
 export const getStorageProductivity = (scores: Build | undefined): number => {
@@ -24,7 +25,7 @@ export const getBuildPower = (scores: BuildScores): number => {
   const weights = BUILD_SCORING_CONFIG.PERFORMANCE.POWER;
   return clamp(
     getNote(scores.cpu, ['Potencia']) * weights.CPU +
-      getNote(scores.gpu, ['Potencia']) * weights.GPU +
+      getNote(scores.gpu, ['Rasterización']) * weights.GPU +
       getNote(scores.ram, ['Velocidad']) * weights.RAM_SPEED +
       getNote(scores.ram, ['Latencia']) * weights.RAM_LATENCY +
       getNote(scores.storage, ['Velocidad']) * weights.STORAGE_SPEED,
@@ -44,7 +45,7 @@ export const getBuildProductivity = (scores: BuildScores): number => {
 export const getBuildGaming = (scores: BuildScores): number => {
   const weights = BUILD_SCORING_CONFIG.PERFORMANCE.GAMING;
   return clamp(
-    getNote(scores.gpu, ['Juegos']) * weights.GPU +
+    getGpuGamingScore(scores.gpu) * weights.GPU +
       getNote(scores.cpu, ['Juegos']) * weights.CPU +
       getNote(scores.ram, ['Juegos']) * weights.RAM +
       getStorageGaming(scores.storage) * weights.STORAGE,
@@ -64,7 +65,7 @@ export const getBuildEfficiency = (scores: BuildScores): number => {
 export const getBuildBottleneck = (scores: BuildScores): number => {
   const weights = BUILD_SCORING_CONFIG.PERFORMANCE.BOTTLENECK;
   const cpuGaming = getNote(scores.cpu, ['Juegos']);
-  const gpuGaming = getNote(scores.gpu, ['Juegos']);
+  const gpuGaming = getGpuGamingScore(scores.gpu);
   const ramGaming = getNote(scores.ram, ['Juegos']);
   const storageGaming = getStorageGaming(scores.storage);
   const mainLevel = Math.max(cpuGaming, gpuGaming);

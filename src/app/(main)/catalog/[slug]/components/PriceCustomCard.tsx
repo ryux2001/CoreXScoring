@@ -2,10 +2,32 @@
 
 import React, { useState, useEffect } from "react";
 import { Info, ChevronDown, X, Settings2 } from "lucide-react";
+import {
+  GPU_VALUE_PROFILE_EVENT,
+  GPU_VALUE_PROFILE_OPTIONS,
+  isGpuValueProfile,
+  type GpuValueProfile,
+} from "@/lib/scoring/components/calculations/gpu/profiles";
 
 interface PriceCustomProps {
   product: any;
   currency?: string;
+}
+
+interface PriceFormProps {
+  selectedMarket: number;
+  setSelectedMarket: (value: number) => void;
+  customPrice: number;
+  setCustomPrice: (value: number) => void;
+  basePrice: number;
+  format: (value: number) => string;
+  symbol: string;
+  currency: string;
+  handleApply: () => void;
+  isGpu: boolean;
+  gpuValueProfile: GpuValueProfile;
+  onGpuValueProfileChange: (value: GpuValueProfile) => void;
+  profileSelectId: string;
 }
 
 export default function PriceCustomCard({
@@ -16,12 +38,18 @@ export default function PriceCustomCard({
   const [isClosing, setIsClosing] = useState(false);
 
   const isEUR = currency === "EUR";
+  const isGpu = String(product?.type ?? "").toUpperCase() === "GPU";
   const priceColumn = isEUR ? "price_base_eur" : "price_base_usd";
   const basePrice = product[priceColumn] || 0;
   const symbol = isEUR ? "€" : "$";
 
   const [selectedMarket, setSelectedMarket] = useState(basePrice);
   const [customPrice, setCustomPrice] = useState(basePrice);
+  const [gpuValueProfile, setGpuValueProfile] = useState<GpuValueProfile>("balanced");
+
+  useEffect(() => {
+    setGpuValueProfile("balanced");
+  }, [product?.id]);
 
   // Sincronización y bloqueo de scroll
   useEffect(() => {
@@ -55,6 +83,15 @@ export default function PriceCustomCard({
     });
     window.dispatchEvent(event);
     if (isModalOpen) handleCloseModal();
+  };
+
+  const handleGpuValueProfileChange = (value: GpuValueProfile) => {
+    if (!isGpu) return;
+
+    setGpuValueProfile(value);
+    window.dispatchEvent(
+      new CustomEvent<GpuValueProfile>(GPU_VALUE_PROFILE_EVENT, { detail: value }),
+    );
   };
 
   // El contenido del formulario lo extraemos para reutilizarlo en desktop y modal
@@ -94,6 +131,10 @@ export default function PriceCustomCard({
           symbol={symbol}
           currency={currency}
           handleApply={handleApply}
+          isGpu={isGpu}
+          gpuValueProfile={gpuValueProfile}
+          onGpuValueProfileChange={handleGpuValueProfileChange}
+          profileSelectId="gpu-value-profile-desktop"
         />
 
         <div className="pt-3 border-t border-zinc-900/50">
@@ -149,6 +190,10 @@ export default function PriceCustomCard({
                 symbol={symbol}
                 currency={currency}
                 handleApply={handleApply}
+                isGpu={isGpu}
+                gpuValueProfile={gpuValueProfile}
+                onGpuValueProfileChange={handleGpuValueProfileChange}
+                profileSelectId="gpu-value-profile-mobile"
               />
               <p className="mt-6 text-center text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500">
                 El cambio se verá reflejado en la <br /> tarjeta principal del
@@ -172,7 +217,11 @@ const PriceForm = ({
   symbol,
   currency,
   handleApply,
-}: any) => (
+  isGpu,
+  gpuValueProfile,
+  onGpuValueProfileChange,
+  profileSelectId,
+}: PriceFormProps) => (
   <div className="space-y-4">
     {/* PRECIOS ALTERNATIVOS */}
     <div className="space-y-1.5">
@@ -205,6 +254,41 @@ const PriceForm = ({
         </div>
       </div>
     </div>
+
+    {isGpu && (
+      <div className="space-y-1.5">
+        <label
+          htmlFor={profileSelectId}
+          className="ml-1 text-[8px] font-black uppercase tracking-widest text-zinc-700"
+        >
+          Perfil de valor
+        </label>
+        <div className="relative">
+          <select
+            id={profileSelectId}
+            value={gpuValueProfile}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (isGpuValueProfile(value)) onGpuValueProfileChange(value);
+            }}
+            aria-describedby={`${profileSelectId}-description`}
+            className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 pr-9 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700 focus:ring-2 focus:ring-zinc-700/60"
+          >
+            {GPU_VALUE_PROFILE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600">
+            <ChevronDown size={14} />
+          </div>
+        </div>
+        <p id={`${profileSelectId}-description`} className="px-1 text-[8px] leading-relaxed text-zinc-600">
+          Cambia qué tipo de rendimiento pesa más en Calidad/Precio.
+        </p>
+      </div>
+    )}
 
     {/* PRECIO PERSONALIZADO */}
     <div className="space-y-1.5">

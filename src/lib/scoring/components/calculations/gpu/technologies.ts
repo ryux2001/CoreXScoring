@@ -1,95 +1,66 @@
 /**
- * GPU TECHNOLOGIES SCORE CALCULATOR
+ * GPU SOFTWARE AND ECOSYSTEM SCORE CALCULATOR
+ * Uses structured technology descriptions, never average FPS fields.
  */
 
-import { GPU_CONFIG } from '../../config/gpu';
-import { safeExtract } from '../../../shared/validators';
 import { includesAnyGpuKeyword } from '../../../shared/keyword-matching';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return value;
-    }
-  }
-  return value;
-}
+import { clampScore, getGpuTechnologyText } from './score-utils';
 
 export const calculateTechnologiesScore = (product: any): number => {
-  const compatibility = parseJsonbString(product?.compatibility || '{}');
-  const specs = parseJsonbString(product?.specs || '{}');
-  const technologies = parseJsonbString(product?.technologies || '[]');
-  const releaseYear = product?.release_year || 0;
-  const description = product?.description || '';
-  
-  // Extraer PCIe
-  const pcieGen = parseFloat(safeExtract(compatibility?.pcie_generation, 0).toString());
-  
-  // Extraer APIs
-  // Compatibilidad con el parche SQL que puede haber guardado estas APIs en specs.
-  const directx = safeExtract(compatibility?.directx ?? specs?.directx, 0).toString();
-  const opengl = safeExtract(compatibility?.opengl ?? specs?.opengl, 0).toString();
-  
-  // 1. Plataforma (3000 pts)
-  let platformPoints = 0;
-  
-  // PCIe
-  if (GPU_CONFIG.TECNOLOGIAS.PLATFORM.PCIE_SCORES.hasOwnProperty(pcieGen)) {
-    platformPoints += GPU_CONFIG.TECNOLOGIAS.PLATFORM.PCIE_SCORES[pcieGen as keyof typeof GPU_CONFIG.TECNOLOGIAS.PLATFORM.PCIE_SCORES];
-  }
-  
-  // APIs (1000 pts si tiene DX12 y OpenGL 4.6)
-  if (directx === '12' && opengl === '4.6') {
-    platformPoints += GPU_CONFIG.TECNOLOGIAS.PLATFORM.WEIGHTS.apis;
-  }
-  
-  // 2. Penalización edad (2000 pts)
-  let agePoints = GPU_CONFIG.TECNOLOGIAS.AGE_PENALTY.POINTS;
-  if (releaseYear > 0) {
-    const age = new Date().getFullYear() - releaseYear;
-    const penalty = age * GPU_CONFIG.TECNOLOGIAS.AGE_PENALTY.PENALTY_PER_YEAR;
-    agePoints = Math.max(0, agePoints - penalty);
-  }
-  
-  // 3. VIP Software IA (5000 pts)
-  let vipPoints = 0;
-  
-  // Unificar textos para búsqueda semántica insensible a mayúsculas
-  const techArrayStr = Array.isArray(technologies) ? JSON.stringify(technologies) : '';
-  const allText = (technologies || []).map((t: any) => (t.name || '') + ' ' + (t.description || '')).join(' ').toLowerCase();
-  const descText = description.toLowerCase();
-  const searchText = (techArrayStr + ' ' + allText + ' ' + descText).toLowerCase();
-  
-  const vipConfig = GPU_CONFIG.TECNOLOGIAS.VIP_SOFTWARE;
+  const searchText = getGpuTechnologyText(product?.technologies, product?.description);
 
-  // --- Categoría 1: Generación de Fotogramas y escalado ---
-  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_1_PREMIUM_KEYWORDS)) {
-    vipPoints += vipConfig.CAT_1_PREMIUM_POINTS; // Se lleva el máximo (1250)
-  } else if (includesAnyGpuKeyword(searchText, vipConfig.CAT_1_STANDARD_KEYWORDS)) {
-    vipPoints += vipConfig.CAT_1_STANDARD_POINTS; // Se lleva el estándar (750)
-  }
-  
-  // --- Categoría 2: IA Avanzada ---
-  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_2_KEYWORDS)) {
-    vipPoints += vipConfig.CAT_2_POINTS; // (1250)
-  }
-  
-  // --- Categoría 3: Trazado de Rayos ---
-  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_3_PREMIUM_KEYWORDS)) {
-    vipPoints += vipConfig.CAT_3_PREMIUM_POINTS; // Se lleva el máximo por Path Tracing / RR (1250)
-  } else if (includesAnyGpuKeyword(searchText, vipConfig.CAT_3_STANDARD_KEYWORDS)) {
-    vipPoints += vipConfig.CAT_3_STANDARD_POINTS; // Se lleva el estándar por RT básico (600)
-  }
-  
-  // --- Categoría 4: Latencia y ecosistema ---
-  if (includesAnyGpuKeyword(searchText, vipConfig.CAT_4_KEYWORDS)) {
-    vipPoints += vipConfig.CAT_4_POINTS; // (1250)
-  }
-  
-  // Total puntos
-  const totalPoints = platformPoints + agePoints + vipPoints;
-  
-  return Math.min(10, (totalPoints / GPU_CONFIG.TECNOLOGIAS.TOTAL_POINTS) * 10);
+  const scalingScore = includesAnyGpuKeyword(searchText, [
+    'dlss 4',
+    'dlss4',
+    'fsr 4',
+    'fsr4',
+  ])
+    ? 10
+    : includesAnyGpuKeyword(searchText, [
+      'frame generation',
+      'xess 2',
+      'xess 3',
+      'fsr 3',
+      'fsr3',
+      'dlss 3',
+      'dlss3',
+    ])
+      ? 7
+      : includesAnyGpuKeyword(searchText, ['fsr', 'xess', 'dlss'])
+        ? 4
+        : 0;
+
+  const aiScore = includesAnyGpuKeyword(searchText, [
+    'tensor',
+    'transformer',
+    'neural networks',
+    'redes neuronales',
+    'machine learning',
+  ]) ? 10 : 0;
+
+  const rayReconstructionScore = includesAnyGpuKeyword(searchText, [
+    'ray reconstruction',
+    'path tracing',
+    'regeneración de rayos',
+  ])
+    ? 10
+    : includesAnyGpuKeyword(searchText, ['ray tracing', 'trazado de rayos'])
+      ? 6
+      : 0;
+
+  const ecosystemScore = includesAnyGpuKeyword(searchText, [
+    'reflex',
+    'anti-lag',
+    'low latency',
+    'baja latencia',
+    'deep link',
+    'av1',
+  ]) ? 10 : 0;
+
+  return clampScore(
+    scalingScore * 0.35 +
+      aiScore * 0.2 +
+      rayReconstructionScore * 0.25 +
+      ecosystemScore * 0.2,
+  );
 };

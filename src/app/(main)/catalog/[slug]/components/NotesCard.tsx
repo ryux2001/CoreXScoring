@@ -4,6 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
 import { convertPrice } from '@/lib/currency';
 import { getComponentNotes } from '@/lib/scoring/index';
+import {
+  GPU_VALUE_PROFILE_EVENT,
+  isGpuValueProfile,
+  type GpuValueProfile,
+} from '@/lib/scoring/components/calculations/gpu/profiles';
 
 interface NotesCardProps {
   product: any;
@@ -14,19 +19,22 @@ interface NotesCardProps {
 
 export default function NotesCard({ product, currency = 'USD', onSwitchView }: NotesCardProps) {
   const isEUR = currency === 'EUR';
+  const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
   const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const initialPrice = product[priceColumn] || 0;
+  const initialPriceUSD = convertPrice(initialPrice, currency, 'USD');
   const symbol = isEUR ? '€' : '$';
 
   const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
   const [isMounted, setIsMounted] = useState(false);
-  const [precioUSD, setPrecioUSD] = useState(initialPrice);
+  const [precioUSD, setPrecioUSD] = useState(initialPriceUSD);
+  const [gpuValueProfile, setGpuValueProfile] = useState<GpuValueProfile>('balanced');
 
   // 1. Calcular nota de calidad/precio al montar (antes del render)
   useEffect(() => {
     setIsMounted(true);
     setEvaluatedPrice(initialPrice);
-    setPrecioUSD(convertPrice(initialPrice, currency, 'USD'));
+    setPrecioUSD(initialPriceUSD);
 
     const handlePriceUpdate = (e: any) => {
       setEvaluatedPrice(e.detail);
@@ -35,10 +43,26 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
 
     window.addEventListener('updateProductPrice', handlePriceUpdate);
     return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
-  }, [initialPrice, currency, product]);
+  }, [initialPrice, initialPriceUSD, currency, product]);
+
+  useEffect(() => {
+    setGpuValueProfile('balanced');
+  }, [product?.id]);
+
+  useEffect(() => {
+    if (!isGpu) return;
+
+    const handleGpuValueProfileUpdate = (event: Event) => {
+      const value = (event as CustomEvent<unknown>).detail;
+      if (isGpuValueProfile(value)) setGpuValueProfile(value);
+    };
+
+    window.addEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
+    return () => window.removeEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
+  }, [isGpu]);
 
   // Obtenemos las 5 notas principales (el precio ya está en USD)
-  const baseNotes = getComponentNotes(product, precioUSD);
+  const baseNotes = getComponentNotes(product, precioUSD, isGpu ? gpuValueProfile : undefined);
   
   // Extraemos solo los nombres (las llaves del objeto) para el mapeo del grid
   const categories = Object.keys(baseNotes);
@@ -127,7 +151,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
       </div>
 
       {/* CUERPO: GRID DINÁMICO */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className={`grid grid-cols-3 gap-4 ${isGpu ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
         {categories.map((cat, idx) => {
           // Obtenemos el número real desde el objeto baseNotes usando el nombre como llave
           const score = baseNotes[cat] || 0;
