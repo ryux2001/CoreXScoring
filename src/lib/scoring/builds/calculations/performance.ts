@@ -46,7 +46,7 @@ export const getBuildGaming = (scores: BuildScores): number => {
   const weights = BUILD_SCORING_CONFIG.PERFORMANCE.GAMING;
   return clamp(
     getGpuGamingScore(scores.gpu) * weights.GPU +
-      getNote(scores.cpu, ['Juegos']) * weights.CPU +
+      getNote(scores.cpu, ['Gaming', 'Juegos']) * weights.CPU +
       getNote(scores.ram, ['Juegos']) * weights.RAM +
       getStorageGaming(scores.storage) * weights.STORAGE,
   );
@@ -64,7 +64,7 @@ export const getBuildEfficiency = (scores: BuildScores): number => {
 
 export const getBuildBottleneck = (scores: BuildScores): number => {
   const weights = BUILD_SCORING_CONFIG.PERFORMANCE.BOTTLENECK;
-  const cpuGaming = getNote(scores.cpu, ['Juegos']);
+  const cpuGaming = getNote(scores.cpu, ['Gaming', 'Juegos']);
   const gpuGaming = getGpuGamingScore(scores.gpu);
   const ramGaming = getNote(scores.ram, ['Juegos']);
   const storageGaming = getStorageGaming(scores.storage);

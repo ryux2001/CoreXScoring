@@ -6,6 +6,14 @@
 
 import { CPU_CONFIG } from '../../config/cpu';
 import { formatNoteScore, safeExtract } from '../../../shared/helpers';
+import {
+  clampScore,
+  getCpuData,
+  getFiniteNumber,
+  interpolateScore,
+  normalizeCpuField,
+} from './score-utils';
+import { CPU_SCORING_V3 } from './v3-config';
 
 export const calculateEfficiencyScore = (product: any): number => {
   // Parsear JSONB strings que vienen de Supabase
@@ -37,4 +45,33 @@ export const calculateEfficiencyScore = (product: any): number => {
   // Escalar a 0-10 (como potency.ts)
   const normalizedScore = (totalPoints / CPU_CONFIG.EFFICIENCY.TOTAL_POINTS) * 10;
   return formatNoteScore(normalizedScore);
+};
+
+/**
+ * Efficiency v3 balances performance per watt with absolute power footprint.
+ * Maximum turbo power is used because TDP definitions differ between vendors.
+ */
+export const calculateEfficiencyV3Score = (product: any): number => {
+  const { benchmarks, specs } = getCpuData(product);
+  const cinebench = getFiniteNumber(benchmarks.cinebench_multi) ?? 0;
+  const passmark = getFiniteNumber(benchmarks.passmark_score) ?? 0;
+  const power = getFiniteNumber(specs.power_turbo_max) ?? 0;
+
+  if (cinebench <= 0 || passmark <= 0 || power <= 0) return 0;
+
+  const cinebenchPerWatt = normalizeCpuField(
+    cinebench / power,
+    'CINEBENCH_PER_WATT',
+  );
+  const passmarkPerWatt = normalizeCpuField(
+    passmark / power,
+    'PASSMARK_PER_WATT',
+  );
+  const performancePerWatt = cinebenchPerWatt * 0.6 + passmarkPerWatt * 0.4;
+  const footprint = interpolateScore(
+    power,
+    CPU_SCORING_V3.POWER_FOOTPRINT_ANCHORS,
+  );
+
+  return clampScore(performancePerWatt * 0.6 + footprint * 0.4);
 };

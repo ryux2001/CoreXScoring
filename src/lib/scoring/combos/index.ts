@@ -77,7 +77,7 @@ export const getComboNotes = (
   );
 
   const gaming = calculateComboGaming(
-    cpuNotes['Juegos'] || 0,
+    cpuNotes['Gaming'] || cpuNotes['Juegos'] || 0,
     gpuGaming,
     ramNotes['Juegos'] || 0
   );
@@ -88,7 +88,7 @@ export const getComboNotes = (
   );
 
   const bottleneck = calculateComboBottleneck(
-    cpuNotes['Juegos'] || 0,
+    cpuNotes['Gaming'] || cpuNotes['Juegos'] || 0,
     gpuGaming,
     ramNotes['Juegos'] || 0
   );

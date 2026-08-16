@@ -6,6 +6,12 @@
 
 import { CPU_CONFIG } from '../../config/cpu';
 import { formatNoteScore, safeExtract } from '../../../shared/helpers';
+import {
+  clampScore,
+  getCpuData,
+  getFiniteNumber,
+  normalizeCpuField,
+} from './score-utils';
 
 export const calculateProductivityScore = (product: any): number => {
   // Parsear JSONB strings que vienen de Supabase
@@ -78,3 +84,18 @@ function detectTechnology(technologies: any[], keywords: string[]): boolean {
   
   return false;
 }
+
+/** Productivity v3 is driven only by comparable multi-core workloads. */
+export const calculateProductivityV3Score = (product: any): number => {
+  const { benchmarks } = getCpuData(product);
+  const cinebench = normalizeCpuField(
+    getFiniteNumber(benchmarks.cinebench_multi) ?? 0,
+    'CINEBENCH_MULTI',
+  );
+  const passmark = normalizeCpuField(
+    getFiniteNumber(benchmarks.passmark_score) ?? 0,
+    'PASSMARK',
+  );
+
+  return clampScore(cinebench * 0.65 + passmark * 0.35);
+};

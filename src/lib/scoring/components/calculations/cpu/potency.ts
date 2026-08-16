@@ -6,6 +6,13 @@
 import { CPU_CONFIG } from '../../config/cpu';
 import { kbToMb } from '../../../shared/helpers';
 import { safeExtract } from '../../../shared/validators';
+import {
+  clampScore,
+  getCpuArchitectureProfile,
+  getCpuData,
+  getFiniteNumber,
+  normalizeCpuField,
+} from './score-utils';
 
 export const calculatePotencyScore = (product: any): number => {
   const benchmarks = product?.benchmarks || {};
@@ -49,5 +56,38 @@ export const calculatePotencyScore = (product: any): number => {
   const totalPoints = benchmarkTotal + specsTotal;
   
   return Math.min(10, (totalPoints / CPU_CONFIG.MAX_POINTS) * 10);
+};
+
+/**
+ * Potency v3 combines multi-core throughput with a corrected single-core
+ * potential. Geekbench has mixed scales in the catalogue, so architecture and
+ * boost frequency stabilize that signal instead of letting one raw value move
+ * an entire generation.
+ */
+export const calculatePotencyV3Score = (product: any): number => {
+  const { benchmarks, specs } = getCpuData(product);
+  const architecture = getCpuArchitectureProfile(product);
+  const geekbench = normalizeCpuField(
+    getFiniteNumber(benchmarks.geekbench_single) ?? 0,
+    'GEEKBENCH_SINGLE',
+  );
+  const cinebench = normalizeCpuField(
+    getFiniteNumber(benchmarks.cinebench_multi) ?? 0,
+    'CINEBENCH_MULTI',
+  );
+  const passmark = normalizeCpuField(
+    getFiniteNumber(benchmarks.passmark_score) ?? 0,
+    'PASSMARK',
+  );
+  const turbo = normalizeCpuField(
+    getFiniteNumber(specs.turbo_frequency) ?? 0,
+    'TURBO',
+  );
+  const singlePotential =
+    geekbench * 0.1 + architecture.ipc * 0.5 + turbo * 0.4;
+
+  return clampScore(
+    singlePotential * 0.3 + cinebench * 0.4 + passmark * 0.3,
+  );
 };
 

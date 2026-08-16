@@ -6,6 +6,16 @@
 
 import { CPU_CONFIG } from '../../config/cpu';
 import { formatNoteScore, safeExtract } from '../../../shared/helpers';
+import {
+  clampScore,
+  getCpuArchitectureProfile,
+  getCpuData,
+  getCpuPerformanceCores,
+  getFiniteNumber,
+  interpolateScore,
+  normalizeCpuField,
+} from './score-utils';
+import { CPU_SCORING_V3 } from './v3-config';
 
 export const calculateGamingScore = (product: any): number => {
   // Parsear JSONB strings que vienen de Supabase
@@ -83,4 +93,46 @@ function getRamScore(ramType: string, scores: any): number {
 function getPcieScore(pcie: number, scores: any): number {
   const key = pcie.toString();
   return scores[key] || 0;
+}
+
+/**
+ * Gaming v3 emphasizes latency-sensitive signals. X3D variants receive a
+ * dedicated architecture profile because cache topology matters beyond raw
+ * L3 capacity alone.
+ */
+export const calculateGamingV3Score = (product: any): number => {
+  const { benchmarks, specs } = getCpuData(product);
+  const architecture = getCpuArchitectureProfile(product);
+  const geekbench = normalizeCpuField(
+    getFiniteNumber(benchmarks.geekbench_single) ?? 0,
+    'GEEKBENCH_SINGLE',
+  );
+  const turbo = normalizeCpuField(
+    getFiniteNumber(specs.turbo_frequency) ?? 0,
+    'TURBO',
+  );
+  const cacheMb = (getFiniteNumber(parseCache(specs.cache)) ?? 0) / 1024;
+  const cache = interpolateScore(cacheMb, CPU_SCORING_V3.CACHE_ANCHORS);
+  const performanceCores = getCpuPerformanceCores(product);
+  const coreAdequacy = interpolateScore(
+    performanceCores,
+    CPU_SCORING_V3.PERFORMANCE_CORE_ANCHORS,
+  );
+
+  return clampScore(
+    geekbench * 0.15 +
+      turbo * 0.2 +
+      cache * 0.35 +
+      architecture.gaming * 0.25 +
+      coreAdequacy * 0.05,
+  );
+};
+
+function parseCache(value: unknown): number {
+  if (value && typeof value === 'object') {
+    const cache = value as Record<string, unknown>;
+    return getFiniteNumber(cache.l3) ?? 0;
+  }
+
+  return 0;
 }

@@ -7,12 +7,15 @@ export interface ComponentNotes {
   [key: string]: number;
 }
 
-export interface CpuNotes extends ComponentNotes {
+export interface CpuTechnicalNotes extends ComponentNotes {
   "Potencia": number;
-  "Tecnologías": number;
   "Productividad": number;
-  "Juegos": number;
+  Gaming: number;
   "Eficiencia": number;
+  "Plataforma": number;
+}
+
+export interface CpuNotes extends CpuTechnicalNotes {
   "Calidad precio": number;
 }
 
