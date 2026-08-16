@@ -1,11 +1,18 @@
 /**
  * GPU PRODUCTIVITY SCORE CALCULATOR
- * Blender is the primary signal; professional acceleration is a small bonus.
+ * v2 uses the fields currently available in the catalog. Structured feature
+ * fields can replace the temporary architecture heuristic later.
  */
 
-import { safeExtract } from '../../../shared/validators';
 import { includesAnyGpuKeyword } from '../../../shared/keyword-matching';
-import { getGpuTechnologyText, interpolateScore, parseJsonb } from './score-utils';
+import {
+  clampScore,
+  getFiniteNumber,
+  getGpuData,
+  getGpuFeatureText,
+  getGpuTechnologyText,
+  interpolateScore,
+} from './score-utils';
 
 const BLENDER_SCORE_ANCHORS = [
   [250, 1],
@@ -19,18 +26,62 @@ const BLENDER_SCORE_ANCHORS = [
   [18000, 10],
 ] as const;
 
-export const calculateProductivityScore = (product: any): number => {
-  const benchmarks = parseJsonb<Record<string, unknown>>(product?.benchmarks, {});
-  const technologyText = getGpuTechnologyText(product?.technologies, product?.description);
-  const blenderScore = safeExtract(benchmarks.blender_score, 0);
-  const renderingScore = interpolateScore(blenderScore, BLENDER_SCORE_ANCHORS);
-  const accelerationScore = includesAnyGpuKeyword(technologyText, [
-    'machine learning',
-    'redes neuronales',
-    'neural networks',
-    'tensor',
-    'av1',
-  ]) ? 10 : 0;
+function calculateProfessionalAccelerationScore(
+  product: any,
+  searchText: string,
+  specs: Record<string, unknown>,
+): number {
+  const brand = String(product?.brand ?? '').toUpperCase();
+  const name = String(product?.name ?? '').toUpperCase();
+  const architecture = String(specs.architecture ?? '').toUpperCase();
 
-  return renderingScore * 0.85 + accelerationScore * 0.15;
+  let score = 4;
+
+  if (brand === 'NVIDIA' && (architecture.includes('BLACKWELL') || name.includes('RTX 50'))) {
+    score = 9.5;
+  } else if (brand === 'AMD' && (architecture.includes('RDNA 4') || name.includes('RX 9'))) {
+    score = 6.8;
+  }
+
+  if (includesAnyGpuKeyword(searchText, ['cuda'])) score += 0.3;
+  if (includesAnyGpuKeyword(searchText, ['optix'])) score += 0.3;
+  if (includesAnyGpuKeyword(searchText, ['tensor'])) score += 0.2;
+  if (includesAnyGpuKeyword(searchText, ['rocm', 'hip'])) score += 0.3;
+  if (includesAnyGpuKeyword(searchText, ['av1'])) score += 0.1;
+
+  return clampScore(score);
+}
+
+function calculateMediaAiCodecScore(searchText: string): number {
+  let score = 0;
+
+  if (includesAnyGpuKeyword(searchText, ['av1'])) score += 2;
+  if (includesAnyGpuKeyword(searchText, ['dlss4', 'dlss 4', 'fsr4', 'fsr 4'])) score += 2;
+  if (includesAnyGpuKeyword(searchText, ['reflex', 'anti lag', 'antilag', 'baja latencia', 'low latency'])) score += 1.5;
+  if (includesAnyGpuKeyword(searchText, ['ray reconstruction', 'regeneracion de rayos'])) score += 2;
+  if (includesAnyGpuKeyword(searchText, ['tensor', 'ia', 'ai', 'machine learning', 'redes neuronales', 'neural networks'])) score += 2.5;
+
+  return clampScore(score);
+}
+
+export const calculateProductivityScore = (product: any): number => {
+  const { benchmarks, specs, features } = getGpuData(product);
+  const processingUnits = specs.processing_units && typeof specs.processing_units === 'object'
+    ? specs.processing_units as Record<string, unknown>
+    : {};
+  const structuredSignals = [
+    (getFiniteNumber(specs.cuda_cores_stream_processors) ?? 0) > 0 ? 'cuda' : '',
+    (getFiniteNumber(processingUnits.tensor_cores) ?? 0) > 0 ? 'tensor' : '',
+  ].join(' ');
+  const searchText = `${product?.name ?? ''} ${product?.brand ?? ''} ${specs.architecture ?? ''} ${getGpuTechnologyText(product?.technologies, product?.description)} ${getGpuFeatureText(features)} ${structuredSignals}`;
+  const blenderScore = getFiniteNumber(benchmarks.blender_score) ?? 0;
+  const renderingScore = interpolateScore(blenderScore, BLENDER_SCORE_ANCHORS);
+  const professionalAccelerationScore = calculateProfessionalAccelerationScore(product, searchText, specs);
+  const mediaAiCodecScore = calculateMediaAiCodecScore(searchText);
+
+  return clampScore(
+    renderingScore * 0.5 +
+      professionalAccelerationScore * 0.35 +
+      mediaAiCodecScore * 0.15,
+  );
 };

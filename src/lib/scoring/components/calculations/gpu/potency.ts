@@ -4,7 +4,7 @@
  */
 
 import { safeExtract } from '../../../shared/validators';
-import { interpolateScore, parseJsonb } from './score-utils';
+import { getGpuData, interpolateScore } from './score-utils';
 
 const TIME_SPY_SCORE_ANCHORS = [
   [3000, 1],
@@ -19,7 +19,7 @@ const TIME_SPY_SCORE_ANCHORS = [
 ] as const;
 
 export const calculateRasterizationScore = (product: any): number => {
-  const benchmarks = parseJsonb<Record<string, unknown>>(product?.benchmarks, {});
+  const { benchmarks } = getGpuData(product);
   const timeSpy = safeExtract(benchmarks['3dmark_time_spy'], 0);
 
   return interpolateScore(timeSpy, TIME_SPY_SCORE_ANCHORS);

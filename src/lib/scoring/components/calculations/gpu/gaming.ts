@@ -4,7 +4,12 @@
  */
 
 import { safeExtract } from '../../../shared/validators';
-import { interpolateScore, parseJsonb } from './score-utils';
+import {
+  clampScore,
+  getFiniteNumber,
+  getGpuData,
+  interpolateScore,
+} from './score-utils';
 
 const PORT_ROYAL_SCORE_ANCHORS = [
   [250, 1],
@@ -18,11 +23,34 @@ const PORT_ROYAL_SCORE_ANCHORS = [
   [36000, 10],
 ] as const;
 
-export const calculateRayTracingScore = (product: any): number => {
-  const benchmarks = parseJsonb<Record<string, unknown>>(product?.benchmarks, {});
-  const portRoyal = safeExtract(benchmarks['3dmark_port_royal'], 0);
+const SPEED_WAY_SCORE_ANCHORS = [
+  [1000, 1],
+  [2000, 2],
+  [3000, 3],
+  [4000, 4],
+  [5000, 5],
+  [6500, 6],
+  [8000, 7],
+  [10000, 8],
+  [12500, 9],
+  [15000, 10],
+] as const;
 
-  return interpolateScore(portRoyal, PORT_ROYAL_SCORE_ANCHORS);
+export const calculateRayTracingScore = (product: any): number => {
+  const { benchmarks } = getGpuData(product);
+  const portRoyal = safeExtract(benchmarks['3dmark_port_royal'], 0);
+  const portRoyalScore = interpolateScore(portRoyal, PORT_ROYAL_SCORE_ANCHORS);
+  const modernScore = getFiniteNumber(benchmarks.path_tracing_score ?? benchmarks.rt_modern_score);
+  const speedWay = safeExtract(benchmarks['3dmark_speed_way'], 0);
+  const speedWayScore = interpolateScore(speedWay, SPEED_WAY_SCORE_ANCHORS);
+
+  const modernRayTracingScore = modernScore === null
+    ? speedWay > 0 ? speedWayScore : null
+    : clampScore(modernScore);
+
+  if (modernRayTracingScore === null) return portRoyalScore;
+
+  return clampScore(portRoyalScore * 0.6 + modernRayTracingScore * 0.4);
 };
 
 // Compatibility alias for any external import of the previous name.

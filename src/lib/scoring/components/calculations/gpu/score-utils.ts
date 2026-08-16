@@ -1,4 +1,5 @@
 export type ScoreAnchor = readonly [value: number, score: number];
+export type GpuRecord = Record<string, unknown>;
 
 export function parseJsonb<T>(value: unknown, fallback: T): T {
   if (typeof value === 'string') {
@@ -10,6 +11,58 @@ export function parseJsonb<T>(value: unknown, fallback: T): T {
   }
 
   return (value ?? fallback) as T;
+}
+
+export function parseJsonRecord(value: unknown): GpuRecord {
+  const parsed = parseJsonb<unknown>(value, {});
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? parsed as GpuRecord
+    : {};
+}
+
+export function getGpuData(product: any): {
+  benchmarks: GpuRecord;
+  specs: GpuRecord;
+  features: GpuRecord;
+} {
+  const specs = parseJsonRecord(product?.specs);
+  const productFeatures = parseJsonRecord(product?.features);
+  const specFeatures = parseJsonRecord(specs.features);
+
+  return {
+    benchmarks: parseJsonRecord(product?.benchmarks),
+    specs,
+    features: { ...specFeatures, ...productFeatures },
+  };
+}
+
+export function getFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  return null;
+}
+
+export function getFeatureScore(features: GpuRecord, key: string): number | null {
+  const value = getFiniteNumber(features[key]);
+  if (value === null) return null;
+  return clampScore(value);
+}
+
+export function hasFeature(features: GpuRecord, key: string): boolean {
+  const value = features[key];
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized !== '' && !['0', 'false', 'no', 'none', 'unsupported'].includes(normalized);
+  }
+
+  return value !== null && value !== undefined;
 }
 
 export function interpolateScore(value: number, anchors: readonly ScoreAnchor[]): number {
@@ -51,4 +104,16 @@ export function getGpuTechnologyText(technologies: unknown, description = ''): s
     : '';
 
   return `${technologyText} ${description}`.trim();
+}
+
+export function getGpuFeatureText(features: GpuRecord): string {
+  return Object.entries(features)
+    .filter(([, value]) => {
+      if (value === false || value === null || value === undefined) return false;
+      if (typeof value === 'number' && value <= 0) return false;
+      if (typeof value === 'string' && ['0', 'false', 'no', 'none', 'unsupported'].includes(value.trim().toLowerCase())) return false;
+      return true;
+    })
+    .map(([key, value]) => `${key} ${String(value)}`)
+    .join(' ');
 }

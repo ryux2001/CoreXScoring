@@ -39,20 +39,20 @@ export const GPU_VALUE_WEIGHTS: Record<GpuValueProfile, GpuEvaluationNotes> = {
     software: 0.05,
   },
   gaming: {
-    rasterization: 0.4,
+    rasterization: 0.45,
     rayTracing: 0.25,
     productivity: 0,
     memory: 0.15,
     efficiency: 0.1,
-    software: 0.1,
+    software: 0.05,
   },
   creation: {
     rasterization: 0,
-    rayTracing: 0,
-    productivity: 0.65,
+    rayTracing: 0.1,
+    productivity: 0.55,
     memory: 0.2,
-    efficiency: 0.1,
-    software: 0.05,
+    efficiency: 0.05,
+    software: 0.1,
   },
 };
 

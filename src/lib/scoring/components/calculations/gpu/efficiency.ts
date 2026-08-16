@@ -4,7 +4,8 @@
  */
 
 import { safeExtract } from '../../../shared/validators';
-import { interpolateScore, parseJsonb } from './score-utils';
+import { getGpuData, interpolateScore } from './score-utils';
+import { calculateRasterizationScore } from './potency';
 
 const PERFORMANCE_PER_WATT_ANCHORS = [
   [20, 1],
@@ -16,11 +17,15 @@ const PERFORMANCE_PER_WATT_ANCHORS = [
 ] as const;
 
 export const calculateEfficiencyScore = (product: any): number => {
-  const benchmarks = parseJsonb<Record<string, unknown>>(product?.benchmarks, {});
-  const specs = parseJsonb<Record<string, unknown>>(product?.specs, {});
+  const { benchmarks, specs } = getGpuData(product);
   const timeSpy = safeExtract(benchmarks['3dmark_time_spy'], 0);
   const tdp = safeExtract(specs.tdp, 0);
-  const performancePerWatt = tdp > 0 ? timeSpy / tdp : 0;
 
-  return interpolateScore(performancePerWatt, PERFORMANCE_PER_WATT_ANCHORS);
+  if (tdp <= 0) return 0;
+
+  const performancePerWatt = tdp > 0 ? timeSpy / tdp : 0;
+  const performancePerWattScore = interpolateScore(performancePerWatt, PERFORMANCE_PER_WATT_ANCHORS);
+  const rasterizationScore = calculateRasterizationScore(product);
+
+  return performancePerWattScore * 0.65 + rasterizationScore * 0.35;
 };

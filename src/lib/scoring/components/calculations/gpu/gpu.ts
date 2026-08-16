@@ -43,10 +43,10 @@ export const calculateGpuNotes = (
 
 export function getGpuGamingScore(notes: ComponentNotes): number {
   return (
-    (notes['Rasterización'] || 0) * 0.4 +
+    (notes['Rasterización'] || 0) * 0.45 +
     (notes['Ray Tracing'] || 0) * 0.25 +
     (notes.Memoria || 0) * 0.15 +
-    (notes.Software || 0) * 0.1 +
-    (notes.Eficiencia || 0) * 0.1
+    (notes.Eficiencia || 0) * 0.1 +
+    (notes.Software || 0) * 0.05
   );
 }
