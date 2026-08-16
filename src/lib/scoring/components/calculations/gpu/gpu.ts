@@ -3,25 +3,37 @@
  * Keeps each visible axis independent and leaves value selection to the profile.
  */
 
-import { calculateEfficiencyScore } from './efficiency';
-import { calculateRayTracingScore } from './gaming';
+import { calculateEfficiencyScore, calculateEfficiencyV3Score } from './efficiency';
+import { calculateGamingV3Score, calculateRayTracingScore } from './gaming';
 import { calculateMemoryScore } from './memory';
-import { calculateRasterizationScore } from './potency';
+import { calculateProductivityV3Score } from './productivity';
+import { calculateRasterizationScore, calculateRasterizationV3Score } from './potency';
 import type { GpuValueProfile } from './profiles';
 import { calculateProductivityScore } from './productivity';
-import { calculateTechnologiesScore } from './technologies';
+import { calculateTechnologiesScore, calculateTechnologiesV3Score } from './technologies';
 import { calculateValueScore } from './value';
+import type { GpuNotes, GpuTechnicalNotes } from '../../types';
 
 export type ComponentNotes = {
   [key: string]: number;
 };
 
+export const calculateGpuTechnicalNotes = (product: any): GpuTechnicalNotes => ({
+  "Rasterización": calculateRasterizationV3Score(product),
+  "Productividad": calculateProductivityV3Score(product),
+  Gaming: calculateGamingV3Score(product),
+  "Eficiencia": calculateEfficiencyV3Score(product),
+  "Tecnologías": calculateTechnologiesV3Score(product),
+});
+
 export const calculateGpuNotes = (
   product: any,
   evaluatedPrice: number,
   profile: GpuValueProfile = 'balanced',
-): ComponentNotes => {
-  const evaluationNotes = {
+): GpuNotes => {
+  // Keep the legacy input object isolated while Calidad precio is pending its
+  // own recalibration. The five visible technical notes use v3 below.
+  const legacyEvaluationNotes = {
     rasterization: calculateRasterizationScore(product),
     rayTracing: calculateRayTracingScore(product),
     productivity: calculateProductivityScore(product),
@@ -31,17 +43,18 @@ export const calculateGpuNotes = (
   };
 
   return {
-    "Rasterización": evaluationNotes.rasterization,
-    "Ray Tracing": evaluationNotes.rayTracing,
-    "Productividad": evaluationNotes.productivity,
-    "Memoria": evaluationNotes.memory,
-    "Eficiencia": evaluationNotes.efficiency,
-    "Software": evaluationNotes.software,
-    "Calidad precio": calculateValueScore(evaluationNotes, evaluatedPrice, product, profile),
+    ...calculateGpuTechnicalNotes(product),
+    "Calidad precio": calculateValueScore(legacyEvaluationNotes, evaluatedPrice, product, profile),
   };
 };
 
 export function getGpuGamingScore(notes: ComponentNotes): number {
+  if (typeof notes.Gaming === 'number' && Number.isFinite(notes.Gaming)) {
+    return notes.Gaming;
+  }
+
+  // Compatibility for persisted/legacy build scores that predate Gaming as a
+  // first-class GPU note.
   return (
     (notes['Rasterización'] || 0) * 0.45 +
     (notes['Ray Tracing'] || 0) * 0.25 +

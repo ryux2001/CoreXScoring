@@ -2,6 +2,7 @@ import {
   clampScore,
   getFiniteNumber,
   getGpuData,
+  getGpuVramCapacityScore,
   interpolateScore,
 } from './score-utils';
 
@@ -40,4 +41,18 @@ export function calculateMemoryScore(product: any): number {
       busScore * 0.4 +
       typeScore * 0.15,
   );
+}
+
+/**
+ * Gaming/productivity VRAM headroom score.
+ *
+ * Capacity is intentionally kept separate from bus width and memory type:
+ * the catalogue does not contain memory bandwidth, and a raw bus-width score
+ * would underrate newer memory standards unfairly.
+ */
+export function calculateVramAdequacyScore(product: any): number {
+  const { specs } = getGpuData(product);
+  const vramCapacity = getFiniteNumber(specs.vram_capacity ?? specs.vram_gb) ?? 0;
+
+  return getGpuVramCapacityScore(vramCapacity);
 }

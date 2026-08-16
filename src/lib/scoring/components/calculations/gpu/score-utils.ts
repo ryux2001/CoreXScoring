@@ -1,3 +1,8 @@
+import {
+  type GpuArchitectureFamily,
+  GPU_SCORING_V3,
+} from './v3-config';
+
 export type ScoreAnchor = readonly [value: number, score: number];
 export type GpuRecord = Record<string, unknown>;
 
@@ -89,6 +94,44 @@ export function interpolateScore(value: number, anchors: readonly ScoreAnchor[])
 
 export function clampScore(value: number): number {
   return Math.max(0, Math.min(10, value));
+}
+
+/**
+ * Logarithmic 0-10 normalization used by GPU scoring v3.
+ * Fixed references keep scores stable when the catalogue changes.
+ */
+export function normalizeGpuScore(value: number, low: number, high: number): number {
+  if (!Number.isFinite(value) || value <= 0 || low <= 0 || high <= low) return 0;
+
+  return clampScore(1 + 9 * (Math.log(value / low) / Math.log(high / low)));
+}
+
+export function normalizeGpuScoreFromConfig(
+  value: number,
+  range: keyof typeof GPU_SCORING_V3.NORMALIZATION,
+): number {
+  const { low, high } = GPU_SCORING_V3.NORMALIZATION[range];
+  return normalizeGpuScore(value, low, high);
+}
+
+export function getGpuArchitectureFamily(product: any): GpuArchitectureFamily {
+  const { specs } = getGpuData(product);
+  const architecture = String(specs.architecture ?? '').toUpperCase();
+  const name = String(product?.name ?? '').toUpperCase();
+
+  if (architecture.includes('BLACKWELL') || name.includes('RTX 50')) return 'blackwell';
+  if (architecture.includes('ADA') || architecture.includes('LOVELACE')) return 'ada';
+  if (architecture.includes('AMPERE')) return 'ampere';
+  if (architecture.includes('RDNA 4') || architecture.includes('RDNA4')) return 'rdna4';
+  if (architecture.includes('RDNA 3') || architecture.includes('RDNA3')) return 'rdna3';
+  if (architecture.includes('RDNA 2') || architecture.includes('RDNA2')) return 'rdna2';
+  if (architecture.includes('XE2') || architecture.includes('BATTLEMAGE')) return 'xe2';
+
+  return 'unknown';
+}
+
+export function getGpuVramCapacityScore(value: number): number {
+  return interpolateScore(value, GPU_SCORING_V3.VRAM_ANCHORS);
 }
 
 export function getGpuTechnologyText(technologies: unknown, description = ''): string {

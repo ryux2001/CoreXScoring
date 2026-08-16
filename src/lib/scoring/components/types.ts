@@ -16,13 +16,15 @@ export interface CpuNotes extends ComponentNotes {
   "Calidad precio": number;
 }
 
-export interface GpuNotes extends ComponentNotes {
+export interface GpuTechnicalNotes extends ComponentNotes {
   "Rasterización": number;
-  "Ray Tracing": number;
   "Productividad": number;
-  "Memoria": number;
+  Gaming: number;
   "Eficiencia": number;
-  "Software": number;
+  "Tecnologías": number;
+}
+
+export interface GpuNotes extends GpuTechnicalNotes {
   "Calidad precio": number;
 }
 

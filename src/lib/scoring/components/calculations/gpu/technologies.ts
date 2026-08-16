@@ -8,10 +8,12 @@ import {
   clampScore,
   getFeatureScore,
   getFiniteNumber,
+  getGpuArchitectureFamily,
   getGpuData,
   getGpuFeatureText,
   getGpuTechnologyText,
 } from './score-utils';
+import { GPU_CAPABILITY_PROFILES, GPU_SCORING_V3 } from './v3-config';
 
 function calculateScalingGenerationScore(searchText: string, features: Record<string, unknown>): number {
   const structuredScore = getFeatureScore(features, 'scaling_generation_score');
@@ -117,5 +119,24 @@ export const calculateTechnologiesScore = (product: any): number => {
       advancedRayTracingScore * 0.2 +
       latencyMediaCodecScore * 0.15 +
       ecosystemMaturityScore * 0.15,
+  );
+};
+
+/**
+ * Technologies v3 uses a versioned architecture capability matrix. Product
+ * descriptions are deliberately not counted: the CSV contains incomplete
+ * and occasionally contradictory marketing text for cards in one family.
+ */
+export const calculateTechnologiesV3Score = (product: any): number => {
+  const architecture = getGpuArchitectureFamily(product);
+  const profile = GPU_CAPABILITY_PROFILES[architecture];
+  const weights = GPU_SCORING_V3.WEIGHTS.TECHNOLOGIES;
+
+  return clampScore(
+    profile.scaling * weights.scaling +
+      profile.rayTracingAi * weights.rayTracingAi +
+      profile.media * weights.media +
+      profile.latency * weights.latency +
+      profile.ecosystem * weights.ecosystem,
   );
 };

@@ -1,5 +1,5 @@
 import { CPU_CONFIG } from '@/lib/scoring/config/cpu';
-import { GPU_CONFIG } from '@/lib/scoring/config/gpu';
+import { GPU_SCORING_V3 } from '@/lib/scoring/config/gpu';
 import { MOTHERBOARD_CONFIG } from '@/lib/scoring/config/motherboard';
 import { PSU_CONFIG } from '@/lib/scoring/config/psu';
 import { RAM_CONFIG } from '@/lib/scoring/config/ram';
@@ -112,21 +112,21 @@ function getGpuMetrics(specs: JsonRecord, benchmarks: JsonRecord): ProductMetric
       label: '3DMark Time Spy Score',
       unit: 'pts',
       value: getNumber(benchmarks, '3dmark_time_spy'),
-      max: GPU_CONFIG.POTENCIA.BENCHMARKS.MAX_VALUES.timeSpy,
+      max: GPU_SCORING_V3.NORMALIZATION.RASTERIZATION.high,
     },
     {
       id: 'port-royal',
       label: '3DMark Port Royal (Ray Tracing)',
       unit: 'pts',
       value: getNumber(benchmarks, '3dmark_port_royal'),
-      max: GPU_CONFIG.POTENCIA.BENCHMARKS.MAX_VALUES.portRoyal,
+      max: GPU_SCORING_V3.NORMALIZATION.RAY_TRACING.high,
     },
     {
       id: 'vram-capacity',
       label: 'Capacidad de VRAM',
       unit: 'GB',
       value: getNumber(specs, 'vram_capacity'),
-      max: GPU_CONFIG.POTENCIA.VRAM.MAX_VALUES.capacity,
+      max: GPU_SCORING_V3.VRAM_ANCHORS[GPU_SCORING_V3.VRAM_ANCHORS.length - 1][0],
     },
   ];
 }

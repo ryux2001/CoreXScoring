@@ -9,10 +9,14 @@ import {
   clampScore,
   getFiniteNumber,
   getGpuData,
+  getGpuArchitectureFamily,
   getGpuFeatureText,
   getGpuTechnologyText,
   interpolateScore,
+  normalizeGpuScoreFromConfig,
 } from './score-utils';
+import { GPU_CAPABILITY_PROFILES, GPU_SCORING_V3 } from './v3-config';
+import { calculateVramAdequacyScore } from './memory';
 
 const BLENDER_SCORE_ANCHORS = [
   [250, 1],
@@ -83,5 +87,23 @@ export const calculateProductivityScore = (product: any): number => {
     renderingScore * 0.5 +
       professionalAccelerationScore * 0.35 +
       mediaAiCodecScore * 0.15,
+  );
+};
+
+/**
+ * Productivity v3 prioritizes the comparable Blender workload, then adds
+ * memory headroom and a restrained creator-stack capability component.
+ */
+export const calculateProductivityV3Score = (product: any): number => {
+  const { benchmarks } = getGpuData(product);
+  const blenderScore = getFiniteNumber(benchmarks.blender_score) ?? 0;
+  const architecture = getGpuArchitectureFamily(product);
+  const profile = GPU_CAPABILITY_PROFILES[architecture];
+  const weights = GPU_SCORING_V3.WEIGHTS.PRODUCTIVITY;
+
+  return clampScore(
+    normalizeGpuScoreFromConfig(blenderScore, 'PRODUCTIVITY') * weights.blender +
+      calculateVramAdequacyScore(product) * weights.vram +
+      profile.creator * weights.creator,
   );
 };

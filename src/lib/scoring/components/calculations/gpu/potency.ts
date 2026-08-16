@@ -4,7 +4,7 @@
  */
 
 import { safeExtract } from '../../../shared/validators';
-import { getGpuData, interpolateScore } from './score-utils';
+import { getGpuData, interpolateScore, normalizeGpuScoreFromConfig } from './score-utils';
 
 const TIME_SPY_SCORE_ANCHORS = [
   [3000, 1],
@@ -23,6 +23,14 @@ export const calculateRasterizationScore = (product: any): number => {
   const timeSpy = safeExtract(benchmarks['3dmark_time_spy'], 0);
 
   return interpolateScore(timeSpy, TIME_SPY_SCORE_ANCHORS);
+};
+
+/** Rasterization v3: fixed logarithmic normalization of the universal score. */
+export const calculateRasterizationV3Score = (product: any): number => {
+  const { benchmarks } = getGpuData(product);
+  const timeSpy = safeExtract(benchmarks['3dmark_time_spy'], 0);
+
+  return normalizeGpuScoreFromConfig(timeSpy, 'RASTERIZATION');
 };
 
 // Compatibility alias for any external import of the previous name.

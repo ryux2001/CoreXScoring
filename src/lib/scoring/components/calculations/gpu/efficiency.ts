@@ -4,7 +4,7 @@
  */
 
 import { safeExtract } from '../../../shared/validators';
-import { getGpuData, interpolateScore } from './score-utils';
+import { getFiniteNumber, getGpuData, interpolateScore, normalizeGpuScoreFromConfig } from './score-utils';
 import { calculateRasterizationScore } from './potency';
 
 const PERFORMANCE_PER_WATT_ANCHORS = [
@@ -28,4 +28,19 @@ export const calculateEfficiencyScore = (product: any): number => {
   const rasterizationScore = calculateRasterizationScore(product);
 
   return performancePerWattScore * 0.65 + rasterizationScore * 0.35;
+};
+
+/**
+ * Efficiency v3 is performance delivered per catalogue watt. The numerator
+ * already contains performance, so adding a second absolute-performance
+ * bonus would make high-end cards look efficient despite worse perf/W.
+ */
+export const calculateEfficiencyV3Score = (product: any): number => {
+  const { benchmarks, specs } = getGpuData(product);
+  const timeSpy = getFiniteNumber(benchmarks['3dmark_time_spy']) ?? 0;
+  const tdp = getFiniteNumber(specs.tdp) ?? 0;
+
+  if (timeSpy <= 0 || tdp <= 0) return 0;
+
+  return normalizeGpuScoreFromConfig(timeSpy / tdp, 'EFFICIENCY');
 };
