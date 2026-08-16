@@ -1,74 +1,64 @@
 /**
- * GPU VALUE SCORE CALCULATOR
- * v2 separates the MSRP baseline from the adjustment for the real price.
+ * GPU QUALITY-PRICE SCORE CALCULATOR
+ *
+ * v3 compares the technical utility delivered by the GPU with the price at
+ * which it is actually being evaluated. MSRP is only a fallback for callers
+ * that do not provide an evaluated price; it is never an independent bonus.
  */
 
 import {
+  GPU_VALUE_LOGISTIC_EXPONENT,
+  GPU_VALUE_REFERENCE_RATIOS,
   GPU_VALUE_WEIGHTS,
-  type GpuEvaluationNotes,
   type GpuValueProfile,
 } from './profiles';
-import { clampScore, getFiniteNumber, parseJsonRecord } from './score-utils';
+import { clampScore, getFiniteNumber } from './score-utils';
+import type { GpuTechnicalNotes } from '../../types';
 
-export type GpuPriceSegment = 'entry' | 'mid' | 'upperMid' | 'high' | 'enthusiast';
-
-// Bootstrap value for the current catalog until per-profile/segment medians
-// are stored in gpu_value_references.
-const DEFAULT_REFERENCE_RATIO = 0.0135;
-
-export function getGpuPriceSegment(msrp: number): GpuPriceSegment {
-  if (msrp <= 349) return 'entry';
-  if (msrp <= 499) return 'mid';
-  if (msrp <= 699) return 'upperMid';
-  if (msrp <= 1199) return 'high';
-  return 'enthusiast';
-}
-
-function getReferenceRatio(
-  product: any,
-  profile: GpuValueProfile,
-  segment: GpuPriceSegment,
+export function getGpuValueUtility(
+  notes: GpuTechnicalNotes,
+  profile: GpuValueProfile = 'balanced',
 ): number {
-  const references = parseJsonRecord(product?.gpu_value_references);
-  const profileReferences = parseJsonRecord(references[profile]);
-  const segmentReference = getFiniteNumber(profileReferences[segment]);
-  if (segmentReference !== null && segmentReference > 0) return segmentReference;
+  const weights = GPU_VALUE_WEIGHTS[profile];
+  const rasterization = clampScore(getFiniteNumber(notes['Rasterización']) ?? 0);
+  const productivity = clampScore(getFiniteNumber(notes['Productividad']) ?? 0);
+  const gaming = clampScore(getFiniteNumber(notes.Gaming) ?? 0);
+  const efficiency = clampScore(getFiniteNumber(notes['Eficiencia']) ?? 0);
+  const technologies = clampScore(getFiniteNumber(notes['Tecnologías']) ?? 0);
 
-  const profileRatios = parseJsonRecord(product?.gpu_value_reference_ratios);
-  const profileRatio = getFiniteNumber(profileRatios[profile]);
-  if (profileRatio !== null && profileRatio > 0) return profileRatio;
-
-  const directRatio = getFiniteNumber(product?.[`gpu_value_reference_ratio_${profile}`]);
-  return directRatio !== null && directRatio > 0 ? directRatio : DEFAULT_REFERENCE_RATIO;
-}
-
-function clampBetween(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+  return clampScore(
+    rasterization * weights.rasterization +
+      productivity * weights.productivity +
+      gaming * weights.gaming +
+      efficiency * weights.efficiency +
+      technologies * weights.technologies,
+  );
 }
 
 export const calculateValueScore = (
-  notes: GpuEvaluationNotes,
+  notes: GpuTechnicalNotes,
   evaluatedPrice: number,
-  product: any,
+  product?: any,
   profile: GpuValueProfile = 'balanced',
 ): number => {
-  const msrp = getFiniteNumber(product?.price_base_usd) ?? 0;
-  if (msrp <= 0 || !Number.isFinite(evaluatedPrice) || evaluatedPrice <= 0) return 0;
+  const selectedPrice = getFiniteNumber(evaluatedPrice);
+  const fallbackMsrp = getFiniteNumber(product?.price_base_usd);
+  const price = selectedPrice !== null && selectedPrice > 0
+    ? selectedPrice
+    : fallbackMsrp;
 
-  const weights = GPU_VALUE_WEIGHTS[profile];
-  const usageIndex =
-    notes.rasterization * weights.rasterization +
-    notes.rayTracing * weights.rayTracing +
-    notes.productivity * weights.productivity +
-    notes.memory * weights.memory +
-    notes.efficiency * weights.efficiency +
-    notes.software * weights.software;
+  if (price === null || price <= 0) return 0;
 
-  const segment = getGpuPriceSegment(msrp);
-  const referenceRatio = getReferenceRatio(product, profile, segment);
-  const ratio = usageIndex / msrp;
-  const cpAtMsrp = clampBetween(5.5 + 5 * Math.log(ratio / referenceRatio), 2, 8);
-  const priceAdjustment = 14 * Math.log(msrp / evaluatedPrice);
+  const utility = getGpuValueUtility(notes, profile);
+  if (utility <= 0) return 0;
 
-  return clampScore(cpAtMsrp + priceAdjustment);
+  const referenceRatio = GPU_VALUE_REFERENCE_RATIOS[profile];
+  const valueRatio = utility / price;
+  const relativeRatio = valueRatio / referenceRatio;
+
+  if (!Number.isFinite(relativeRatio) || relativeRatio <= 0) return 0;
+
+  return clampScore(
+    10 / (1 + Math.pow(1 / relativeRatio, GPU_VALUE_LOGISTIC_EXPONENT)),
+  );
 };

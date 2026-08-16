@@ -3,14 +3,12 @@
  * Keeps each visible axis independent and leaves value selection to the profile.
  */
 
-import { calculateEfficiencyScore, calculateEfficiencyV3Score } from './efficiency';
-import { calculateGamingV3Score, calculateRayTracingScore } from './gaming';
-import { calculateMemoryScore } from './memory';
+import { calculateEfficiencyV3Score } from './efficiency';
+import { calculateGamingV3Score } from './gaming';
 import { calculateProductivityV3Score } from './productivity';
-import { calculateRasterizationScore, calculateRasterizationV3Score } from './potency';
+import { calculateRasterizationV3Score } from './potency';
 import type { GpuValueProfile } from './profiles';
-import { calculateProductivityScore } from './productivity';
-import { calculateTechnologiesScore, calculateTechnologiesV3Score } from './technologies';
+import { calculateTechnologiesV3Score } from './technologies';
 import { calculateValueScore } from './value';
 import type { GpuNotes, GpuTechnicalNotes } from '../../types';
 
@@ -31,20 +29,11 @@ export const calculateGpuNotes = (
   evaluatedPrice: number,
   profile: GpuValueProfile = 'balanced',
 ): GpuNotes => {
-  // Keep the legacy input object isolated while Calidad precio is pending its
-  // own recalibration. The five visible technical notes use v3 below.
-  const legacyEvaluationNotes = {
-    rasterization: calculateRasterizationScore(product),
-    rayTracing: calculateRayTracingScore(product),
-    productivity: calculateProductivityScore(product),
-    memory: calculateMemoryScore(product),
-    efficiency: calculateEfficiencyScore(product),
-    software: calculateTechnologiesScore(product),
-  };
+  const technicalNotes = calculateGpuTechnicalNotes(product);
 
   return {
-    ...calculateGpuTechnicalNotes(product),
-    "Calidad precio": calculateValueScore(legacyEvaluationNotes, evaluatedPrice, product, profile),
+    ...technicalNotes,
+    "Calidad precio": calculateValueScore(technicalNotes, evaluatedPrice, product, profile),
   };
 };
 
