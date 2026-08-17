@@ -1,29 +1,31 @@
 /**
- * RAM PRODUCTIVITY SCORE CALCULATOR
+ * RAM PRODUCTIVITY SCORE
+ *
+ * Capacity is the main differentiator for large projects, with diminishing
+ * returns so that doubling capacity does not automatically double the note.
  */
 
+import { calculateLatencyScore } from './latency';
+import { calculateSpeedScore } from './speed';
+import {
+  getCapacityScore,
+  normalizeRamProduct,
+  score10,
+} from './normalization';
 import { RAM_CONFIG } from '../../config/ram';
-import { formatNoteScore } from '../../../shared/helpers';
-import { safeExtract } from '../../../shared/validators';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
 
 export const calculateProductivityScore = (product: any): number => {
-  const specs = parseJsonbString(product?.specs || '{}');
-  
-  // 1. Capacidad de trabajo pesado (6000 pts)
-  const capacity = safeExtract(specs?.capacity, 0);
-  const capPoints = Math.min(capacity, RAM_CONFIG.PRODUCTIVIDAD.CAPACIDAD.MAX_GB) / RAM_CONFIG.PRODUCTIVIDAD.CAPACIDAD.MAX_GB * RAM_CONFIG.PRODUCTIVIDAD.CAPACIDAD.POINTS;
-  
-  // 2. Flujo de datos (4000 pts)
-  const speed = safeExtract(specs?.speed, 0);
-  const freqPoints = Math.min(speed, RAM_CONFIG.PRODUCTIVIDAD.FLUJO.MAX_MHZ) / RAM_CONFIG.PRODUCTIVIDAD.FLUJO.MAX_MHZ * RAM_CONFIG.PRODUCTIVIDAD.FLUJO.POINTS;
-  
-  const totalPoints = capPoints + freqPoints;
-  return formatNoteScore(Math.min(10, (totalPoints / RAM_CONFIG.PRODUCTIVIDAD.TOTAL_POINTS) * 10));
+  const features = normalizeRamProduct(product);
+  const capacity = getCapacityScore(features.capacityGb) / 10;
+  const speed = calculateSpeedScore(product) / 10;
+  const latency = calculateLatencyScore(product) / 10;
+
+  const score = (
+    capacity * RAM_CONFIG.PRODUCTIVIDAD.CAPACITY_WEIGHT +
+    speed * RAM_CONFIG.PRODUCTIVIDAD.SPEED_WEIGHT +
+    features.channelScore * RAM_CONFIG.PRODUCTIVIDAD.CHANNEL_WEIGHT +
+    latency * RAM_CONFIG.PRODUCTIVIDAD.LATENCY_WEIGHT
+  ) * 10;
+
+  return score10(score);
 };

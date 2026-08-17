@@ -39,7 +39,9 @@ export const calculateRamNotes = (product: any, evaluatedPrice: number): Compone
     "Velocidad": speed,
     "Tecnologías": technologies,
     "Latencia": latency,
-    "Juegos": games,
+    // Gaming is the single public label. Legacy readers still accept Juegos
+    // when loading previously persisted scores.
+    "Gaming": games,
     "Productividad": productivity,
     "Calidad precio": valueScore,
   };

@@ -1,42 +1,33 @@
 /**
- * RAM GAMES SCORE CALCULATOR
+ * RAM GAMING SCORE
+ *
+ * Gaming is latency- and bandwidth-sensitive, while capacity has a practical
+ * floor rather than an unlimited bonus.
  */
 
+import { calculateLatencyScore } from './latency';
+import { calculateSpeedScore } from './speed';
+import { normalizeRamProduct, score10 } from './normalization';
 import { RAM_CONFIG } from '../../config/ram';
-import { formatNoteScore } from '../../../shared/helpers';
-import { safeExtract } from '../../../shared/validators';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
 
 export const calculateGamesScore = (product: any): number => {
-  const benchmarks = parseJsonbString(product?.benchmarks || '{}');
-  const specs = parseJsonbString(product?.specs || '{}');
-  
-  // 1. Capacidad de texturas (3000 pts)
-  const capacity = safeExtract(specs?.capacity, 0);
-  const capPoints = Math.min(capacity, RAM_CONFIG.JUEGOS.CAPACIDAD.MAX_GB) / RAM_CONFIG.JUEGOS.CAPACIDAD.MAX_GB * RAM_CONFIG.JUEGOS.CAPACIDAD.POINTS;
-  
-  // 2. Frecuencias (4000 pts)
-  const speed = safeExtract(specs?.speed, 0);
-  const freqPoints = Math.min(speed, RAM_CONFIG.JUEGOS.FRECUENCIA.MAX_MHZ) / RAM_CONFIG.JUEGOS.FRECUENCIA.MAX_MHZ * RAM_CONFIG.JUEGOS.FRECUENCIA.POINTS;
-  
-  // 3. Estabilidad de FPS (3000 pts)
-  const latencyNs = safeExtract(benchmarks?.latency_ns, 100);
-  let estabPoints = 0;
-  const maxRealNs = RAM_CONFIG.JUEGOS.ESTABILIDAD.MAX_NS;
-  const minRealNs = RAM_CONFIG.JUEGOS.ESTABILIDAD.MIN_NS;
-  
-  if (latencyNs <= maxRealNs) {
-    estabPoints = RAM_CONFIG.JUEGOS.ESTABILIDAD.POINTS;
-  } else if (latencyNs < minRealNs) {
-    estabPoints = ((minRealNs - latencyNs) / (minRealNs - maxRealNs)) * RAM_CONFIG.JUEGOS.ESTABILIDAD.POINTS;
+  const features = normalizeRamProduct(product);
+  const speed = calculateSpeedScore(product) / 10;
+  const latency = calculateLatencyScore(product) / 10;
+  const profileAndStability = (features.profileScore * 0.7) + (features.overclockingScore * 0.3);
+
+  let score = (
+    speed * RAM_CONFIG.JUEGOS.SPEED_WEIGHT +
+    latency * RAM_CONFIG.JUEGOS.LATENCY_WEIGHT +
+    features.channelScore * RAM_CONFIG.JUEGOS.CHANNEL_WEIGHT +
+    profileAndStability * RAM_CONFIG.JUEGOS.STABILITY_WEIGHT
+  ) * 10;
+
+  if (features.capacityGb > 0 && features.capacityGb < RAM_CONFIG.JUEGOS.CAPACITY_FLOOR_GB) {
+    score *= features.capacityGb < 8 ? 0.8 : 0.92;
   }
-  
-  const totalPoints = capPoints + freqPoints + estabPoints;
-  return formatNoteScore(Math.min(10, (totalPoints / RAM_CONFIG.JUEGOS.TOTAL_POINTS) * 10));
+
+  return score10(score);
 };
+
+export const calculateGamingScore = calculateGamesScore;

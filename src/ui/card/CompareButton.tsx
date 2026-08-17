@@ -14,7 +14,7 @@ interface CompareButtonProps {
   currency: string;
   specs: any;
   compatibility: any;
-  release_date: string;
+  release_date?: string | null;
 }
 
 export default function CompareButton(product: CompareButtonProps) {

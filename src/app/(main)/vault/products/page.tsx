@@ -27,7 +27,7 @@ interface SavedProduct {
   price_base_eur: number | null;
   specs: Record<string, unknown> | null;
   compatibility: Record<string, unknown> | null;
-  release_date: string;
+  release_date: string | null;
 }
 
 async function createVaultClient() {

@@ -1,55 +1,55 @@
 /**
- * RAM CONFIGURATION
- * Pesos y techos para cálculo de notas de memoria RAM
+ * RAM SCORING CONFIGURATION
+ *
+ * The calculators use fixed anchors rather than dataset min/max values. The
+ * legacy property names remain available to the product-metrics panel.
  */
-
 export const RAM_CONFIG = {
   VELOCIDAD: {
+    BANDWIDTH_BASELINE_GBPS: 20,
+    BANDWIDTH_ANCHOR_GBPS: 100,
     FRECUENCIA: { POINTS: 5000, MAX_MHZ: 8400 },
     ANCHO_BANDA: { POINTS: 5000, MAX_GBPS: 100 },
     TOTAL_POINTS: 10000,
   },
   TECNOLOGIAS: {
-    ARQUITECTURA: {
-      POINTS: 4000,
-      SCORES: { 'DDR5': 4000, 'DDR4': 2000, 'DDR3': 500 },
-    },
-    OC: {
-      POINTS: 3000,
-      SCORES: { BOTH: 3000, ONE: 2000, NONE: 500 },
-    },
-    INTEGRIDAD: {
-      POINTS: 2000,
-      SCORES: { TRUE: 2000, ON_DIE: 1000, NONE: 0 },
-    },
-    TERMICA: {
-      POINTS: 1000,
-      KEYWORDS: ['heat spreader', 'aluminum', 'heatsink', 'disipador'],
-    },
+    GENERACION_WEIGHT: 0.4,
+    PERFILES_WEIGHT: 0.3,
+    ELECTRONICA_WEIGHT: 0.15,
+    OVERCLOCKING_WEIGHT: 0.1,
+    COMPATIBILIDAD_WEIGHT: 0.05,
+    PLATAFORMA_WEIGHT: 0.95,
     TOTAL_POINTS: 10000,
   },
   LATENCIA: {
-    REAL: { POINTS: 6000, MAX_NS: 45, MIN_NS: 100 },
+    BEST_NS: 8,
+    WORST_NS: 16,
+    REAL: { POINTS: 6000, MAX_NS: 8, MIN_NS: 16 },
     TEORICA: { POINTS: 4000, MAX_NS: 8, MIN_NS: 16 },
     TOTAL_POINTS: 10000,
   },
   JUEGOS: {
-    CAPACIDAD: { POINTS: 3000, MAX_GB: 32 },
-    FRECUENCIA: { POINTS: 4000, MAX_MHZ: 8400 },
-    ESTABILIDAD: { POINTS: 3000, MAX_NS: 45, MIN_NS: 100 },
+    SPEED_WEIGHT: 0.45,
+    LATENCY_WEIGHT: 0.35,
+    CHANNEL_WEIGHT: 0.15,
+    STABILITY_WEIGHT: 0.05,
+    CAPACITY_FLOOR_GB: 16,
     TOTAL_POINTS: 10000,
   },
   PRODUCTIVIDAD: {
-    CAPACIDAD: { POINTS: 6000, MAX_GB: 64 },
-    FLUJO: { POINTS: 4000, MAX_MHZ: 8400 },
+    CAPACITY_WEIGHT: 0.45,
+    SPEED_WEIGHT: 0.3,
+    CHANNEL_WEIGHT: 0.15,
+    LATENCY_WEIGHT: 0.1,
     TOTAL_POINTS: 10000,
   },
   VALUE_WEIGHTS: {
-    VELOCIDAD_WEIGHT: 20,
-    LATENCIA_WEIGHT: 20,
-    TECNOLOGIAS_WEIGHT: 10,
-    JUEGOS_WEIGHT: 25,
+    VELOCIDAD_WEIGHT: 30,
     PRODUCTIVIDAD_WEIGHT: 25,
+    LATENCIA_WEIGHT: 20,
+    TECNOLOGIAS_WEIGHT: 15,
+    JUEGOS_WEIGHT: 10,
   },
-  VALUE_CEILING: 0.035, // Techo de puntos útiles por dólar
+  VALUE_PRICE_REFERENCE: 100,
+  VALUE_PRICE_EXPONENT: 0.65,
 };

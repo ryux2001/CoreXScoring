@@ -1,32 +1,29 @@
 /**
- * RAM SPEED SCORE CALCULATOR
+ * RAM SPEED SCORE
+ *
+ * Uses theoretical effective bandwidth instead of the benchmark JSON. The
+ * benchmark values in the catalogue are not consistent between equivalent
+ * kits, while speed and module configuration are stable specification fields.
  */
 
+import {
+  getEffectiveBandwidth,
+  normalizeRamProduct,
+  normalizeRange,
+  score10,
+} from './normalization';
 import { RAM_CONFIG } from '../../config/ram';
-import { formatNoteScore } from '../../../shared/helpers';
-import { safeExtract } from '../../../shared/validators';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
 
 export const calculateSpeedScore = (product: any): number => {
-  const benchmarks = parseJsonbString(product?.benchmarks || '{}');
-  const specs = parseJsonbString(product?.specs || '{}');
-  
-  // 1. Frecuencia (5000 pts)
-  const speed = safeExtract(specs?.speed, 0);
-  const freqPoints = Math.min(speed, RAM_CONFIG.VELOCIDAD.FRECUENCIA.MAX_MHZ) / RAM_CONFIG.VELOCIDAD.FRECUENCIA.MAX_MHZ * RAM_CONFIG.VELOCIDAD.FRECUENCIA.POINTS;
-  
-  // 2. Ancho de Banda (5000 pts)
-  const readSpeed = safeExtract(benchmarks?.read_speed, 0);
-  const writeSpeed = safeExtract(benchmarks?.write_speed, 0);
-  const avgBandwidth = (readSpeed + writeSpeed) / 2;
-  const bandPoints = Math.min(avgBandwidth, RAM_CONFIG.VELOCIDAD.ANCHO_BANDA.MAX_GBPS) / RAM_CONFIG.VELOCIDAD.ANCHO_BANDA.MAX_GBPS * RAM_CONFIG.VELOCIDAD.ANCHO_BANDA.POINTS;
-  
-  const totalPoints = freqPoints + bandPoints;
-  return formatNoteScore(Math.min(10, (totalPoints / RAM_CONFIG.VELOCIDAD.TOTAL_POINTS) * 10));
+  const features = normalizeRamProduct(product);
+  const bandwidth = getEffectiveBandwidth(features);
+
+  if (bandwidth <= 0) return 0;
+
+  // 20 GB/s is a low current baseline and 100 GB/s is the upper anchor for
+  // the catalogue. The fixed anchors keep scores stable when new RAM is added.
+  const baseline = RAM_CONFIG.VELOCIDAD.BANDWIDTH_BASELINE_GBPS;
+  const anchor = RAM_CONFIG.VELOCIDAD.BANDWIDTH_ANCHOR_GBPS;
+  const bandwidthScore = 2 + normalizeRange(bandwidth, baseline, anchor) * 8;
+  return score10(bandwidthScore);
 };

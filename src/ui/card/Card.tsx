@@ -6,6 +6,7 @@ import Link from "next/link"; // Importamos Link
 import { useRouter } from "next/navigation";
 import CompareButton from "./CompareButton";
 import { supabase } from "@/lib/supabaseClient";
+import { formatReleaseDate } from "@/lib/formatReleaseDate";
 
 interface ProductProps {
   id: string; // Añadimos el ID
@@ -17,7 +18,7 @@ interface ProductProps {
   currency: string;
   specs: any;
   compatibility: any;
-  release_date: string;
+  release_date?: string | null;
   imageUrl?: string;
   wholeCardClickable?: boolean;
 }
@@ -140,10 +141,7 @@ export const Card = ({
   const finalImageUrl = imageUrl || getLocalImage();
 
   const getTechnicalDetails = () => {
-    const date = new Date(release_date).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-    });
+    const date = formatReleaseDate(release_date);
     switch (type.toLowerCase()) {
       case "cpu":
         return [

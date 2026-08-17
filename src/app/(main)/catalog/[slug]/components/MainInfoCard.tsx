@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { formatReleaseDate } from '@/lib/formatReleaseDate';
 
 interface MainInfoProps {
   product: any;
@@ -82,9 +83,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
   const imageUrl = getLocalImage();
 
   const getAllDetails = () => {
-    const dateValue = isMounted 
-      ? new Date(product.release_date).toLocaleDateString('es-ES', { year: 'numeric', month: 'short' })
-      : "";
+    const dateValue = isMounted ? formatReleaseDate(product.release_date) : "";
 
     const details = [{ label: "Marca", value: product.brand }, { label: "Lanzamiento", value: dateValue }];
     

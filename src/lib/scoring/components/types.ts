@@ -35,7 +35,7 @@ export interface RamNotes extends ComponentNotes {
   "Velocidad": number;
   "Tecnologías": number;
   "Latencia": number;
-  "Juegos": number;
+  Gaming: number;
   "Productividad": number;
   "Calidad precio": number;
 }
