@@ -15,6 +15,13 @@ import {
   isGpuValueProfile,
   type GpuValueProfile,
 } from '@/lib/scoring/components/calculations/gpu/profiles';
+import {
+  CPU_VALUE_PROFILE_EVENT,
+  isCpuValueProfile,
+  type CpuValueProfile,
+} from '@/lib/scoring/components/calculations/cpu/profiles';
+
+type ValueProfile = GpuValueProfile | CpuValueProfile;
 
 interface RadarChartProps {
   product: any;
@@ -113,13 +120,19 @@ const InteractiveTick = (props: any) => {
 export default function RadarChartCard({ product, currency = 'USD', onSwitchView }: RadarChartProps) {
   const isEUR = currency === 'EUR';
   const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
+  const isCpu = String(product?.type ?? '').toUpperCase() === 'CPU';
+  const valueProfileEvent = isGpu
+    ? GPU_VALUE_PROFILE_EVENT
+    : isCpu
+      ? CPU_VALUE_PROFILE_EVENT
+      : null;
   const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const initialPrice = product[priceColumn] || 0;
 
   const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
   const [activeTooltip, setActiveTooltip] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [gpuValueProfile, setGpuValueProfile] = useState<GpuValueProfile>('balanced');
+  const [valueProfile, setValueProfile] = useState<ValueProfile>('balanced');
 
   useEffect(() => {
     setIsMounted(true);
@@ -130,23 +143,28 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
   }, [initialPrice]);
 
   useEffect(() => {
-    setGpuValueProfile('balanced');
+    setValueProfile('balanced');
   }, [product?.id]);
 
   useEffect(() => {
-    if (!isGpu) return;
+    if (!valueProfileEvent) return;
 
-    const handleGpuValueProfileUpdate = (event: Event) => {
+    const handleValueProfileUpdate = (event: Event) => {
       const value = (event as CustomEvent<unknown>).detail;
-      if (isGpuValueProfile(value)) setGpuValueProfile(value);
+      if (isGpu && isGpuValueProfile(value)) setValueProfile(value);
+      if (isCpu && isCpuValueProfile(value)) setValueProfile(value);
     };
 
-    window.addEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
-    return () => window.removeEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
-  }, [isGpu]);
+    window.addEventListener(valueProfileEvent, handleValueProfileUpdate);
+    return () => window.removeEventListener(valueProfileEvent, handleValueProfileUpdate);
+  }, [isCpu, isGpu, valueProfileEvent]);
 
   const evaluatedPriceUSD = convertPrice(evaluatedPrice, currency, 'USD');
-  const notesData = getComponentNotes(product, evaluatedPriceUSD, isGpu ? gpuValueProfile : undefined);
+  const notesData = getComponentNotes(
+    product,
+    evaluatedPriceUSD,
+    isGpu || isCpu ? valueProfile : undefined,
+  );
   
   const chartData = Object.entries(notesData).map(([key, value]) => ({
     subject: key,

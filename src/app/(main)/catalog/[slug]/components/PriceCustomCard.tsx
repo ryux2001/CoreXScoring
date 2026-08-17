@@ -8,6 +8,14 @@ import {
   isGpuValueProfile,
   type GpuValueProfile,
 } from "@/lib/scoring/components/calculations/gpu/profiles";
+import {
+  CPU_VALUE_PROFILE_EVENT,
+  CPU_VALUE_PROFILE_OPTIONS,
+  isCpuValueProfile,
+  type CpuValueProfile,
+} from "@/lib/scoring/components/calculations/cpu/profiles";
+
+type ValueProfile = GpuValueProfile | CpuValueProfile;
 
 interface PriceCustomProps {
   product: any;
@@ -24,9 +32,11 @@ interface PriceFormProps {
   symbol: string;
   currency: string;
   handleApply: () => void;
-  isGpu: boolean;
-  gpuValueProfile: GpuValueProfile;
-  onGpuValueProfileChange: (value: GpuValueProfile) => void;
+  isValueProfileComponent: boolean;
+  valueProfile: ValueProfile;
+  profileOptions: readonly { value: string; label: string }[];
+  isValidValueProfile: (value: unknown) => boolean;
+  onValueProfileChange: (value: string) => void;
   profileSelectId: string;
 }
 
@@ -39,16 +49,19 @@ export default function PriceCustomCard({
 
   const isEUR = currency === "EUR";
   const isGpu = String(product?.type ?? "").toUpperCase() === "GPU";
+  const isCpu = String(product?.type ?? "").toUpperCase() === "CPU";
+  const isValueProfileComponent = isGpu || isCpu;
+  const profileOptions = isGpu ? GPU_VALUE_PROFILE_OPTIONS : CPU_VALUE_PROFILE_OPTIONS;
   const priceColumn = isEUR ? "price_base_eur" : "price_base_usd";
   const basePrice = product[priceColumn] || 0;
   const symbol = isEUR ? "€" : "$";
 
   const [selectedMarket, setSelectedMarket] = useState(basePrice);
   const [customPrice, setCustomPrice] = useState(basePrice);
-  const [gpuValueProfile, setGpuValueProfile] = useState<GpuValueProfile>("balanced");
+  const [valueProfile, setValueProfile] = useState<ValueProfile>("balanced");
 
   useEffect(() => {
-    setGpuValueProfile("balanced");
+    setValueProfile("balanced");
   }, [product?.id]);
 
   // Sincronización y bloqueo de scroll
@@ -85,13 +98,21 @@ export default function PriceCustomCard({
     if (isModalOpen) handleCloseModal();
   };
 
-  const handleGpuValueProfileChange = (value: GpuValueProfile) => {
-    if (!isGpu) return;
+  const handleValueProfileChange = (value: string) => {
+    if (isGpu && isGpuValueProfile(value)) {
+      setValueProfile(value);
+      window.dispatchEvent(
+        new CustomEvent<GpuValueProfile>(GPU_VALUE_PROFILE_EVENT, { detail: value }),
+      );
+      return;
+    }
 
-    setGpuValueProfile(value);
-    window.dispatchEvent(
-      new CustomEvent<GpuValueProfile>(GPU_VALUE_PROFILE_EVENT, { detail: value }),
-    );
+    if (isCpu && isCpuValueProfile(value)) {
+      setValueProfile(value);
+      window.dispatchEvent(
+        new CustomEvent<CpuValueProfile>(CPU_VALUE_PROFILE_EVENT, { detail: value }),
+      );
+    }
   };
 
   // El contenido del formulario lo extraemos para reutilizarlo en desktop y modal
@@ -131,10 +152,12 @@ export default function PriceCustomCard({
           symbol={symbol}
           currency={currency}
           handleApply={handleApply}
-          isGpu={isGpu}
-          gpuValueProfile={gpuValueProfile}
-          onGpuValueProfileChange={handleGpuValueProfileChange}
-          profileSelectId="gpu-value-profile-desktop"
+          isValueProfileComponent={isValueProfileComponent}
+          valueProfile={valueProfile}
+          profileOptions={profileOptions}
+          isValidValueProfile={isGpu ? isGpuValueProfile : isCpuValueProfile}
+          onValueProfileChange={handleValueProfileChange}
+          profileSelectId="value-profile-desktop"
         />
 
         <div className="pt-3 border-t border-zinc-900/50">
@@ -190,10 +213,12 @@ export default function PriceCustomCard({
                 symbol={symbol}
                 currency={currency}
                 handleApply={handleApply}
-                isGpu={isGpu}
-                gpuValueProfile={gpuValueProfile}
-                onGpuValueProfileChange={handleGpuValueProfileChange}
-                profileSelectId="gpu-value-profile-mobile"
+                isValueProfileComponent={isValueProfileComponent}
+                valueProfile={valueProfile}
+                profileOptions={profileOptions}
+                isValidValueProfile={isGpu ? isGpuValueProfile : isCpuValueProfile}
+                onValueProfileChange={handleValueProfileChange}
+                profileSelectId="value-profile-mobile"
               />
               <p className="mt-6 text-center text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500">
                 El cambio se verá reflejado en la <br /> tarjeta principal del
@@ -217,9 +242,11 @@ const PriceForm = ({
   symbol,
   currency,
   handleApply,
-  isGpu,
-  gpuValueProfile,
-  onGpuValueProfileChange,
+  isValueProfileComponent,
+  valueProfile,
+  profileOptions,
+  isValidValueProfile,
+  onValueProfileChange,
   profileSelectId,
 }: PriceFormProps) => (
   <div className="space-y-4">
@@ -255,7 +282,7 @@ const PriceForm = ({
       </div>
     </div>
 
-    {isGpu && (
+    {isValueProfileComponent && (
       <div className="space-y-1.5">
         <label
           htmlFor={profileSelectId}
@@ -266,15 +293,15 @@ const PriceForm = ({
         <div className="relative">
           <select
             id={profileSelectId}
-            value={gpuValueProfile}
+            value={valueProfile}
             onChange={(event) => {
               const value = event.target.value;
-              if (isGpuValueProfile(value)) onGpuValueProfileChange(value);
+              if (isValidValueProfile(value)) onValueProfileChange(value);
             }}
             aria-describedby={`${profileSelectId}-description`}
             className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 pr-9 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700 focus:ring-2 focus:ring-zinc-700/60"
           >
-            {GPU_VALUE_PROFILE_OPTIONS.map((option) => (
+            {profileOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

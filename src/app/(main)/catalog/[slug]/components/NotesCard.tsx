@@ -9,6 +9,13 @@ import {
   isGpuValueProfile,
   type GpuValueProfile,
 } from '@/lib/scoring/components/calculations/gpu/profiles';
+import {
+  CPU_VALUE_PROFILE_EVENT,
+  isCpuValueProfile,
+  type CpuValueProfile,
+} from '@/lib/scoring/components/calculations/cpu/profiles';
+
+type ValueProfile = GpuValueProfile | CpuValueProfile;
 
 interface NotesCardProps {
   product: any;
@@ -20,6 +27,12 @@ interface NotesCardProps {
 export default function NotesCard({ product, currency = 'USD', onSwitchView }: NotesCardProps) {
   const isEUR = currency === 'EUR';
   const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
+  const isCpu = String(product?.type ?? '').toUpperCase() === 'CPU';
+  const valueProfileEvent = isGpu
+    ? GPU_VALUE_PROFILE_EVENT
+    : isCpu
+      ? CPU_VALUE_PROFILE_EVENT
+      : null;
   const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const initialPrice = product[priceColumn] || 0;
   const initialPriceUSD = convertPrice(initialPrice, currency, 'USD');
@@ -28,7 +41,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
   const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
   const [isMounted, setIsMounted] = useState(false);
   const [precioUSD, setPrecioUSD] = useState(initialPriceUSD);
-  const [gpuValueProfile, setGpuValueProfile] = useState<GpuValueProfile>('balanced');
+  const [valueProfile, setValueProfile] = useState<ValueProfile>('balanced');
 
   // 1. Calcular nota de calidad/precio al montar (antes del render)
   useEffect(() => {
@@ -46,23 +59,28 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
   }, [initialPrice, initialPriceUSD, currency, product]);
 
   useEffect(() => {
-    setGpuValueProfile('balanced');
+    setValueProfile('balanced');
   }, [product?.id]);
 
   useEffect(() => {
-    if (!isGpu) return;
+    if (!valueProfileEvent) return;
 
-    const handleGpuValueProfileUpdate = (event: Event) => {
+    const handleValueProfileUpdate = (event: Event) => {
       const value = (event as CustomEvent<unknown>).detail;
-      if (isGpuValueProfile(value)) setGpuValueProfile(value);
+      if (isGpu && isGpuValueProfile(value)) setValueProfile(value);
+      if (isCpu && isCpuValueProfile(value)) setValueProfile(value);
     };
 
-    window.addEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
-    return () => window.removeEventListener(GPU_VALUE_PROFILE_EVENT, handleGpuValueProfileUpdate);
-  }, [isGpu]);
+    window.addEventListener(valueProfileEvent, handleValueProfileUpdate);
+    return () => window.removeEventListener(valueProfileEvent, handleValueProfileUpdate);
+  }, [isCpu, isGpu, valueProfileEvent]);
 
   // Obtenemos las 5 notas principales (el precio ya está en USD)
-  const baseNotes = getComponentNotes(product, precioUSD, isGpu ? gpuValueProfile : undefined);
+  const baseNotes = getComponentNotes(
+    product,
+    precioUSD,
+    isGpu || isCpu ? valueProfile : undefined,
+  );
   
   // Extraemos solo los nombres (las llaves del objeto) para el mapeo del grid
   const categories = Object.keys(baseNotes);

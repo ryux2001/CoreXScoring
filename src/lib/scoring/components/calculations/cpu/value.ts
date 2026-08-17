@@ -1,47 +1,64 @@
 /**
- * CPU VALUE SCORE CALCULATOR
- * Calcula la nota de calidad precio para CPU
- * Usa las 5 notas previas (potencia, tecnologias, productividad, juegos, eficiencia)
- * y las pondera según CPU_CONFIG.VALUE_WEIGHTS utilizando el Umbral de Rendimiento Útil
+ * CPU QUALITY-PRICE SCORE CALCULATOR
+ *
+ * The score is based on the five visible v3 technical notes and the price at
+ * which the CPU is being evaluated. A fixed catalogue reference and a smooth
+ * logistic curve keep scores comparable when new products are added.
  */
 
-import { CPU_CONFIG } from '../../config/cpu';
-import { formatNoteScore } from '../../../shared/helpers';
+import type { CpuTechnicalNotes } from '../../types';
+import {
+  CPU_VALUE_LOGISTIC_EXPONENT,
+  CPU_VALUE_REFERENCE_RATIOS,
+  CPU_VALUE_WEIGHTS,
+  type CpuValueProfile,
+} from './profiles';
+import { clampScore, getFiniteNumber } from './score-utils';
 
-export const calculateValueScore = (notes: any, evaluatedPrice: number, product: any): number => {
-  // 1. Pesos de cada nota (deben sumar 100%)
-  const {
-    POTENCIA_WEIGHT: potenciaPeso,
-    TECNOLOGIAS_WEIGHT: tecnologiasPeso,
-    PRODUCTIVIDAD_WEIGHT: productividadPeso,
-    JUEGOS_WEIGHT: juegosPeso,
-    EFICIENCIA_WEIGHT: eficienciaPeso,
-  } = CPU_CONFIG.VALUE_WEIGHTS;
-  
-  // 2. Calcular nota global ponderada (Escala de 0 a 10)
-  const globalScore =
-    notes.POTENCIA * (potenciaPeso / 100) +
-    notes.TECNOLOGIAS * (tecnologiasPeso / 100) +
-    notes.PRODUCTIVIDAD * (productividadPeso / 100) +
-    notes.JUEGOS * (juegosPeso / 100) +
-    notes.EFICIENCIA * (eficienciaPeso / 100);
-  
-  // Control de seguridad: Si no hay precio registrado o es menor/igual a 0, la nota es 0
-  if (!evaluatedPrice || evaluatedPrice <= 0) {
-    return 0;
-  }
-  
-  // 3. Aplicar el Umbral de Rendimiento Útil (Restar 3.5 puntos base)
-  // Math.max(0, ...) evita que procesadores muy antiguos o básicos devuelvan rendimiento negativo
-  const usefulPerformance = Math.max(0, globalScore - 3.5);
-  
-  // 4. Calcular el Ratio de puntos útiles por dólar
-  const ratio = usefulPerformance / evaluatedPrice;
-  
-  // 5. Normalizar contra el techo adaptado de CPU (0.012 pts por dólar) para obtener escala 0-10
-  const maxCeiling = 0.012;
-  const valueScore = (ratio / maxCeiling) * 10;
-  
-  // Retornar la nota final limitada a un máximo de 10 y procesada por tu formateador
-  return formatNoteScore(Math.min(10, valueScore));
+export function getCpuValueUtility(
+  notes: CpuTechnicalNotes,
+  profile: CpuValueProfile = 'balanced',
+): number {
+  const weights = CPU_VALUE_WEIGHTS[profile];
+  const potency = clampScore(getFiniteNumber(notes['Potencia']) ?? 0);
+  const productivity = clampScore(getFiniteNumber(notes['Productividad']) ?? 0);
+  const gaming = clampScore(getFiniteNumber(notes.Gaming) ?? 0);
+  const efficiency = clampScore(getFiniteNumber(notes['Eficiencia']) ?? 0);
+  const platform = clampScore(getFiniteNumber(notes['Plataforma']) ?? 0);
+
+  return clampScore(
+    potency * weights.potency +
+      productivity * weights.productivity +
+      gaming * weights.gaming +
+      efficiency * weights.efficiency +
+      platform * weights.platform,
+  );
+}
+
+export const calculateValueScore = (
+  notes: CpuTechnicalNotes,
+  evaluatedPrice: number,
+  product?: any,
+  profile: CpuValueProfile = 'balanced',
+): number => {
+  const selectedPrice = getFiniteNumber(evaluatedPrice);
+  const fallbackMsrp = getFiniteNumber(product?.price_base_usd);
+  const price = selectedPrice !== null && selectedPrice > 0
+    ? selectedPrice
+    : fallbackMsrp;
+
+  if (price === null || price <= 0) return 0;
+
+  const utility = getCpuValueUtility(notes, profile);
+  if (utility <= 0) return 0;
+
+  const referenceRatio = CPU_VALUE_REFERENCE_RATIOS[profile];
+  const valueRatio = utility / price;
+  const relativeRatio = valueRatio / referenceRatio;
+
+  if (!Number.isFinite(relativeRatio) || relativeRatio <= 0) return 0;
+
+  const poweredRatio = Math.pow(relativeRatio, CPU_VALUE_LOGISTIC_EXPONENT);
+
+  return clampScore(10 * poweredRatio / (1 + poweredRatio));
 };

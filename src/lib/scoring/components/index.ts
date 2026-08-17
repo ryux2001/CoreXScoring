@@ -11,20 +11,31 @@ import { calculateMotherboardNotes } from './calculations/motherboard/motherboar
 import { calculatePsuNotes } from './calculations/psu/psu';
 import { calculateValueScore } from './calculations/cpu/value';
 import { ComponentNotes } from './types';
-import type { GpuValueProfile } from './calculations/gpu/profiles';
+import { isGpuValueProfile, type GpuValueProfile } from './calculations/gpu/profiles';
+import { isCpuValueProfile, type CpuValueProfile } from './calculations/cpu/profiles';
+
+export type ComponentValueProfile = GpuValueProfile | CpuValueProfile;
 
 export const getComponentNotes = (
   product: any,
   evaluatedPrice: number,
-  gpuValueProfile?: GpuValueProfile,
+  valueProfile?: ComponentValueProfile,
 ): ComponentNotes => {
   const type = product?.type?.toUpperCase();
 
   switch (type) {
     case 'CPU':
-      return calculateCpuNotes(product, evaluatedPrice);
+      return calculateCpuNotes(
+        product,
+        evaluatedPrice,
+        isCpuValueProfile(valueProfile) ? valueProfile : 'balanced',
+      );
     case 'GPU':
-      return calculateGpuNotes(product, evaluatedPrice, gpuValueProfile);
+      return calculateGpuNotes(
+        product,
+        evaluatedPrice,
+        isGpuValueProfile(valueProfile) ? valueProfile : 'balanced',
+      );
     case 'RAM':
       return calculateRamNotes(product, evaluatedPrice);
     case 'STORAGE':
