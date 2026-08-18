@@ -131,7 +131,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
   const activeStyles = activeTooltip ? getColorStyles(activeTooltip.score) : null;
 
   return (
-    <div className="flex flex-col p-6 lg:p-6 lg:pb-0 rounded-3xl border border-zinc-900 bg-zinc-950/40 shadow-2xl backdrop-blur-sm h-full min-h-[250px] relative justify-between overflow-hidden">
+    <div className="relative z-20 flex flex-col justify-between rounded-3xl border border-zinc-900 bg-zinc-950/40 p-6 shadow-2xl backdrop-blur-sm h-full min-h-[250px] lg:pb-0">
       
       {/* Resplandor de fondo */}
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -139,7 +139,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
       </div>
 
       {/* HEADER */}
-      <div className="relative mb-2 z-10 w-full">
+      <div className="relative mb-2 w-full">
         <h3 className="pr-28 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
           Balance
         </h3>
@@ -163,7 +163,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
             >
               <Info size={11} strokeWidth={3} />
             </button>
-            <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[9px]">Mapa de Rendimiento</div>
               <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
             </div>
@@ -183,8 +183,8 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               transform: getTooltipTransform(activeTooltip.x, activeTooltip.y, activeTooltip.cx, activeTooltip.cy)
             }}
           >
-            <div className={`flex flex-col items-center justify-center py-2 px-3.5 rounded-xl border backdrop-blur-md shadow-[0_0_40px_rgba(0,0,0,0.8)] min-w-[120px] ${activeStyles.border} ${activeStyles.bg}`}>
-              <span className="text-[8px] font-black uppercase tracking-widest leading-tight mb-0.5 truncate w-full text-center text-zinc-400">
+            <div className={`flex max-w-[160px] flex-col items-center justify-center rounded-xl border px-3.5 py-2 backdrop-blur-md shadow-[0_0_40px_rgba(0,0,0,0.8)] min-w-[120px] ${activeStyles.border} ${activeStyles.bg}`}>
+              <span className="max-w-full whitespace-normal break-words text-center text-[8px] font-black uppercase tracking-widest leading-tight mb-0.5 text-zinc-400">
                 {activeTooltip.name}
               </span>
               <span className={`text-2xl font-black tracking-tighter ${activeStyles.text}`}>

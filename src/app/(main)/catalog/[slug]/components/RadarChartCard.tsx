@@ -185,14 +185,14 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
   const activeStyles = activeTooltip ? getColorStyles(activeTooltip.score) : null;
 
   return (
-    <div className="flex flex-col p-6 lg:p-8 rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-xl h-full min-h-[400px] relative">
+    <div className="relative z-20 flex flex-col rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl h-full min-h-[400px] lg:p-8">
       
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
       </div>
 
       {/* HEADER MODIFICADO */}
-      <div className="relative mb-4 z-10 w-full">
+      <div className="relative mb-4 w-full">
         <h3 className="pr-28 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
           Balance
         </h3>
@@ -218,7 +218,7 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
             >
               <Info size={11} strokeWidth={3} />
             </button>
-            <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">Mapa de Rendimiento</div>
               <p>El gráfico ilustra el equilibrio en distintas áreas. Pasa el cursor por los iconos para ver los detalles.</p>
             </div>
@@ -239,8 +239,8 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
               transform: getTooltipTransform(activeTooltip.x, activeTooltip.y, activeTooltip.cx, activeTooltip.cy)
             }}
           >
-            <div className={`flex flex-col items-center justify-center py-2.5 px-4 rounded-xl border backdrop-blur-md shadow-[0_0_50px_rgba(0,0,0,0.6)] min-w-[130px] ${activeStyles.border} ${activeStyles.bg}`}>
-              <span className="text-[9px] font-black uppercase tracking-widest leading-tight mb-0.5 truncate w-full text-center text-zinc-400">
+            <div className={`flex max-w-[180px] flex-col items-center justify-center rounded-xl border px-4 py-2.5 backdrop-blur-md shadow-[0_0_50px_rgba(0,0,0,0.6)] min-w-[130px] ${activeStyles.border} ${activeStyles.bg}`}>
+              <span className="max-w-full whitespace-normal break-words text-center text-[9px] font-black uppercase tracking-widest leading-tight mb-0.5 text-zinc-400">
                 {activeTooltip.name}
               </span>
               <span className={`text-[28px] font-black tracking-tighter ${activeStyles.text}`}>
