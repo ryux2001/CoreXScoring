@@ -169,7 +169,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
       </div>
 
       {/* CUERPO: GRID DINÁMICO */}
-      <div className={`grid grid-cols-3 gap-4 ${isGpu ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
+      <div className="grid grid-cols-3 gap-4 lg:grid-cols-6">
         {categories.map((cat, idx) => {
           // Obtenemos el número real desde el objeto baseNotes usando el nombre como llave
           const score = baseNotes[cat] || 0;

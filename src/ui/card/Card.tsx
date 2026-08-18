@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import CompareButton from "./CompareButton";
 import { supabase } from "@/lib/supabaseClient";
 import { formatReleaseDate } from "@/lib/formatReleaseDate";
+import { getProductImage } from "@/lib/catalog/product-images";
 
 interface ProductProps {
   id: string; // Añadimos el ID
@@ -112,33 +113,7 @@ export const Card = ({
     }
   };
 
-  const getLocalImage = () => {
-    if (!type || !brand) return null;
-    const basePath = "/images/catalog/";
-    const t = type.toLowerCase();
-    const b = brand.toLowerCase();
-
-    if (t === "cpu") {
-      if (b.includes("intel")) return `${basePath}processor-intel.webp`;
-      if (b.includes("amd")) return `${basePath}processor-amd.webp`;
-    }
-    if (t === "gpu") {
-      if (b.includes("nvidia")) return `${basePath}graphics_card-nvidia.webp`;
-      if (b.includes("amd")) return `${basePath}graphics_card-amd.webp`;
-      if (b.includes("intel")) return `${basePath}graphics_card-intel.webp`;
-    }
-    if (t === "ram") {
-      const tech = specs?.technology?.toLowerCase() || "";
-      if (tech.includes("ddr4")) return `${basePath}ram-ddr4.webp`;
-      if (tech.includes("ddr5")) return `${basePath}ram-ddr5.webp`;
-    }
-    if (t === "motherboard") return `${basePath}motherboard.webp`;
-    if (t === "storage") return `${basePath}storage.webp`;
-    if (t === "psu") return `${basePath}psu.webp`;
-    return null;
-  };
-
-  const finalImageUrl = imageUrl || getLocalImage();
+  const finalImageUrl = imageUrl || getProductImage({ type, brand, specs });
 
   const getTechnicalDetails = () => {
     const date = formatReleaseDate(release_date);

@@ -8,6 +8,7 @@ import { getComponentNotes } from "@/lib/scoring";
 import { getComboNotes } from "@/lib/scoringCombos";
 import { getBuildNotes } from "@/lib/scoringBuilds";
 import { convertPrice } from "@/lib/currency";
+import { getProductImage } from "@/lib/catalog/product-images";
 import {
   applyBuildPriceOverrides,
   applyComboPriceOverrides,
@@ -67,30 +68,6 @@ const buildParts: Array<{ key: BuildPartKey; label: string }> = [
   { key: "storage", label: "Almacenamiento" },
   { key: "psu", label: "Fuente" },
 ];
-
-function getLocalImage(item: any) {
-  if (!item?.type || !item?.brand) return null;
-
-  const basePath = "/images/catalog/";
-  const type = item.type.toLowerCase();
-  const brand = item.brand.toLowerCase();
-
-  if (type === "cpu") {
-    if (brand.includes("intel")) return `${basePath}processor-intel.webp`;
-    if (brand.includes("amd")) return `${basePath}processor-amd.webp`;
-  }
-  if (type === "gpu") {
-    if (brand.includes("nvidia")) return `${basePath}graphics_card-nvidia.webp`;
-    if (brand.includes("amd")) return `${basePath}graphics_card-amd.webp`;
-    if (brand.includes("intel")) return `${basePath}graphics_card-intel.webp`;
-  }
-  if (type === "ram") return `${basePath}ram-ddr5.webp`;
-  if (type === "storage") return `${basePath}ssd-m2.webp`;
-  if (type === "motherboard") return `${basePath}motherboard-atx.webp`;
-  if (type === "psu") return `${basePath}psu-atx.webp`;
-
-  return null;
-}
 
 function getColorStyles(score: number) {
   if (score >= 9) {
@@ -239,7 +216,7 @@ export default function CompareProductCard({
             <div className="grid w-full grid-cols-3 gap-2">
               {comboParts.map((part) => {
                 const component = product[part.key];
-                const imageSrc = getLocalImage(component);
+                const imageSrc = getProductImage(component);
 
                 return (
                   <div key={part.key} className="flex min-w-0 flex-col gap-1.5">
@@ -298,10 +275,10 @@ export default function CompareProductCard({
         {!isCollection && (
           <>
             <div className="flex w-full items-center justify-center">
-              {getLocalImage(product) && (
+              {getProductImage(product) && (
                 <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden">
                   <img
-                    src={getLocalImage(product) || undefined}
+                    src={getProductImage(product) || undefined}
                     alt={product.name}
                     className="h-full w-full object-contain opacity-80 transition-opacity group-hover:opacity-100"
                   />

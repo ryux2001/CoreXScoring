@@ -1,6 +1,8 @@
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { getComboPartPrice } from '@/lib/scoringCombos';
+import { getComponentIcon } from '@/lib/catalog/component-icons';
 
 interface ComboMainCardProps {
   combo: any;
@@ -42,6 +44,7 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
       <div className="flex flex-col gap-4 sm:gap-5 mt-auto w-full">
         {parts.map((part) => {
           const priceFormatted = getPartPrice(part.key);
+          const iconSrc = getComponentIcon(part.key);
 
           return (
             <div key={part.key} className="flex flex-col gap-1.5 w-full min-w-0">
@@ -61,8 +64,16 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 overflow-hidden">
                     
                     {/* Icono (Oculto en móvil, visible en sm+) */}
-                    <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950 border border-zinc-900 text-[8px] font-bold text-zinc-600 uppercase tracking-widest">
-                      Icon
+                    <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950 border border-zinc-900">
+                      {iconSrc && (
+                        <Image
+                          src={iconSrc}
+                          alt={`Icono de ${part.role}`}
+                          width={40}
+                          height={40}
+                          className="h-full w-full object-contain"
+                        />
+                      )}
                     </div>
                     
                     {/* Nombre y Marca */}

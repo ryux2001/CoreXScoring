@@ -1,5 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { getBuildPartPrice } from '@/lib/scoringBuilds';
+import { getComponentIcon } from '@/lib/catalog/component-icons';
 
 interface BuildMainCardProps {
   build: any;
@@ -42,6 +44,7 @@ export default function BuildMainCard({
         {parts.map((part) => {
           const item = build?.[part.key];
           if (!item) return null;
+          const iconSrc = getComponentIcon(part.key);
 
           return (
             <div key={part.key} className="flex w-full min-w-0 flex-col gap-1.5">
@@ -52,8 +55,16 @@ export default function BuildMainCard({
               <div className="flex min-w-0 items-stretch gap-2 sm:gap-2.5">
                 <div className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-2xl border border-zinc-900/60 bg-zinc-900/20 p-3 transition-colors hover:border-zinc-800 sm:p-3.5">
                   <div className="flex min-w-0 items-center gap-2.5 overflow-hidden sm:gap-3">
-                    <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-950 text-[8px] font-bold uppercase tracking-widest text-zinc-600 sm:flex">
-                      {part.key.slice(0, 3)}
+                    <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-950 sm:flex">
+                      {iconSrc && (
+                        <Image
+                          src={iconSrc}
+                          alt={`Icono de ${part.role}`}
+                          width={40}
+                          height={40}
+                          className="h-full w-full object-contain"
+                        />
+                      )}
                     </div>
                     <div className="flex min-w-0 flex-col overflow-hidden">
                       <span className="truncate text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500">

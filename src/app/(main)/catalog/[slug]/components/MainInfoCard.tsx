@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatReleaseDate } from '@/lib/formatReleaseDate';
+import { getProductImage } from '@/lib/catalog/product-images';
 
 interface MainInfoProps {
   product: any;
@@ -55,32 +56,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
     }, 300); 
   };
 
-  const getLocalImage = () => {
-    if (!product.type || !product.brand) return null;
-    const basePath = '/images/catalog/';
-    const t = product.type.toLowerCase();
-    const b = product.brand.toLowerCase();
-    if (t === 'cpu') {
-      if (b.includes('intel')) return `${basePath}processor-intel.webp`;
-      if (b.includes('amd')) return `${basePath}processor-amd.webp`;
-    }
-    if (t === 'gpu') {
-      if (b.includes('nvidia')) return `${basePath}graphics_card-nvidia.webp`;
-      if (b.includes('amd')) return `${basePath}graphics_card-amd.webp`;
-      if (b.includes('intel')) return `${basePath}graphics_card-intel.webp`;
-    }
-    if (t === 'ram') {
-      const tech = product.specs?.technology?.toLowerCase() || '';
-      if (tech.includes('ddr4')) return `${basePath}ram-ddr4.webp`;
-      if (tech.includes('ddr5')) return `${basePath}ram-ddr5.webp`;
-    }
-    if (t === 'motherboard') return `${basePath}motherboard.webp`;
-    if (t === 'storage') return `${basePath}storage.webp`;
-    if (t === 'psu') return `${basePath}psu.webp`;
-    return null;
-  };
-
-  const imageUrl = getLocalImage();
+  const imageUrl = getProductImage(product);
 
   const getAllDetails = () => {
     const dateValue = isMounted ? formatReleaseDate(product.release_date) : "";
