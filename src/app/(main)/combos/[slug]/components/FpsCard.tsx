@@ -196,9 +196,7 @@ export default function FpsCard({
                 <span className={`font-semibold text-5xl leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
                   {metric.value}
                 </span>
-                <span className={`text-[10px] font-bold uppercase ${styles.label}`}>
-                  FPS
-                </span>
+                
               </div>
             </div>
           );

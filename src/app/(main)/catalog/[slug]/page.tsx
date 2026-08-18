@@ -6,6 +6,7 @@ import NotesCard from "./components/NotesCard";
 import RadarChartCard from "./components/RadarChartCard";
 import MobileEvaluationWrapper from "./components/MobileEvaluationWrapper"; // IMPORTAMOS EL WRAPPER MÓVIL
 import BenchmarksCard from "./components/BenchmarksCard";
+import DescriptionCard from "./components/DescriptionCard";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -67,6 +68,11 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
             {/* Ocupa todo el ancho en móvil, y el 65% (8 columnas) en escritorio al lado del radar */}
             <div className="lg:col-span-7">
                <BenchmarksCard product={product} />
+            </div>
+
+            {/* --- SECCIÓN DESCRIPCIÓN (Última isla en móvil) --- */}
+            <div className="lg:col-span-12">
+              <DescriptionCard product={product} />
             </div>
 
           </div>

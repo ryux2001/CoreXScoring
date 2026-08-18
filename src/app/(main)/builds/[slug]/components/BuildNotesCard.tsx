@@ -9,33 +9,43 @@ interface BuildNotesCardProps {
 const parts = ['cpu', 'gpu', 'ram', 'motherboard', 'storage', 'psu'];
 
 function getScoreStyles(score: number) {
-  if (score >= 9) {
+  if (score > 9) {
+    return {
+      border: 'border-purple-500/50',
+      bg: 'bg-purple-950/30',
+      text: 'text-purple-300',
+      bar: 'bg-purple-500',
+      label: 'text-purple-300',
+    };
+  }
+
+  if (score > 7) {
     return {
       border: 'border-blue-500/50',
       bg: 'bg-blue-950/30',
       text: 'text-blue-400',
       bar: 'bg-blue-500',
-      label: 'text-blue-500/70',
+      label: 'text-blue-400',
     };
   }
 
-  if (score >= 7) {
+  if (score > 5) {
     return {
       border: 'border-emerald-500/50',
       bg: 'bg-emerald-950/30',
       text: 'text-emerald-400',
       bar: 'bg-emerald-500',
-      label: 'text-emerald-500/70',
+      label: 'text-emerald-400',
     };
   }
 
-  if (score >= 3) {
+  if (score > 3) {
     return {
       border: 'border-yellow-500/50',
       bg: 'bg-yellow-950/30',
       text: 'text-yellow-400',
       bar: 'bg-yellow-500',
-      label: 'text-yellow-500/70',
+      label: 'text-yellow-400',
     };
   }
 
@@ -44,7 +54,7 @@ function getScoreStyles(score: number) {
     bg: 'bg-red-950/30',
     text: 'text-red-400',
     bar: 'bg-red-500',
-    label: 'text-red-500/70',
+    label: 'text-red-400',
   };
 }
 
@@ -95,10 +105,16 @@ export default function BuildNotesCard({
             <Info size={11} strokeWidth={3} />
           </button>
           <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-            <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-white">
-              Evaluación provisional
+            <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-white">Criterios de Evaluación</div>
+            <div className="mb-3 space-y-1 text-[10px]">
+              <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
+              <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span><span className="font-semibold text-blue-300">Azul:</span> Excelente</span></div>
+              <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span><span className="font-semibold text-emerald-300">Verde:</span> Bueno</span></div>
+              <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span><span className="font-semibold text-yellow-300">Amarillo:</span> Aceptable</span></div>
+              <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span><span className="font-semibold text-red-300">Rojo:</span> Malo</span></div>
             </div>
-            <p>Estas notas son datos de referencia y serán reemplazadas por notas dinámicas.</p>
+            <p>La nota es orientativa y no refleja de forma absoluta si un componente es inútil en un aspecto concreto.</p>
+            <p className="mt-2">Se calcula mediante fórmulas. Contrasta siempre la información; la decisión final queda a tu criterio.</p>
           </div>
         </div>
       </div>
@@ -117,7 +133,7 @@ export default function BuildNotesCard({
                   {note.label}
                 </p>
               </div>
-              <p className={`text-[26px] font-black tracking-tighter ${styles.text}`}>
+              <p className={`font-semibold text-[26px] leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
                 {note.score.toFixed(1)}
               </p>
               <div className="h-[2px] w-1/2 overflow-hidden rounded-full bg-zinc-900">

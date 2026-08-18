@@ -87,32 +87,39 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
 
   const getColorStyles = (score: number) => {
     if (score >= 9) return {
+      border: 'border-purple-500/50',
+      bg: 'bg-purple-950/30',
+      text: 'text-purple-300',
+      bar: 'bg-purple-500',
+      label: 'text-purple-300'
+    };
+    if (score >= 7) return {
       border: 'border-blue-500/50',
       bg: 'bg-blue-950/30',
       text: 'text-blue-400',
       bar: 'bg-blue-500',
-      label: 'text-blue-500/70'
+      label: 'text-blue-400'
     };
-    if (score >= 7) return {
+    if (score >= 5) return {
       border: 'border-emerald-500/50',
       bg: 'bg-emerald-950/30',
       text: 'text-emerald-400',
       bar: 'bg-emerald-500',
-      label: 'text-emerald-500/70'
+      label: 'text-emerald-400'
     };
     if (score >= 3) return {
       border: 'border-yellow-500/50',
       bg: 'bg-yellow-950/30',
       text: 'text-yellow-400',
       bar: 'bg-yellow-500',
-      label: 'text-yellow-500/70'
+      label: 'text-yellow-400'
     };
     return {
       border: 'border-red-500/50',
       bg: 'bg-red-950/30',
       text: 'text-red-400',
       bar: 'bg-red-500',
-      label: 'text-red-500/70'
+      label: 'text-red-400'
     };
   };
 
@@ -162,7 +169,15 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
             </button>
             <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">Criterios de Evaluación</div>
-              <p>Las notas se calculan comparando las especificaciones técnicas con el estándar actual del mercado.</p>
+              <div className="mb-3 space-y-1 text-[10px]">
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span><span className="font-semibold text-blue-300">Azul:</span> Excelente</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span><span className="font-semibold text-emerald-300">Verde:</span> Bueno</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span><span className="font-semibold text-yellow-300">Amarillo:</span> Aceptable</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span><span className="font-semibold text-red-300">Rojo:</span> Malo</span></div>
+              </div>
+              <p>La nota es orientativa y no refleja de forma absoluta si un componente es inútil en un aspecto concreto.</p>
+              <p className="mt-2">Se calcula mediante fórmulas. Contrasta siempre la información; la decisión final queda a tu criterio.</p>
             </div>
           </div>
         </div>
@@ -181,15 +196,15 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
               className={`group relative flex flex-col justify-between items-center py-3 px-3 rounded-2xl border transition-all min-h-[100px] ${styles.border} ${styles.bg}`}
             >
               {/* Título */}
-              <div className="text-center h-6 flex items-center justify-center">
-                <p className={`text-[8px] font-black uppercase tracking-widest transition-colors leading-tight ${styles.label}`}>
+              <div className="flex h-6 items-center justify-center text-center">
+                <p className={`text-[8px] font-black uppercase tracking-widest leading-tight ${styles.label}`}>
                   {cat}
                 </p>
               </div>
 
               {/* Número real del script */}
               <div className="text-center">
-                <p className={`text-[26px] font-black tracking-tighter ${styles.text}`}>
+                <p className={`font-semibold text-[26px] leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
                   {score.toFixed(1)}
                 </p>
               </div>
