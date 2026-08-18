@@ -7,6 +7,7 @@ import RadarChartCard from "./components/RadarChartCard";
 import MobileEvaluationWrapper from "./components/MobileEvaluationWrapper"; // IMPORTAMOS EL WRAPPER MÓVIL
 import BenchmarksCard from "./components/BenchmarksCard";
 import DescriptionCard from "./components/DescriptionCard";
+import GpuFpsCard from "./components/GpuFpsCard";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -25,6 +26,17 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
 
   if (error || !product) {
     notFound();
+  }
+
+  const isGpu = String(product.type ?? "").toUpperCase() === "GPU";
+  let games: Array<{ id: string; name: string; gpu_fps_base?: unknown }> = [];
+
+  if (isGpu) {
+    const { data: gamesData } = await supabase
+      .from("games")
+      .select("id, name, gpu_fps_base");
+
+    games = gamesData ?? [];
   }
 
   return (
@@ -70,8 +82,14 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
                <BenchmarksCard product={product} />
             </div>
 
+            {isGpu && (
+              <div className="lg:col-span-7">
+                <GpuFpsCard product={product} games={games} />
+              </div>
+            )}
+
             {/* --- SECCIÓN DESCRIPCIÓN (Última isla en móvil) --- */}
-            <div className="lg:col-span-12">
+            <div className={isGpu ? "lg:col-span-5" : "lg:col-span-12"}>
               <DescriptionCard product={product} />
             </div>
 

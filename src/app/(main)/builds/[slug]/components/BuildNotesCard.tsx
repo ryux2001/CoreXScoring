@@ -80,7 +80,7 @@ export default function BuildNotesCard({
   }, 0);
 
   return (
-    <div className="flex h-full flex-col justify-between overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:p-8">
+    <div className="relative z-20 flex h-full flex-col justify-between rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:p-8">
       <div className="relative mb-8">
         <div className="flex min-w-0 flex-wrap items-center gap-4 pr-10">
           <h2 className="shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
@@ -104,7 +104,7 @@ export default function BuildNotesCard({
           >
             <Info size={11} strokeWidth={3} />
           </button>
-          <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+          <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-white">Criterios de Evaluación</div>
             <div className="mb-3 space-y-1 text-[10px]">
               <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
