@@ -1,38 +1,37 @@
-/**
- * PSU PROTECTIONS SCORE CALCULATOR
- */
+/** PSU protection coverage score. */
 
 import { PSU_CONFIG } from '../../config/psu';
-import { formatNoteScore } from '../../../shared/helpers';
+import { getSpecs, parseArray, score10 } from './normalization';
 
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
+function hasProtectionField(value: any): boolean {
+  if (Array.isArray(value)) return true;
+  if (typeof value !== 'string') return false;
+
+  try {
+    return Array.isArray(JSON.parse(value));
+  } catch {
+    return false;
   }
-  return value;
 }
 
 export const calculateProtectionsScore = (product: any): number => {
-  const specs = parseJsonbString(product?.specs || '{}');
-  
-  const protectionsArray = Array.isArray(specs?.protections) ? specs.protections.map((p: string) => p.toUpperCase()) : [];
-  
-  const { VITALES, EXTRA, TOTAL_POINTS } = PSU_CONFIG.PROTECCIONES;
+  const rawProtections = getSpecs(product).protections;
+  if (!hasProtectionField(rawProtections)) {
+    return PSU_CONFIG.PROTECCIONES.MISSING_SCORE;
+  }
 
-  // 1. Las 6 Protecciones Vitales (7500 pts)
-  let vitalCount = 0;
-  VITALES.LIST.forEach(prot => {
-    if (protectionsArray.includes(prot)) vitalCount++;
-  });
-  const vitalPts = (vitalCount / VITALES.TOTAL_REQUIRED) * VITALES.MAX_POINTS;
+  const protections = new Set(
+    parseArray(rawProtections).map((protection) => String(protection).trim().toUpperCase()),
+  );
+  const coreWeights = PSU_CONFIG.PROTECCIONES.CORE_WEIGHTS;
+  const corePoints = Object.entries(coreWeights).reduce(
+    (total, [protection, weight]) => total + (protections.has(protection) ? weight : 0),
+    0,
+  );
+  const extras = Object.entries(PSU_CONFIG.PROTECCIONES.EXTRA_SCORES).reduce(
+    (total, [protection, points]) => total + (protections.has(protection) ? points : 0),
+    0,
+  );
 
-  // 2. Protecciones Industriales / Secundarias (2500 pts)
-  let extraCount = 0;
-  EXTRA.LIST.forEach(prot => {
-    if (protectionsArray.includes(prot)) extraCount++;
-  });
-  const extraPts = Math.min(EXTRA.MAX_POINTS, extraCount * EXTRA.POINTS_PER);
-
-  const totalPoints = vitalPts + extraPts;
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  return score10(PSU_CONFIG.PROTECCIONES.CORE_SCORE * (corePoints / 100) + extras);
 };

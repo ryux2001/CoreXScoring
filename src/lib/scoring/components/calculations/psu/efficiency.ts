@@ -1,51 +1,36 @@
-/**
- * PSU EFFICIENCY SCORE CALCULATOR
- */
+/** PSU conversion-efficiency score. */
 
 import { PSU_CONFIG } from '../../config/psu';
-import { formatNoteScore } from '../../../shared/helpers';
-import { safeExtract } from '../../../shared/validators';
+import {
+  finiteNumber,
+  getBenchmarks,
+  getSpecs,
+  interpolate,
+  score10,
+} from './normalization';
 
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
+function getCertificationScore(value: any): number {
+  const text = String(value ?? '').toLowerCase();
+  if (text.includes('titanium')) return PSU_CONFIG.EFICIENCIA.CERTIFICATION.TITANIUM;
+  if (text.includes('platinum')) return PSU_CONFIG.EFICIENCIA.CERTIFICATION.PLATINUM;
+  if (text.includes('gold')) return PSU_CONFIG.EFICIENCIA.CERTIFICATION.GOLD;
+  if (text.includes('silver')) return PSU_CONFIG.EFICIENCIA.CERTIFICATION.SILVER;
+  if (text.includes('bronze')) return PSU_CONFIG.EFICIENCIA.CERTIFICATION.BRONZE;
+  if (text.includes('white')) return PSU_CONFIG.EFICIENCIA.CERTIFICATION.WHITE;
+  return PSU_CONFIG.EFICIENCIA.CERTIFICATION.UNKNOWN;
 }
 
 export const calculateEfficiencyScore = (product: any): number => {
-  const specs = parseJsonbString(product?.specs || '{}');
-  const benchmarks = parseJsonbString(product?.benchmarks || '{}');
-  
-  const { CERTIFICACION, CARGA_50, HOLGURA, TOTAL_POINTS } = PSU_CONFIG.EFICIENCIA;
+  const specs = getSpecs(product);
+  const benchmarks = getBenchmarks(product);
+  const rawLoad50 = finiteNumber(benchmarks.efficiency_load_50, NaN);
+  const hasMeasuredEfficiency = Number.isFinite(rawLoad50) && rawLoad50 > 0;
+  const measured = hasMeasuredEfficiency
+    ? interpolate(rawLoad50, PSU_CONFIG.EFICIENCIA.LOAD_50_ANCHORS)
+    : PSU_CONFIG.EFICIENCIA.MISSING_MEASURED_SCORE;
+  const certification = getCertificationScore(specs.efficiency);
+  const weights = PSU_CONFIG.EFICIENCIA.WEIGHTS;
+  const score = weights.MEASURED * measured + weights.CERTIFICATION * certification;
 
-  // 1. Certificación 80 Plus (5000 pts)
-  const effStr = (specs?.efficiency || '').toLowerCase();
-  let certPts = CERTIFICACION.NONE;
-  if (effStr.includes('titanium')) certPts = CERTIFICACION.TITANIUM;
-  else if (effStr.includes('platinum')) certPts = CERTIFICACION.PLATINUM;
-  else if (effStr.includes('gold')) certPts = CERTIFICACION.GOLD;
-  else if (effStr.includes('silver')) certPts = CERTIFICACION.SILVER;
-  else if (effStr.includes('bronze')) certPts = CERTIFICACION.BRONZE;
-
-  // 2. Eficiencia Real en el Punto Dulce (3000 pts)
-  const load50 = safeExtract(benchmarks?.efficiency_load_50, 80);
-  let loadPts = 0;
-  if (load50 >= CARGA_50.PERFECT_PCT) {
-    loadPts = CARGA_50.MAX_POINTS;
-  } else if (load50 > CARGA_50.WORST_PCT) {
-    loadPts = ((load50 - CARGA_50.WORST_PCT) / CARGA_50.RANGE) * CARGA_50.MAX_POINTS;
-  }
-
-  // 3. Holgura de Potencia (2000 pts)
-  const wattage = safeExtract(specs?.wattage, 400);
-  let wattagePts = 0;
-  if (wattage >= HOLGURA.PERFECT_W) {
-    wattagePts = HOLGURA.MAX_POINTS;
-  } else if (wattage > HOLGURA.WORST_W) {
-    wattagePts = ((wattage - HOLGURA.WORST_W) / HOLGURA.RANGE) * HOLGURA.MAX_POINTS;
-  }
-
-  const totalPoints = certPts + loadPts + wattagePts;
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  return score10(hasMeasuredEfficiency ? score : Math.min(score, 7.5));
 };

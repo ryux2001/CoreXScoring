@@ -1,43 +1,37 @@
 /**
  * MOTHERBOARD ELECTRICAL STABILITY SCORE CALCULATOR
+ *
+ * VRM quality and thermal behavior lead the score; phase count is useful only
+ * with diminishing returns and is taken from the CPU/core phase group.
  */
 
 import { MOTHERBOARD_CONFIG } from '../../config/motherboard';
-import { formatNoteScore } from '../../../shared/helpers';
-import { safeExtract } from '../../../shared/validators';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
+import {
+  finiteNumber,
+  getSpecs,
+  getTechnologyText,
+  getThermalScore,
+  interpolate,
+  score10,
+} from './normalization';
 
 export const calculateElectricalStabilityScore = (product: any): number => {
-  const specs = parseJsonbString(product?.specs || '{}');
-  const technologies = parseJsonbString(product?.technologies || '[]');
-  
-  const { FASES, CALIDAD, ARQUITECTURA, TOTAL_POINTS } = MOTHERBOARD_CONFIG.ESTABILIDAD;
+  const specs = getSpecs(product);
+  const quality = Math.max(0, Math.min(10, finiteNumber(specs.vrm_quality_rating, 6)));
+  const phaseCount = finiteNumber(String(specs.power_phases ?? '').match(/\d+/)?.[0], finiteNumber(specs.vrm_phases, 0));
+  const phaseScore = interpolate(phaseCount, MOTHERBOARD_CONFIG.ESTABILIDAD.CPU_PHASE_ANCHORS);
+  const technologyText = getTechnologyText(product);
+  const amperage = Math.max(
+    0,
+    ...[...technologyText.matchAll(/(\d{2,3})\s*a\b/g)].map((match) => finiteNumber(match[1], 0)),
+  );
+  const architectureScore = interpolate(amperage, MOTHERBOARD_CONFIG.ESTABILIDAD.ARCHITECTURE_ANCHORS);
+  const weights = MOTHERBOARD_CONFIG.ESTABILIDAD.WEIGHTS;
 
-  // 1. Cantidad de Fases Reales (4000 pts)
-  const vrmPhases = safeExtract(specs?.vrm_phases, 0);
-  const phasesPoints = Math.min(FASES.MAX_POINTS, (vrmPhases / FASES.MAX_PHASES) * FASES.MAX_POINTS);
-
-  // 2. Calidad de los componentes (4000 pts)
-  const vrmQuality = safeExtract(specs?.vrm_quality_rating, 0);
-  const qualityPoints = Math.min(CALIDAD.MAX_POINTS, (vrmQuality / CALIDAD.MAX_RATING) * CALIDAD.MAX_POINTS);
-
-  // 3. Arquitectura de Energía (DrMOS) (2000 pts)
-  const techStr = (Array.isArray(technologies) ? technologies : [])
-    .map((t: any) => `${t.name || ''} ${t.description || ''}`)
-    .join(' ')
-    .toLowerCase();
-    
-  let archPoints = ARQUITECTURA.BASIC_POINTS;
-  if (ARQUITECTURA.KEYWORDS.some(k => techStr.includes(k))) {
-    archPoints = ARQUITECTURA.MAX_POINTS;
-  }
-
-  const totalPoints = phasesPoints + qualityPoints + archPoints;
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  return score10(
+    quality * weights.VRM_QUALITY +
+    getThermalScore(product) * weights.THERMAL +
+    phaseScore * weights.CPU_PHASES +
+    architectureScore * weights.ARCHITECTURE,
+  );
 };

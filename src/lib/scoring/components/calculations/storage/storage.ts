@@ -8,13 +8,14 @@ import { calculateTechnologiesScore } from './technologies';
 import { calculateTemperaturesScore } from './temperatures';
 import { calculateDurabilityScore } from './durability';
 import { calculateEfficiencyScore } from './efficiency';
+import type { StorageNotes } from '../../types';
 import { calculateValueScore } from './value';
 
 export type ComponentNotes = {
   [key: string]: number;
 };
 
-export const calculateStorageNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
+export const calculateStorageNotes = (product: any, evaluatedPrice: number): StorageNotes => {
   // 1. Calcular notas técnicas
   const speed = calculateSpeedScore(product);
   const technologies = calculateTechnologiesScore(product);

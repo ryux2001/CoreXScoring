@@ -1,38 +1,35 @@
-/**
- * PSU VALUE SCORE CALCULATOR
- */
+/** PSU quality-price score with capacity-aware reference pricing. */
 
 import { PSU_CONFIG } from '../../config/psu';
-import { formatNoteScore } from '../../../shared/helpers';
+import { finiteNumber, getPrice, getSpecs, interpolate, score10 } from './normalization';
 
-export const calculateValueScore = (notes: any, evaluatedPrice: number, product: any): number => {
-  const {
-    ESTABILIDAD,
-    PROTECCIONES,
-    EFICIENCIA,
-    CONSTRUCCION,
-    CONECTIVIDAD,
-  } = PSU_CONFIG.VALUE_WEIGHTS;
+export const calculateValueScore = (
+  notes: Record<string, number>,
+  evaluatedPrice: number,
+  product: any,
+): number => {
+  const price = getPrice(evaluatedPrice, product?.price_base_usd);
+  const wattage = finiteNumber(getSpecs(product).wattage, NaN);
+  if (price === null || !Number.isFinite(wattage) || wattage <= 0) return 0;
 
-  // 1. Calcular nota global ponderada
-  const globalScore = 
-    (notes.ESTABILIDAD * (ESTABILIDAD / 100)) +
-    (notes.PROTECCIONES * (PROTECCIONES / 100)) +
-    (notes.EFICIENCIA * (EFICIENCIA / 100)) +
-    (notes.CONSTRUCCION * (CONSTRUCCION / 100)) +
-    (notes.CONECTIVIDAD * (CONECTIVIDAD / 100));
+  const weights = PSU_CONFIG.VALUE_WEIGHTS;
+  const utility = (
+    finiteNumber(notes.ESTABILIDAD, 0) * weights.ESTABILIDAD +
+    finiteNumber(notes.PROTECCIONES, 0) * weights.PROTECCIONES +
+    finiteNumber(notes.CONSTRUCCION, 0) * weights.CONSTRUCCION +
+    finiteNumber(notes.EFICIENCIA, 0) * weights.EFICIENCIA +
+    finiteNumber(notes.CONECTIVIDAD, 0) * weights.CONECTIVIDAD
+  );
+  if (utility <= 0) return 0;
 
-  // 2. Control de seguridad precio
-  if (!evaluatedPrice || evaluatedPrice <= 0) {
-    return 0;
-  }
+  const referencePrice = interpolate(wattage, PSU_CONFIG.VALUE_REFERENCE_PRICES);
+  const valueIndex = (utility / 10) * Math.pow(
+    referencePrice / price,
+    PSU_CONFIG.VALUE_PRICE_EXPONENT,
+  );
+  if (!Number.isFinite(valueIndex) || valueIndex <= 0) return 0;
 
-  // 3. Umbral de Rendimiento Útil (-3.5 pts)
-  const usefulPerformance = Math.max(0, globalScore - 3.5);
-
-  // 4. Calcular ratio y normalizar contra techo (0.05)
-  const ratio = usefulPerformance / evaluatedPrice;
-  const valueScore = (ratio / PSU_CONFIG.VALUE_CEILING) * 10;
-
-  return formatNoteScore(Math.min(10, valueScore));
+  const poweredIndex = Math.pow(valueIndex, PSU_CONFIG.VALUE_LOGISTIC_EXPONENT);
+  const score = 10 * poweredIndex / (poweredIndex + PSU_CONFIG.VALUE_LOGISTIC_OFFSET);
+  return score10(score);
 };

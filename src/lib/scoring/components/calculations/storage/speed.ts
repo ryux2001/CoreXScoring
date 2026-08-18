@@ -1,40 +1,27 @@
 /**
  * STORAGE SPEED SCORE CALCULATOR
+ *
+ * CrystalDisk values are preferred when present because they describe the
+ * same sequential workload users actually see. The theoretical spec values
+ * are only the fallback, so the metric is not double-counted.
  */
 
 import { STORAGE_CONFIG } from '../../config/storage';
-import { formatNoteScore } from '../../../shared/helpers';
-import { safeExtract } from '../../../shared/validators';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
+import {
+  clamp01,
+  getStorageSpeeds,
+  score10,
+} from './normalization';
 
 export const calculateSpeedScore = (product: any): number => {
-  const benchmarks = parseJsonbString(product?.benchmarks || '{}');
-  const specs = parseJsonbString(product?.specs || '{}');
-  
-  const readSpeed = safeExtract(specs?.read_speed, 0);
-  const writeSpeed = safeExtract(specs?.write_speed, 0);
-  const crystalRead = safeExtract(benchmarks?.crystal_disk_read, 0);
-  const crystalWrite = safeExtract(benchmarks?.crystal_disk_write, 0);
-  
-  const { TEORICA, REAL, TOTAL_POINTS } = STORAGE_CONFIG.VELOCIDAD;
-  
-  // 1. Velocidad Teórica (5000 pts) usando raíz cuadrada
-  const theoricalReadPts = Math.sqrt(Math.min(readSpeed, TEORICA.READ_MAX) / TEORICA.READ_MAX) * TEORICA.POINTS_PER;
-  const theoricalWritePts = Math.sqrt(Math.min(writeSpeed, TEORICA.WRITE_MAX) / TEORICA.WRITE_MAX) * TEORICA.POINTS_PER;
-  const theoricalTotal = theoricalReadPts + theoricalWritePts;
+  const { read, write } = getStorageSpeeds(product);
+  const { TEORICA } = STORAGE_CONFIG.VELOCIDAD;
+  const readReference = STORAGE_CONFIG.VELOCIDAD.NORMALIZATION.READ_REFERENCE;
+  const writeReference = STORAGE_CONFIG.VELOCIDAD.NORMALIZATION.WRITE_REFERENCE;
+  const readRatio = Math.log(1 + Math.min(read, TEORICA.READ_MAX) / readReference) /
+    Math.log(1 + TEORICA.READ_MAX / readReference);
+  const writeRatio = Math.log(1 + Math.min(write, TEORICA.WRITE_MAX) / writeReference) /
+    Math.log(1 + TEORICA.WRITE_MAX / writeReference);
 
-  // 2. Velocidad Real CrystalDisk (5000 pts) usando raíz cuadrada
-  const realReadPts = Math.sqrt(Math.min(crystalRead, REAL.READ_MAX) / REAL.READ_MAX) * REAL.POINTS_PER;
-  const realWritePts = Math.sqrt(Math.min(crystalWrite, REAL.WRITE_MAX) / REAL.WRITE_MAX) * REAL.POINTS_PER;
-  const realTotal = realReadPts + realWritePts;
-  
-  const totalPoints = theoricalTotal + realTotal;
-  
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  return score10(10 * (0.55 * clamp01(readRatio) + 0.45 * clamp01(writeRatio)));
 };

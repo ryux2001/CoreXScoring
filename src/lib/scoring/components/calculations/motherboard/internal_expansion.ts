@@ -1,71 +1,63 @@
 /**
  * MOTHERBOARD INTERNAL EXPANSION SCORE CALCULATOR
+ *
+ * Counts in strings such as "4x PCIe 4.0 x4" are expanded and each extra
+ * slot contributes less than the previous one. This prevents high-end boards
+ * from collapsing into a large group of identical 10/10 scores.
  */
 
 import { MOTHERBOARD_CONFIG } from '../../config/motherboard';
-import { formatNoteScore } from '../../../shared/helpers';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
+import {
+  getM2Slots,
+  getPcieGeneration,
+  getPcieSlots,
+  getPrimaryPcieIndex,
+  getSlotLaneWidth,
+  score10,
+} from './normalization';
 
 export const calculateInternalExpansionScore = (product: any): number => {
-  const specs = parseJsonbString(product?.specs || '{}');
-  const pcieSlots = Array.isArray(specs?.pcie_slots) ? specs.pcie_slots : [];
-  const m2Slots = Array.isArray(specs?.m2_slots) ? specs.m2_slots : [];
-  
-  const { GPU, M2, SECUNDARIOS, TOTAL_POINTS } = MOTHERBOARD_CONFIG.EXPANSION;
+  const pcieSlots = getPcieSlots(product);
+  const m2Slots = getM2Slots(product).sort((left, right) => getPcieGeneration(right) - getPcieGeneration(left));
+  const primaryIndex = getPrimaryPcieIndex(pcieSlots);
+  const primaryGeneration = primaryIndex >= 0 ? getPcieGeneration(pcieSlots[primaryIndex]) : 0;
+  const primaryScore = primaryGeneration >= 5 ? 10 : primaryGeneration === 4 ? 8.5 : primaryGeneration === 3 ? 6 : 0;
 
-  // 1. Puerto Principal (GPU) y 3. Puertos Secundarios
-  let primaryGpuPts = 0;
-  let primaryFound = false;
-  let secondaryPts = 0;
+  const margins = MOTHERBOARD_CONFIG.EXPANSION.M2_MARGINALS;
+  const m2Utility = m2Slots.reduce((total, slot, index) => {
+    const generationMultiplier = getPcieGeneration(slot) >= 5
+      ? 1.15
+      : getPcieGeneration(slot) === 4
+        ? 1
+        : getPcieGeneration(slot) === 3
+          ? 0.7
+          : 0.5;
+    return total + (margins[index] ?? 0.3) * generationMultiplier;
+  }, 0);
+  const m2Score = Math.min(10, (m2Utility / MOTHERBOARD_CONFIG.EXPANSION.M2_REFERENCE_UTILITY) * 10);
 
-  pcieSlots.forEach((slotStr: string) => {
-    const s = slotStr.toLowerCase();
-    const countMatch = s.match(/^(\d+)x/);
-    const count = countMatch ? parseInt(countMatch[1]) : 1;
+  const secondaryUtility = pcieSlots.reduce((total, slot, index) => {
+    if (index === primaryIndex) return total;
+    const laneWidth = getSlotLaneWidth(slot);
+    const laneScore = laneWidth >= 8 ? 3.5 : laneWidth >= 4 ? 2.5 : laneWidth >= 1 ? 1 : 0;
+    const generationMultiplier = getPcieGeneration(slot) >= 5
+      ? 1.2
+      : getPcieGeneration(slot) === 4
+        ? 1
+        : getPcieGeneration(slot) === 3
+          ? 0.7
+          : 0.5;
+    return total + laneScore * generationMultiplier;
+  }, 0);
+  const secondaryScore = Math.min(
+    10,
+    (secondaryUtility / MOTHERBOARD_CONFIG.EXPANSION.SECONDARY_REFERENCE_UTILITY) * 10,
+  );
+  const weights = MOTHERBOARD_CONFIG.EXPANSION.WEIGHTS;
 
-    for (let i = 0; i < count; i++) {
-      // Identificar puerto principal (x16 real, sin restricciones como "x4 mode")
-      if (!primaryFound && s.includes('x16') && !s.match(/\(x\d+\)/)) {
-        if (s.includes('5.0')) primaryGpuPts = GPU.GEN5;
-        else if (s.includes('4.0')) primaryGpuPts = GPU.GEN4;
-        else primaryGpuPts = GPU.GEN3;
-        primaryFound = true;
-      } else {
-        // Asignar a puertos secundarios
-        if (s.includes('x16') || s.includes('x4')) { // Ranuras largas
-          if (s.includes('4.0')) secondaryPts += SECUNDARIOS.LARGE_GEN4;
-          else if (s.includes('3.0')) secondaryPts += SECUNDARIOS.LARGE_GEN3;
-        } else if (s.includes('x1')) { // Ranuras cortas
-          if (s.includes('4.0')) secondaryPts += SECUNDARIOS.SMALL_GEN4;
-          else if (s.includes('3.0')) secondaryPts += SECUNDARIOS.SMALL_GEN3;
-        }
-      }
-    }
-  });
-
-  secondaryPts = Math.min(secondaryPts, SECUNDARIOS.MAX_POINTS);
-
-  // 2. Bahías M.2 (4000 pts)
-  let m2Pts = 0;
-  m2Slots.forEach((slotStr: string) => {
-    const s = slotStr.toLowerCase();
-    const countMatch = s.match(/^(\d+)x/);
-    const count = countMatch ? parseInt(countMatch[1]) : 1;
-    
-    for (let i = 0; i < count; i++) {
-      if (s.includes('5.0')) m2Pts += M2.GEN5_PER_SLOT;
-      else if (s.includes('4.0')) m2Pts += M2.GEN4_PER_SLOT;
-    }
-  });
-  
-  m2Pts = Math.min(m2Pts, M2.MAX_POINTS);
-
-  const totalPoints = primaryGpuPts + m2Pts + secondaryPts;
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  return score10(
+    primaryScore * weights.PRIMARY_GPU +
+    m2Score * weights.M2 +
+    secondaryScore * weights.SECONDARY_PCIE,
+  );
 };

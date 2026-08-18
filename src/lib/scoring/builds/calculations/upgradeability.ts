@@ -106,7 +106,7 @@ const getStorageUpgradeMargin = (storage: Build, motherboard: Build, scores: Bui
   const freeSlots = Math.max(0, m2Slots.length - m2Used) + Math.max(0, sataPorts - sataUsed);
   const slotsMargin = totalSlots > 0 && hasUsageData
     ? clamp((freeSlots / totalSlots) * 10)
-    : getNote(scores.motherboard, ['Expansi\u00f3n interna', 'Expansi\u00c3\u00b3n interna', 'Expansion interna']) || BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_MOTHERBOARD_EXPANSION;
+    : getNote(scores.motherboard, ['Expansión', 'Expansi\u00f3n interna', 'Expansi\u00c3\u00b3n interna', 'Expansion interna']) || BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_MOTHERBOARD_EXPANSION;
   const futureGeneration = getPcieGenerationScore(getHighestGeneration([
     getCompatibility(storage).pcie_generation,
     getSpecs(storage).pcie_generation,
@@ -125,7 +125,7 @@ export const getBuildUpgradeability = (
   const weights = BUILD_SCORING_CONFIG.UPGRADEABILITY.BUILD;
   let note = clamp(
     getPlatformFuture(build.cpu, build.motherboard) * weights.PLATFORM +
-      (getNote(scores.motherboard, ['Expansi\u00f3n interna', 'Expansi\u00c3\u00b3n interna', 'Expansion interna']) || BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_MOTHERBOARD_EXPANSION) * weights.INTERNAL_EXPANSION +
+      (getNote(scores.motherboard, ['Expansión', 'Expansi\u00f3n interna', 'Expansi\u00c3\u00b3n interna', 'Expansion interna']) || BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_MOTHERBOARD_EXPANSION) * weights.INTERNAL_EXPANSION +
       getPsuUpgradeMargin(build, scores) * weights.PSU +
       getRamUpgradeMargin(build.ram, build.cpu, build.motherboard) * weights.RAM +
       getStorageUpgradeMargin(build.storage, build.motherboard, scores) * weights.STORAGE,

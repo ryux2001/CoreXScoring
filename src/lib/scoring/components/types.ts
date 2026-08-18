@@ -46,13 +46,13 @@ export interface StorageNotes extends ComponentNotes {
   "Temperaturas": number;
   "Durabilidad": number;
   "Eficiencia": number;
-  "Calidad Precio": number;
+  "Calidad precio": number;
 }
 
 export interface MotherboardNotes extends ComponentNotes {
   "Conectividad": number;
   "Tecnologías": number;
-  "Expansión interna": number;
+  "Expansión": number;
   "Compatibilidad": number;
   "Estabilidad": number;
   "Calidad precio": number;

@@ -3,56 +3,54 @@
  */
 
 import { MOTHERBOARD_CONFIG } from '../../config/motherboard';
-import { formatNoteScore } from '../../../shared/helpers';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
+import {
+  finiteNumber,
+  getSpecs,
+  getTechnologyText,
+  getUsbCounts,
+  interpolate,
+  score10,
+} from './normalization';
 
 export const calculateConnectivityScore = (product: any): number => {
-  const specs = parseJsonbString(product?.specs || '{}');
-  const technologies = parseJsonbString(product?.technologies || '[]');
-  
-  const { WIFI, LAN, USB, TOTAL_POINTS } = MOTHERBOARD_CONFIG.CONECTIVIDAD;
+  const specs = getSpecs(product);
+  const wifi = String(specs.wifi ?? '').toLowerCase();
+  const wifiScore = wifi.includes('7') ? 10 : wifi.includes('6e') ? 8.5 : wifi.includes('6') ? 7 : wifi.includes('5') ? 4.5 : wifi === 'no' ? 0 : 3.5;
 
-  // 1. Red Inalámbrica (3000 pts)
-  const wifiStr = (specs?.wifi || '').toLowerCase();
-  let wifiPts = WIFI.NONE;
-  if (wifiStr.includes('7')) wifiPts = WIFI.WIFI7;
-  else if (wifiStr.includes('6e')) wifiPts = WIFI.WIFI6E;
-  else if (wifiStr.includes('6')) wifiPts = WIFI.WIFI6;
+  const ethernet = String(specs.ethernet ?? '').toLowerCase();
+  let lanScore = ethernet.includes('10gb')
+    ? 10
+    : ethernet.includes('2.5gb')
+      ? 7
+      : ethernet.includes('5gb')
+        ? 8.5
+        : ethernet.includes('1gb') || ethernet.includes('gigabit') || ethernet.includes('gbps')
+          ? 4
+          : 3.5;
+  if (ethernet.includes('dual') || ethernet.includes('+')) lanScore = Math.min(10, lanScore + 1);
 
-  // 2. Red Cableada (3000 pts)
-  const lanStr = (specs?.ethernet || '').toLowerCase();
-  let lanPts = 0;
-  
-  // CORRECCIÓN: El orden de validación importa. 
-  // Evaluamos '2.5gb' ANTES que '5gb' para evitar falsos positivos.
-  if (lanStr.includes('10gb')) lanPts = LAN.LAN10G;
-  else if (lanStr.includes('2.5gb')) lanPts = LAN.LAN2_5G;
-  else if (lanStr.includes('5gb')) lanPts = LAN.LAN5G;
-  else if (lanStr.includes('1gb') || lanStr.includes('gigabit')) lanPts = LAN.LAN1G;
+  const { usb2, usb3, usbC } = getUsbCounts(product);
+  const usbUnits = usbC * 1.6 + usb3 * 0.75 + usb2 * 0.2;
+  const usbScore = interpolate(usbUnits, MOTHERBOARD_CONFIG.CONECTIVIDAD.USB_ANCHORS);
+  const technologyText = getTechnologyText(product);
+  const advancedIoScore = technologyText.includes('usb4') || technologyText.includes('thunderbolt')
+    ? 10
+    : usbC >= 3
+      ? 8.5
+      : usbC === 2
+        ? 7
+        : usbC === 1
+          ? 5
+          : 2;
+  const weights = MOTHERBOARD_CONFIG.CONECTIVIDAD.WEIGHTS;
 
-  // 3. Puertos USB (4000 pts)
-  const usbSpecs = specs?.usb_ports || {};
-  const usbC = parseInt(usbSpecs?.usb_c || '0', 10);
-  const usb3 = parseInt(usbSpecs?.usb_3 || '0', 10);
-  const usb2 = parseInt(usbSpecs?.usb_2 || '0', 10);
-  
-  // Analizar si algún USB-C es Thunderbolt o USB4
-  const techStr = (Array.isArray(technologies) ? technologies : [])
-    .map((t: any) => `${t.name || ''} ${t.description || ''}`)
-    .join(' ').toLowerCase();
-  
-  const hasThunderbolt = techStr.includes('thunderbolt') || techStr.includes('usb4');
-  const usbC_Multiplier = hasThunderbolt ? USB.USB_C_THUNDERBOLT : USB.USB_C;
-
-  let usbPts = (usbC * usbC_Multiplier) + (usb3 * USB.USB_3) + (usb2 * USB.USB_2);
-  usbPts = Math.min(usbPts, USB.MAX_POINTS);
-
-  const totalPoints = wifiPts + lanPts + usbPts;
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  // finiteNumber is intentionally used on the aggregate as a final guard for
+  // malformed JSONB values without changing the explicit "No" Wi-Fi behavior.
+  return score10(finiteNumber(
+    wifiScore * weights.WIFI +
+      lanScore * weights.LAN +
+      usbScore * weights.USB +
+      advancedIoScore * weights.ADVANCED_IO,
+    0,
+  ));
 };

@@ -1,6 +1,6 @@
 /**
  * MOTHERBOARD NOTES CALCULATOR
- * Importa todas las funciones de cálculo de notas para Motherboard
+ * Importa todas las funciones de cálculo de notas para Motherboard.
  */
 
 import { calculateElectricalStabilityScore } from './electrical_stability';
@@ -9,20 +9,15 @@ import { calculateConnectivityScore } from './connectivity';
 import { calculateTechnologiesScore } from './technologies';
 import { calculateCompatibilityScore } from './compatibility';
 import { calculateValueScore } from './value';
+import type { MotherboardNotes } from '../../types';
 
-export type ComponentNotes = {
-  [key: string]: number;
-};
-
-export const calculateMotherboardNotes = (product: any, evaluatedPrice: number): ComponentNotes => {
-  // 1. Calcular notas técnicas
+export const calculateMotherboardNotes = (product: any, evaluatedPrice: number): MotherboardNotes => {
   const estabilidad = calculateElectricalStabilityScore(product);
   const expansion = calculateInternalExpansionScore(product);
   const conectividad = calculateConnectivityScore(product);
   const tecnologias = calculateTechnologiesScore(product);
   const compatibilidad = calculateCompatibilityScore(product);
 
-  // 2. Calcular el valor calidad/precio usando los pesos y el umbral 3.5
   const valueScore = calculateValueScore(
     {
       ESTABILIDAD: estabilidad,
@@ -32,15 +27,15 @@ export const calculateMotherboardNotes = (product: any, evaluatedPrice: number):
       COMPATIBILIDAD: compatibilidad,
     },
     evaluatedPrice,
-    product
+    product,
   );
 
   return {
-    "Estabilidad": estabilidad,
-    "Expansión": expansion,
-    "Conectividad": conectividad,
-    "Tecnologías": tecnologias,
-    "Compatibilidad": compatibilidad,
-    "Calidad precio": valueScore,
+    Estabilidad: estabilidad,
+    Expansión: expansion,
+    Conectividad: conectividad,
+    Tecnologías: tecnologias,
+    Compatibilidad: compatibilidad,
+    'Calidad precio': valueScore,
   };
 };

@@ -1,49 +1,54 @@
-/**
- * PSU CONNECTIVITY SCORE CALCULATOR
- */
+/** PSU connector inventory score. */
 
 import { PSU_CONFIG } from '../../config/psu';
-import { formatNoteScore } from '../../../shared/helpers';
+import {
+  getAtxFallbackScore,
+  getConnectorInventory,
+  getModularityScore,
+  score10,
+} from './normalization';
 
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
+function diminishingCount(value: number, cap: number): number {
+  if (cap <= 0 || value <= 0) return 0;
+  return Math.log1p(Math.min(value, cap)) / Math.log1p(cap);
 }
 
 export const calculateConnectivityScore = (product: any): number => {
-  const specs = parseJsonbString(product?.specs || '{}');
-  const technologies = parseJsonbString(product?.technologies || '[]');
-  const tags = parseJsonbString(product?.tags || '[]');
-  const compatibility = parseJsonbString(product?.compatibility || '{}');
-  
-  const { ATX, MODULARIDAD, TOTAL_POINTS } = PSU_CONFIG.CONECTIVIDAD;
+  const inventory = getConnectorInventory(product);
+  const modularity = getModularityScore(product);
 
-  // Consolidar todos los textos posibles donde pueda mencionar el estándar
-  const allText = [
-    specs?.modular_type || '',
-    (Array.isArray(technologies) ? technologies : []).map((t: any) => `${t.name} ${t.description}`).join(' '),
-    (Array.isArray(tags) ? tags : []).join(' '),
-    JSON.stringify(compatibility)
-  ].join(' ').toLowerCase();
-
-  // 1. Preparación para GPUs de Nueva Generación (6000 pts)
-  let atxPts = ATX.ATX2; // Base por defecto
-  if (allText.includes('atx 3.1') || allText.includes('12v-2x6') || allText.includes('pcie 5.1')) {
-    atxPts = ATX.ATX3_1;
-  } else if (allText.includes('atx 3.0') || allText.includes('12vhpwr') || allText.includes('pcie 5.0') || allText.includes('pcie gen 5')) {
-    atxPts = ATX.ATX3_0;
+  // During a partial migration, use only the structured fields that still
+  // exist and cap the result. Never invent connector counts from wattage,
+  // GPU names, tags or marketing descriptions.
+  if (!inventory.isComplete) {
+    const fallback = PSU_CONFIG.CONECTIVIDAD.FALLBACK;
+    const atx = getAtxFallbackScore(product);
+    const fallbackScore = 10 * (
+      fallback.ATX_WEIGHT * atx + fallback.MODULARITY_WEIGHT * modularity
+    );
+    return score10(Math.min(fallback.MAX_SCORE, fallbackScore));
   }
 
-  // 2. Gestión de Cables / Modularidad (4000 pts)
-  let modPts = MODULARIDAD.NON;
-  if (allText.includes('full-modular') || allText.includes('fully modular') || allText.includes('100% modular')) {
-    modPts = MODULARIDAD.FULL;
-  } else if (allText.includes('semi-modular') || allText.includes('semi modular')) {
-    modPts = MODULARIDAD.SEMI;
-  }
+  const weights = PSU_CONFIG.CONECTIVIDAD.WEIGHTS;
+  const caps = PSU_CONFIG.CONECTIVIDAD.CAPS;
+  const pcieLegacy = diminishingCount(inventory.pcie6Plus2 ?? 0, caps.PCIE_LEGACY);
+  const gpuModern = inventory.pcie12V2x6 && inventory.pcie12V2x6 > 0
+    ? PSU_CONFIG.CONECTIVIDAD.NATIVE.V2X6
+    : inventory.pcie12Vhpwr && inventory.pcie12Vhpwr > 0
+      ? PSU_CONFIG.CONECTIVIDAD.NATIVE.HPWR
+      : PSU_CONFIG.CONECTIVIDAD.NATIVE.NONE;
+  const eps = Math.min(inventory.eps8Pin ?? 0, caps.EPS) / caps.EPS;
+  const sata = diminishingCount(inventory.sata ?? 0, caps.SATA);
+  const molex = diminishingCount(inventory.molex ?? 0, caps.MOLEX);
 
-  const totalPoints = atxPts + modPts;
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  const score = 10 * (
+    weights.PCIE_LEGACY * pcieLegacy +
+    weights.GPU_MODERN * gpuModern +
+    weights.EPS * eps +
+    weights.SATA * sata +
+    weights.MOLEX * molex +
+    weights.MODULARITY * modularity
+  );
+
+  return score10(score);
 };

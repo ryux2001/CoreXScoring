@@ -1,38 +1,33 @@
 /**
  * STORAGE VALUE SCORE CALCULATOR
+ *
+ * Price is normalized per usable TB so a 2 TB drive is not compared as if it
+ * had the same capacity as a 1 TB drive. The logistic curve avoids saturating
+ * the note for very cheap, low-utility products.
  */
 
+import { getCapacityGb, getPrice, score10 } from './normalization';
 import { STORAGE_CONFIG } from '../../config/storage';
-import { formatNoteScore } from '../../../shared/helpers';
 
 export const calculateValueScore = (notes: any, evaluatedPrice: number, product: any): number => {
-  const {
-    VELOCIDAD_WEIGHT,
-    DURABILIDAD_WEIGHT,
-    TECNOLOGIAS_WEIGHT,
-    TEMPERATURAS_WEIGHT,
-    EFICIENCIA_WEIGHT,
-  } = STORAGE_CONFIG.VALUE_WEIGHTS;
+  const price = getPrice(evaluatedPrice);
+  const capacityGb = getCapacityGb(product);
+  if (price === null || capacityGb <= 0) return 0;
 
-  // 1. Calcular nota global ponderada
-  const globalScore = 
-    (notes.VELOCIDAD * (VELOCIDAD_WEIGHT / 100)) +
-    (notes.DURABILIDAD * (DURABILIDAD_WEIGHT / 100)) +
-    (notes.TECNOLOGIAS * (TECNOLOGIAS_WEIGHT / 100)) +
-    (notes.TEMPERATURAS * (TEMPERATURAS_WEIGHT / 100)) +
-    (notes.EFICIENCIA * (EFICIENCIA_WEIGHT / 100));
+  const weights = STORAGE_CONFIG.VALUE_WEIGHTS;
+  const technicalUtility = (
+    (notes.VELOCIDAD ?? 0) * (weights.VELOCIDAD_WEIGHT / 100) +
+    (notes.DURABILIDAD ?? 0) * (weights.DURABILIDAD_WEIGHT / 100) +
+    (notes.TECNOLOGIAS ?? 0) * (weights.TECNOLOGIAS_WEIGHT / 100) +
+    (notes.EFICIENCIA ?? 0) * (weights.EFICIENCIA_WEIGHT / 100) +
+    (notes.TEMPERATURAS ?? 0) * (weights.TEMPERATURAS_WEIGHT / 100)
+  );
+  const pricePerTb = price / (capacityGb / 1000);
+  if (!Number.isFinite(pricePerTb) || pricePerTb <= 0 || technicalUtility <= 0) return 0;
 
-  // 2. Control de seguridad precio
-  if (!evaluatedPrice || evaluatedPrice <= 0) {
-    return 0;
-  }
-
-  // 3. Umbral de Rendimiento Útil (-3.5)
-  const usefulPerformance = Math.max(0, globalScore - 2.5);
-
-  // 4. Calcular ratio y normalizar contra techo (0.035)
-  const ratio = usefulPerformance / evaluatedPrice;
-  const valueScore = (ratio / STORAGE_CONFIG.VALUE_CEILING) * 10;
-
-  return formatNoteScore(Math.min(10, valueScore));
+  const valueIndex = (technicalUtility / 10) * Math.pow(
+    STORAGE_CONFIG.VALUE_REFERENCE_PRICE_PER_TB / pricePerTb,
+    STORAGE_CONFIG.VALUE_PRICE_EXPONENT,
+  );
+  return score10(10 * (valueIndex / (valueIndex + STORAGE_CONFIG.VALUE_LOGISTIC_OFFSET)));
 };

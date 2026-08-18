@@ -1,47 +1,51 @@
 /**
  * MOTHERBOARD COMPATIBILITY SCORE CALCULATOR
+ *
+ * Compatibility means platform runway, memory standard and PCIe readiness.
+ * Socket longevity is deliberately the largest factor so a modern AM5 board
+ * is not beaten by an older board merely because it advertises faster RAM OC.
  */
 
 import { MOTHERBOARD_CONFIG } from '../../config/motherboard';
-import { formatNoteScore } from '../../../shared/helpers';
-
-function parseJsonbString(value: any): any {
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return value; }
-  }
-  return value;
-}
+import {
+  getM2Slots,
+  getMaxRamSpeed,
+  getPcieGeneration,
+  getPcieSlots,
+  getPrimaryPcieIndex,
+  getRamGeneration,
+  getSocket,
+  interpolate,
+  score10,
+} from './normalization';
 
 export const calculateCompatibilityScore = (product: any): number => {
-  const compatibility = parseJsonbString(product?.compatibility || '{}');
-  
-  const { SOCKET, RAM, TOTAL_POINTS } = MOTHERBOARD_CONFIG.COMPATIBILIDAD;
+  const socket = getSocket(product);
+  const socketScore = MOTHERBOARD_CONFIG.COMPATIBILIDAD.SOCKET[socket as keyof typeof MOTHERBOARD_CONFIG.COMPATIBILIDAD.SOCKET]
+    ?? MOTHERBOARD_CONFIG.COMPATIBILIDAD.SOCKET.DEAD;
+  const ramSpeed = getMaxRamSpeed(product);
+  const ramAnchors = getRamGeneration(product) === 'DDR5'
+    ? MOTHERBOARD_CONFIG.COMPATIBILIDAD.RAM_DDR5_ANCHORS
+    : MOTHERBOARD_CONFIG.COMPATIBILIDAD.RAM_DDR4_ANCHORS;
+  const memoryScore = ramSpeed > 0 ? interpolate(ramSpeed, ramAnchors) : 5;
 
-  // 1. Longevidad del Socket (5000 pts)
-  const socketStr = (Array.isArray(compatibility?.socket) ? compatibility.socket : []).join(' ').toLowerCase();
-  let socketPts = SOCKET.DEAD;
-  if (socketStr.includes('am5')) socketPts = SOCKET.AM5;
-  else if (socketStr.includes('1851')) socketPts = SOCKET.LGA1851;
-  else if (socketStr.includes('am4')) socketPts = SOCKET.AM4;
-  else if (socketStr.includes('1700')) socketPts = SOCKET.LGA1700;
+  const pcieSlots = getPcieSlots(product);
+  const primaryIndex = getPrimaryPcieIndex(pcieSlots);
+  const primaryGeneration = primaryIndex >= 0 ? getPcieGeneration(pcieSlots[primaryIndex]) : 0;
+  const m2Generation = Math.max(0, ...getM2Slots(product).map(getPcieGeneration));
+  const generationScore = (generation: number): number => generation >= 5
+    ? MOTHERBOARD_CONFIG.COMPATIBILIDAD.PCIE_GENERATION_SCORES.GEN5
+    : generation === 4
+      ? MOTHERBOARD_CONFIG.COMPATIBILIDAD.PCIE_GENERATION_SCORES.GEN4
+      : generation === 3
+        ? MOTHERBOARD_CONFIG.COMPATIBILIDAD.PCIE_GENERATION_SCORES.GEN3
+        : MOTHERBOARD_CONFIG.COMPATIBILIDAD.PCIE_GENERATION_SCORES.UNKNOWN;
+  const pcieReadiness = (generationScore(primaryGeneration) + generationScore(m2Generation)) / 2;
+  const weights = MOTHERBOARD_CONFIG.COMPATIBILIDAD.WEIGHTS;
 
-  // 2. Soporte y Techo de Memoria RAM (5000 pts)
-  const ramSupport = Array.isArray(compatibility?.ram_support) ? compatibility.ram_support : [];
-  let maxRamSpeed = 0;
-  
-  ramSupport.forEach((ramStr: string) => {
-    // Extraer número de 4 dígitos (ej: "DDR5-8000 (OC)" -> 8000)
-    const match = ramStr.match(/(\d{4,})/);
-    if (match) {
-      const speed = parseInt(match[1], 10);
-      if (speed > maxRamSpeed) maxRamSpeed = speed;
-    }
-  });
-  
-  if (maxRamSpeed === 0) maxRamSpeed = 3200; // Fallback de seguridad DDR4 base
-  
-  const ramPoints = Math.min(RAM.MAX_POINTS, (maxRamSpeed / RAM.MAX_SPEED) * RAM.MAX_POINTS);
-
-  const totalPoints = socketPts + ramPoints;
-  return formatNoteScore(Math.min(10, (totalPoints / TOTAL_POINTS) * 10));
+  return score10(
+    socketScore * weights.SOCKET +
+    memoryScore * weights.MEMORY +
+    pcieReadiness * weights.PCIE_READINESS,
+  );
 };
