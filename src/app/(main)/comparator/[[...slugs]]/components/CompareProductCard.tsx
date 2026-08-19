@@ -99,6 +99,12 @@ export default function CompareProductCard({
   const isCombo = isComboItem(product);
   const isBuild = isBuildItem(product);
   const isCollection = isCombo || isBuild;
+  const cardHeightClass = isCollection ? "min-h-[600px]" : "min-h-[520px]";
+  const cardPaddingClass = isCollection ? "md:p-6" : "md:px-6 md:py-4";
+  const notesSpacingClass = isCollection ? "mt-8 pt-6" : "mt-6 pt-4";
+  const notesHeaderSpacingClass = isCollection ? "mb-4" : "mb-3";
+  const notesListGapClass = isCollection ? "gap-3.5" : "gap-2.5";
+  const evaluationSpacingClass = isCollection ? "mt-6 p-3.5" : "mt-4 p-3";
   const collectionParts: Array<{ key: PricePartKey; label: string }> = isBuild ? buildParts : comboParts;
   const isEUR = globalCurrency === "EUR";
   const symbol = isEUR ? "€" : "$";
@@ -193,7 +199,7 @@ export default function CompareProductCard({
     : getComboTotalPrice(product, globalCurrency, draftNumericPrices as ComboPriceOverrides);
 
   return (
-    <div className="relative flex h-full min-h-[600px] w-1/2 shrink-0 snap-start flex-col justify-between p-2 group animate-in fade-in duration-300 md:w-full md:shrink md:p-6">
+    <div className={`relative flex h-full ${cardHeightClass} w-1/2 shrink-0 snap-start flex-col justify-between p-2 group animate-in fade-in duration-300 md:w-full md:shrink ${cardPaddingClass}`}>
       <button
         onClick={() => removeItem(product.id)}
         className="absolute top-4 right-4 z-10 rounded-full bg-zinc-900/80 p-2 text-zinc-500 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95"
@@ -274,9 +280,18 @@ export default function CompareProductCard({
 
         {!isCollection && (
           <>
+            <div className="mb-3 px-1">
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">
+                {product.type || "Componente"}
+              </span>
+              <h3 className="mt-1 truncate text-sm font-black leading-snug tracking-tight text-white" title={product.name}>
+                {product.name}
+              </h3>
+            </div>
+
             <div className="flex w-full items-center justify-center">
               {getProductImage(product) && (
-                <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden">
+                <div className="relative mx-auto flex aspect-square w-full max-w-[220px] items-center justify-center overflow-hidden">
                   <img
                     src={getProductImage(product) || undefined}
                     alt={product.name}
@@ -304,7 +319,7 @@ export default function CompareProductCard({
                     </div>
                     <button
                       onClick={() => setDisplayedPrice(customPrice)}
-                      className="h-[36px] shrink-0 rounded-xl bg-white px-2 text-[8px] font-black uppercase tracking-widest text-black transition-all hover:bg-zinc-200 cursor-pointer active:scale-95"
+                      className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[8px] font-black uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
                     >
                       aplicar
                     </button>
@@ -323,10 +338,10 @@ export default function CompareProductCard({
         )}
       </div>
 
-      <div className="mt-8 flex flex-1 flex-col justify-between border-t border-zinc-900/50 pt-6">
+      <div className={`flex flex-1 flex-col justify-between border-t border-zinc-900/50 ${notesSpacingClass}`}>
         <div className="text-left">
-          <h4 className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Notas</h4>
-          <div className="flex flex-col gap-3.5 pl-1">
+          <h4 className={`${notesHeaderSpacingClass} text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600`}>Notas</h4>
+          <div className={`flex flex-col ${notesListGapClass} pl-1`}>
             {masterCategories.map((category) => {
               const currentScore = Number(baseNotes[category] || 0);
               const isHighest = itemsCount > 1 && currentScore === (maxScores[category] || 0) && currentScore > 0;
@@ -344,7 +359,7 @@ export default function CompareProductCard({
           </div>
         </div>
 
-        <div className={`mt-6 flex items-center justify-between rounded-xl border p-3.5 transition-all duration-300 ${valueStyles.bg} ${valueStyles.border}`}>
+        <div className={`${evaluationSpacingClass} flex items-center justify-between rounded-xl border transition-all duration-300 ${valueStyles.bg} ${valueStyles.border}`}>
           <div className="flex flex-col text-left">
             <span className={`text-[7.5px] font-black uppercase tracking-[0.2em] ${valueStyles.label}`}>Evaluacion global</span>
             <span className="mt-0.5 text-[10px] font-bold uppercase tracking-tight text-zinc-200">Calidad Precio</span>
@@ -384,7 +399,7 @@ export default function CompareProductCard({
               <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Total</span>
               <span className="text-sm font-black text-white">{format(draftTotal)}</span>
             </div>
-            <button onClick={applyCollectionPrices} className="mt-5 w-full rounded-xl bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200">
+            <button onClick={applyCollectionPrices} className="mt-5 w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-[9px] font-black uppercase tracking-widest text-zinc-200 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white active:scale-[0.98]">
               Aplicar precios
             </button>
           </div>
