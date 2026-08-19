@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getComboPartPrice } from '@/lib/scoringCombos';
 import { getComponentIcon } from '@/lib/catalog/component-icons';
+import { getComponentNotes } from '@/lib/scoring';
 
 interface ComboMainCardProps {
   combo: any;
@@ -10,6 +11,8 @@ interface ComboMainCardProps {
 }
 
 export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCardProps) {
+  const draftCurrency = combo?.priceModes ? currency : undefined;
+
   // Configuración de las partes con su etiqueta y clave de custom_price
   const parts = [
     { key: 'cpu', role: 'Procesador', item: combo.cpu },
@@ -20,11 +23,37 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
   // Helper para obtener el precio de cada componente respetando custom_price o base_price
   const getPartPrice = (key: string) => {
     const isEur = currency === 'EUR';
-    const price = getComboPartPrice(combo, key as 'cpu' | 'gpu' | 'ram', currency);
+    const price = getComboPartPrice(
+      combo,
+      key as 'cpu' | 'gpu' | 'ram',
+      currency,
+      draftCurrency,
+    );
 
     const symbol = isEur ? '€' : '$';
 
     return isEur ? `${price}${symbol}` : `${symbol}${price}`;
+  };
+
+  const getPartValueScore = (key: string, item: any) => {
+    const evaluatedPrice = getComboPartPrice(
+      combo,
+      key as 'cpu' | 'gpu' | 'ram',
+      'USD',
+      draftCurrency,
+    );
+    const notes = getComponentNotes(item, evaluatedPrice);
+    const score = notes['Calidad precio'] ?? notes['Calidad Precio'] ?? 0;
+
+    return Number.isFinite(score) ? score : 0;
+  };
+
+  const getValueIndicatorColor = (score: number) => {
+    if (score >= 9) return 'bg-purple-500';
+    if (score >= 7) return 'bg-blue-500';
+    if (score >= 5) return 'bg-emerald-500';
+    if (score >= 3) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   return (
@@ -45,6 +74,7 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
         {parts.map((part) => {
           const priceFormatted = getPartPrice(part.key);
           const iconSrc = getComponentIcon(part.key);
+          const valueScore = getPartValueScore(part.key, part.item);
 
           return (
             <div key={part.key} className="flex flex-col gap-1.5 w-full min-w-0">
@@ -54,12 +84,13 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
                 {part.role}
               </span>
 
-              {/* Fila: Contenedor Principal + Botón Ver */}
-              <div className="flex items-stretch gap-2 sm:gap-2.5 w-full min-w-0">
-                
-                {/* Caja Principal (Icono + Nombre + Precio) */}
-                <div className="flex flex-1 min-w-0 items-center justify-between gap-2 sm:gap-3 rounded-2xl border border-zinc-900/60 bg-zinc-900/20 p-3 sm:p-3.5 transition-colors hover:border-zinc-800">
-                  
+              {/* Caja Principal (Icono + Nombre + Precio + Calidad/Precio) */}
+              <Link
+                href={`/catalog/${part.item.slug}?currency=${currency}`}
+                className="group flex min-w-0 flex-1 items-center justify-between gap-2 rounded-2xl border border-zinc-900/60 bg-zinc-900/20 p-3 transition-colors hover:border-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 sm:gap-3 sm:p-3.5"
+                aria-label={`Ver ${part.item.name} en el catálogo. Calidad precio: ${valueScore.toFixed(1)}`}
+              >
+
                   {/* Bloque Nombre + Icono */}
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 overflow-hidden">
                     
@@ -90,24 +121,18 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
                     </div>
                   </div>
 
-                  {/* Precio del Componente */}
-                  <div className="shrink-0 pl-1 sm:pl-2 text-right">
+                  {/* Precio e indicador de calidad/precio */}
+                  <div className="flex shrink-0 items-center gap-3 pl-1 text-right sm:pl-2">
                     <span className="text-xs sm:text-sm font-black text-white tracking-tight whitespace-nowrap">
                       {priceFormatted}
                     </span>
+                    <span
+                      aria-hidden="true"
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full transition-transform group-hover:scale-125 motion-reduce:animate-none animate-pulse ${getValueIndicatorColor(valueScore)}`}
+                      title={`Calidad precio: ${valueScore.toFixed(1)}`}
+                    />
                   </div>
-
-                </div>
-
-                {/* Botón Ver */}
-                <Link
-                  href={`/catalog/${part.item.slug}?currency=${currency}`}
-                  className="flex shrink-0 items-center min-w-17 justify-center rounded-2xl border border-zinc-800/80 bg-zinc-900/80 px-3.5 sm:px-4 text-xs font-bold text-zinc-200 transition-all hover:bg-zinc-800 hover:text-white hover:border-zinc-700 active:scale-95"
-                >
-                  Ver
-                </Link>
-
-              </div>
+              </Link>
             </div>
           );
         })}
