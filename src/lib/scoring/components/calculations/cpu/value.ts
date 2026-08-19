@@ -1,19 +1,19 @@
 /**
  * CPU QUALITY-PRICE SCORE CALCULATOR
  *
- * The score is based on the five visible v3 technical notes and the price at
- * which the CPU is being evaluated. A fixed catalogue reference and a smooth
- * logistic curve keep scores comparable when new products are added.
+ * The five visible technical notes determine a profile-specific fair price.
+ * Comparing that common reference with the evaluated price keeps CPUs ordered
+ * by technical utility at equal prices, independently of each SKU's MSRP.
  */
 
 import type { CpuTechnicalNotes } from '../../types';
 import {
-  CPU_VALUE_LOGISTIC_EXPONENT,
-  CPU_VALUE_REFERENCE_RATIOS,
+  CPU_VALUE_FAIR_PRICE_MODELS,
   CPU_VALUE_WEIGHTS,
   type CpuValueProfile,
 } from './profiles';
 import { clampScore, getFiniteNumber } from './score-utils';
+import { scoreFromFairPrice } from '../value-curve';
 
 export function getCpuValueUtility(
   notes: CpuTechnicalNotes,
@@ -38,27 +38,17 @@ export function getCpuValueUtility(
 export const calculateValueScore = (
   notes: CpuTechnicalNotes,
   evaluatedPrice: number,
-  product?: any,
+  _product?: unknown,
   profile: CpuValueProfile = 'balanced',
 ): number => {
-  const selectedPrice = getFiniteNumber(evaluatedPrice);
-  const fallbackMsrp = getFiniteNumber(product?.price_base_usd);
-  const price = selectedPrice !== null && selectedPrice > 0
-    ? selectedPrice
-    : fallbackMsrp;
-
+  const price = getFiniteNumber(evaluatedPrice);
   if (price === null || price <= 0) return 0;
 
   const utility = getCpuValueUtility(notes, profile);
   if (utility <= 0) return 0;
 
-  const referenceRatio = CPU_VALUE_REFERENCE_RATIOS[profile];
-  const valueRatio = utility / price;
-  const relativeRatio = valueRatio / referenceRatio;
+  const model = CPU_VALUE_FAIR_PRICE_MODELS[profile];
+  const fairPrice = Math.exp(model.intercept + model.utilitySlope * utility);
 
-  if (!Number.isFinite(relativeRatio) || relativeRatio <= 0) return 0;
-
-  const poweredRatio = Math.pow(relativeRatio, CPU_VALUE_LOGISTIC_EXPONENT);
-
-  return clampScore(10 * poweredRatio / (1 + poweredRatio));
+  return clampScore(scoreFromFairPrice(price, fairPrice));
 };

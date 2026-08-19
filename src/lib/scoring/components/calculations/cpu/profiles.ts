@@ -28,6 +28,11 @@ export type CpuValueWeights = {
   platform: number;
 };
 
+export type CpuFairPriceModel = {
+  intercept: number;
+  utilitySlope: number;
+};
+
 /**
  * The value utility is intentionally based on the five visible technical
  * notes. Efficiency and platform inform the decision without overwhelming
@@ -58,18 +63,26 @@ export const CPU_VALUE_WEIGHTS: Record<CpuValueProfile, CpuValueWeights> = {
 };
 
 /**
- * Fixed medians of utility / MSRP for the 66 priced CPUs in the catalogue.
- * Keeping these constants versioned prevents a newly inserted CPU from
- * moving every existing quality-price score at runtime.
+ * Versioned log-linear fair-price models fitted offline to the 66 priced CPUs.
+ * MSRP is a calibration input only; an individual product's MSRP never enters
+ * the runtime score. Fair price is exp(intercept + utilitySlope * utility).
  */
-export const CPU_VALUE_REFERENCE_RATIOS: Record<CpuValueProfile, number> = {
-  balanced: 0.019031935393620886,
-  gaming: 0.019020061561430456,
-  productivity: 0.017469089587323804,
+export const CPU_VALUE_FAIR_PRICE_MODELS: Record<CpuValueProfile, CpuFairPriceModel> = {
+  balanced: {
+    intercept: 4.121929033922798,
+    utilitySlope: 0.2647010271108512,
+  },
+  gaming: {
+    intercept: 3.8831317571530812,
+    utilitySlope: 0.2882655909149965,
+  },
+  productivity: {
+    intercept: 4.486911732428424,
+    utilitySlope: 0.219069818559873,
+  },
 };
 
-export const CPU_VALUE_SCORING_VERSION = 1;
-export const CPU_VALUE_LOGISTIC_EXPONENT = 2;
+export const CPU_VALUE_SCORING_VERSION = 2;
 
 export function isCpuValueProfile(value: unknown): value is CpuValueProfile {
   return CPU_VALUE_PROFILE_OPTIONS.some((option) => option.value === value);

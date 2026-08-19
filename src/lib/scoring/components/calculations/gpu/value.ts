@@ -1,19 +1,18 @@
 /**
  * GPU QUALITY-PRICE SCORE CALCULATOR
  *
- * v3 compares the technical utility delivered by the GPU with the price at
- * which it is actually being evaluated. MSRP is only a fallback for callers
- * that do not provide an evaluated price; it is never an independent bonus.
+ * Technical utility determines a profile-specific fair price shared by the
+ * category. An individual GPU's MSRP never changes its runtime value score.
  */
 
 import {
-  GPU_VALUE_LOGISTIC_EXPONENT,
-  GPU_VALUE_REFERENCE_RATIOS,
+  GPU_VALUE_FAIR_PRICE_MODELS,
   GPU_VALUE_WEIGHTS,
   type GpuValueProfile,
 } from './profiles';
 import { clampScore, getFiniteNumber } from './score-utils';
 import type { GpuTechnicalNotes } from '../../types';
+import { scoreFromFairPrice } from '../value-curve';
 
 export function getGpuValueUtility(
   notes: GpuTechnicalNotes,
@@ -38,27 +37,17 @@ export function getGpuValueUtility(
 export const calculateValueScore = (
   notes: GpuTechnicalNotes,
   evaluatedPrice: number,
-  product?: any,
+  _product?: unknown,
   profile: GpuValueProfile = 'balanced',
 ): number => {
-  const selectedPrice = getFiniteNumber(evaluatedPrice);
-  const fallbackMsrp = getFiniteNumber(product?.price_base_usd);
-  const price = selectedPrice !== null && selectedPrice > 0
-    ? selectedPrice
-    : fallbackMsrp;
-
+  const price = getFiniteNumber(evaluatedPrice);
   if (price === null || price <= 0) return 0;
 
   const utility = getGpuValueUtility(notes, profile);
   if (utility <= 0) return 0;
 
-  const referenceRatio = GPU_VALUE_REFERENCE_RATIOS[profile];
-  const valueRatio = utility / price;
-  const relativeRatio = valueRatio / referenceRatio;
+  const model = GPU_VALUE_FAIR_PRICE_MODELS[profile];
+  const fairPrice = Math.exp(model.intercept + model.utilitySlope * utility);
 
-  if (!Number.isFinite(relativeRatio) || relativeRatio <= 0) return 0;
-
-  return clampScore(
-    10 / (1 + Math.pow(1 / relativeRatio, GPU_VALUE_LOGISTIC_EXPONENT)),
-  );
+  return clampScore(scoreFromFairPrice(price, fairPrice));
 };

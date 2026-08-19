@@ -1,15 +1,18 @@
 /**
  * MOTHERBOARD QUALITY-PRICE SCORE CALCULATOR
  *
- * Uses price per technical utility with a soft logistic ceiling. The
- * longevity factor gives platform compatibility a modest additional effect,
- * making an equivalent modern platform win when it is cheaper.
+ * Technical utility and platform longevity determine a category-level fair
+ * price, making an equivalent modern platform win without using SKU MSRP.
  */
 
 import { MOTHERBOARD_CONFIG } from '../../config/motherboard';
 import { getPrice, score10 } from './normalization';
+import { scoreFromFairPrice } from '../value-curve';
 
-export const calculateValueScore = (notes: any, evaluatedPrice: number, _product?: any): number => {
+export const calculateValueScore = (
+  notes: Record<string, number>,
+  evaluatedPrice: number,
+): number => {
   const price = getPrice(evaluatedPrice);
   if (price === null) return 0;
 
@@ -24,11 +27,11 @@ export const calculateValueScore = (notes: any, evaluatedPrice: number, _product
   const compatibility = notes.COMPATIBILIDAD ?? notes['Compatibilidad'] ?? 0;
   const longevity = MOTHERBOARD_CONFIG.VALUE_LONGEVITY_BASE +
     MOTHERBOARD_CONFIG.VALUE_LONGEVITY_WEIGHT * (compatibility / 10);
-  const valueIndex = (utility / 10) * longevity * Math.pow(
-    MOTHERBOARD_CONFIG.VALUE_REFERENCE_PRICE_USD / price,
-    MOTHERBOARD_CONFIG.VALUE_PRICE_EXPONENT,
+  const fairPrice = MOTHERBOARD_CONFIG.VALUE_REFERENCE_PRICE_USD * Math.pow(
+    ((utility / 10) * longevity) / MOTHERBOARD_CONFIG.VALUE_LOGISTIC_OFFSET,
+    1 / MOTHERBOARD_CONFIG.VALUE_PRICE_EXPONENT,
   );
 
-  if (!Number.isFinite(valueIndex) || valueIndex <= 0) return 0;
-  return score10(10 * (valueIndex / (valueIndex + MOTHERBOARD_CONFIG.VALUE_LOGISTIC_OFFSET)));
+  if (!Number.isFinite(fairPrice) || fairPrice <= 0) return 0;
+  return score10(scoreFromFairPrice(price, fairPrice));
 };

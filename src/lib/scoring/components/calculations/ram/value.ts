@@ -1,10 +1,9 @@
 /**
  * RAM VALUE SCORE
  *
- * Value is calculated from technical utility and price, not from a raw
- * average of the visible notes. A diminishing price exponent prevents very
- * cheap low-capacity modules from dominating, while preserving the invariant
- * that an equivalent cheaper kit scores higher.
+ * Capacity, generation and technical utility determine a common fair price.
+ * This lets exceptional deals reach the top of the scale without rewarding a
+ * kit merely because its own historical MSRP was unusually high.
  */
 
 import { calculateGamesScore } from './games';
@@ -14,11 +13,16 @@ import { calculateSpeedScore } from './speed';
 import { calculateTechnologiesScore } from './technologies';
 import { getPrice, normalizeRamProduct, score10 } from './normalization';
 import { RAM_CONFIG } from '../../config/ram';
+import {
+  interpolateAnchors,
+  RAM_VALUE_RATIO_ANCHORS,
+  scoreFromFairPrice,
+} from '../value-curve';
 
 export const calculateValueScore = (
   notes: Record<string, number>,
   evaluatedPrice: number,
-  product: any,
+  product: Record<string, unknown>,
 ): number => {
   const price = getPrice(evaluatedPrice);
   if (price === null) return 0;
@@ -32,7 +36,8 @@ export const calculateValueScore = (
     gaming: calculateGamesScore(product),
     technologies: calculateTechnologiesScore(product),
   };
-  const hasTechnicalData = normalizeRamProduct(product).hasValidTechnicalData;
+  const features = normalizeRamProduct(product);
+  const hasTechnicalData = features.hasValidTechnicalData;
   const source = hasTechnicalData ? calculatedNotes : {
     speed: notes.VELOCIDAD ?? notes.Velocidad ?? 0,
     latency: notes.LATENCIA ?? notes.Latencia ?? 0,
@@ -49,22 +54,26 @@ export const calculateValueScore = (
     source.technologies * (weights.TECNOLOGIAS_WEIGHT / 100) +
     source.gaming * (weights.JUEGOS_WEIGHT / 100)
   ) / 10;
-  const capacityGb = normalizeRamProduct(product).capacityGb;
+  const capacityGb = features.capacityGb;
   const capacityAdequacy = capacityGb > 0 && capacityGb < 8
     ? 0.7
     : capacityGb > 0 && capacityGb < 16
       ? 0.88
       : 1;
   const utility = baseUtility * capacityAdequacy;
+  const capacityAnchors = features.generation >= 5
+    ? RAM_CONFIG.VALUE_FAIR_PRICE_CAPACITY_USD.DDR5
+    : features.generation === 4
+      ? RAM_CONFIG.VALUE_FAIR_PRICE_CAPACITY_USD.DDR4
+      : RAM_CONFIG.VALUE_FAIR_PRICE_CAPACITY_USD.DEFAULT;
+  const capacityReference = interpolateAnchors(capacityGb, capacityAnchors);
+  const qualityFactor = RAM_CONFIG.VALUE_FAIR_PRICE_QUALITY_BASE +
+    utility * RAM_CONFIG.VALUE_FAIR_PRICE_QUALITY_WEIGHT;
+  const fairPrice = capacityReference * qualityFactor;
 
-  // Price is expressed in the same USD basis used by the existing callers.
-  // The exponent gives price diminishing returns without removing its effect.
-  const priceFactor = Math.pow(
-    RAM_CONFIG.VALUE_PRICE_REFERENCE / price,
-    RAM_CONFIG.VALUE_PRICE_EXPONENT,
-  );
-  const valueIndex = utility * priceFactor;
-  const valueScore = (valueIndex / (valueIndex + 0.75)) * 10;
-
-  return score10(valueScore);
+  return score10(scoreFromFairPrice(
+    price,
+    fairPrice,
+    RAM_VALUE_RATIO_ANCHORS,
+  ));
 };

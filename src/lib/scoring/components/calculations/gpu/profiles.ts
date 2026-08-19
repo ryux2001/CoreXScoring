@@ -28,6 +28,11 @@ export type GpuValueWeights = {
   technologies: number;
 };
 
+export type GpuFairPriceModel = {
+  intercept: number;
+  utilitySlope: number;
+};
+
 /**
  * Profile weights for the five visible GPU technical notes.
  *
@@ -59,19 +64,23 @@ export const GPU_VALUE_WEIGHTS: Record<GpuValueProfile, GpuValueWeights> = {
   },
 };
 
-/**
- * Fixed medians of Q / MSRP for the current 51-GPU catalogue.
- * Keeping these constants versioned prevents a new catalogue item from
- * moving every existing quality-price score at runtime.
- */
-export const GPU_VALUE_REFERENCE_RATIOS: Record<GpuValueProfile, number> = {
-  balanced: 0.013095814873344958,
-  gaming: 0.01319906162060836,
-  creation: 0.012983049822195886,
+/** Versioned offline fair-price models for the 51 priced GPUs. */
+export const GPU_VALUE_FAIR_PRICE_MODELS: Record<GpuValueProfile, GpuFairPriceModel> = {
+  balanced: {
+    intercept: 4.3804121923748385,
+    utilitySlope: 0.28469060436497984,
+  },
+  gaming: {
+    intercept: 4.4012011204435595,
+    utilitySlope: 0.2806701556376565,
+  },
+  creation: {
+    intercept: 4.523431585142381,
+    utilitySlope: 0.26241687025975713,
+  },
 };
 
-export const GPU_VALUE_SCORING_VERSION = 3;
-export const GPU_VALUE_LOGISTIC_EXPONENT = 2;
+export const GPU_VALUE_SCORING_VERSION = 4;
 
 export function isGpuValueProfile(value: unknown): value is GpuValueProfile {
   return GPU_VALUE_PROFILE_OPTIONS.some((option) => option.value === value);

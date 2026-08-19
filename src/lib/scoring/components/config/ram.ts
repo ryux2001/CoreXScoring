@@ -50,6 +50,11 @@ export const RAM_CONFIG = {
     TECNOLOGIAS_WEIGHT: 15,
     JUEGOS_WEIGHT: 10,
   },
-  VALUE_PRICE_REFERENCE: 100,
-  VALUE_PRICE_EXPONENT: 0.65,
+  VALUE_FAIR_PRICE_CAPACITY_USD: {
+    DDR4: [[8, 25], [16, 45], [32, 80], [64, 145], [96, 205], [128, 260]] as const,
+    DDR5: [[8, 30], [16, 55], [32, 110], [64, 200], [96, 285], [128, 365]] as const,
+    DEFAULT: [[8, 22], [16, 40], [32, 75], [64, 135], [96, 195], [128, 250]] as const,
+  },
+  VALUE_FAIR_PRICE_QUALITY_BASE: 0.8,
+  VALUE_FAIR_PRICE_QUALITY_WEIGHT: 0.4,
 };

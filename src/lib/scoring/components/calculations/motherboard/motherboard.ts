@@ -11,7 +11,7 @@ import { calculateCompatibilityScore } from './compatibility';
 import { calculateValueScore } from './value';
 import type { MotherboardNotes } from '../../types';
 
-export const calculateMotherboardNotes = (product: any, evaluatedPrice: number): MotherboardNotes => {
+export const calculateMotherboardNotes = (product: Record<string, unknown>, evaluatedPrice: number): MotherboardNotes => {
   const estabilidad = calculateElectricalStabilityScore(product);
   const expansion = calculateInternalExpansionScore(product);
   const conectividad = calculateConnectivityScore(product);
@@ -27,7 +27,6 @@ export const calculateMotherboardNotes = (product: any, evaluatedPrice: number):
       COMPATIBILIDAD: compatibilidad,
     },
     evaluatedPrice,
-    product,
   );
 
   return {

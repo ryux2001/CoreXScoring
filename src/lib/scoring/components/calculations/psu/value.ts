@@ -2,11 +2,12 @@
 
 import { PSU_CONFIG } from '../../config/psu';
 import { finiteNumber, getPrice, getSpecs, interpolate, score10 } from './normalization';
+import { scoreFromFairPrice } from '../value-curve';
 
 export const calculateValueScore = (
   notes: Record<string, number>,
   evaluatedPrice: number,
-  product: any,
+  product: Record<string, unknown>,
 ): number => {
   const price = getPrice(evaluatedPrice, product?.price_base_usd);
   const wattage = finiteNumber(getSpecs(product).wattage, NaN);
@@ -23,13 +24,15 @@ export const calculateValueScore = (
   if (utility <= 0) return 0;
 
   const referencePrice = interpolate(wattage, PSU_CONFIG.VALUE_REFERENCE_PRICES);
-  const valueIndex = (utility / 10) * Math.pow(
-    referencePrice / price,
-    PSU_CONFIG.VALUE_PRICE_EXPONENT,
+  const midpointIndex = Math.pow(
+    PSU_CONFIG.VALUE_LOGISTIC_OFFSET,
+    1 / PSU_CONFIG.VALUE_LOGISTIC_EXPONENT,
   );
-  if (!Number.isFinite(valueIndex) || valueIndex <= 0) return 0;
+  const fairPrice = referencePrice * Math.pow(
+    (utility / 10) / midpointIndex,
+    1 / PSU_CONFIG.VALUE_PRICE_EXPONENT,
+  );
+  if (!Number.isFinite(fairPrice) || fairPrice <= 0) return 0;
 
-  const poweredIndex = Math.pow(valueIndex, PSU_CONFIG.VALUE_LOGISTIC_EXPONENT);
-  const score = 10 * poweredIndex / (poweredIndex + PSU_CONFIG.VALUE_LOGISTIC_OFFSET);
-  return score10(score);
+  return score10(scoreFromFairPrice(price, fairPrice));
 };
