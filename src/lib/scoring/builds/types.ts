@@ -3,6 +3,7 @@
  * Property names are kept unchanged because the UI consumes them directly.
  */
 export interface BuildNotes {
+  [key: string]: number;
   potencia: number;
   productividad: number;
   gaming: number;

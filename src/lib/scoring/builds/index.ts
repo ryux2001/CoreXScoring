@@ -1,4 +1,4 @@
-import type { Build, BuildNotes } from './types';
+import { BUILD_PARTS, type Build, type BuildNotes } from './types';
 import { getComponentScores } from './calculations/component-scores';
 import {
   getBuildBottleneck,
@@ -9,9 +9,23 @@ import {
 } from './calculations/performance';
 import { getBuildCompatibility } from './calculations/compatibility';
 import { getBuildUpgradeability } from './calculations/upgradeability';
-import { getBuildPartPrice } from './calculations/prices';
 import { getBuildValue } from './calculations/value';
 import { round1 } from './utils';
+
+const getEmptyBuildNotes = (): BuildNotes => ({
+  potencia: 0,
+  productividad: 0,
+  gaming: 0,
+  eficiencia: 0,
+  cuelloBotella: 0,
+  compatibilidad: 0,
+  actualizaciones: 0,
+  calidadPrecio: 0,
+});
+
+const hasCompleteBuild = (build: Build): boolean => (
+  BUILD_PARTS.every((part) => Boolean(build?.[part]))
+);
 
 /**
  * Build scoring orchestrator.
@@ -20,6 +34,8 @@ import { round1 } from './utils';
  * editable coefficients live in ./calculations and ./config respectively.
  */
 export const getBuildNotes = (build: Build, currency = 'USD'): BuildNotes => {
+  if (!hasCompleteBuild(build)) return getEmptyBuildNotes();
+
   // Component notes use USD for their quality/price score, as before. The
   // active currency is still passed to the build-level value calculation.
   const scores = getComponentScores(build, 'USD', currency);

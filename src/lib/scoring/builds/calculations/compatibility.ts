@@ -81,7 +81,7 @@ export const getRamPlatformCompatibility = (
 
   const ramFrequency = getRamFrequency(ram);
   const motherboardFrequency = getMotherboardMaxRamFrequency(motherboard);
-  let frequencyScore = BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM.UNKNOWN_FREQUENCY;
+  let frequencyScore: number = BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM.UNKNOWN_FREQUENCY;
   if (ramFrequency && motherboardFrequency) {
     const frequencyConfig = BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM;
     frequencyScore = ramFrequency <= motherboardFrequency
@@ -137,7 +137,7 @@ export const getGpuBoardCompatibility = (gpu: Build, motherboard: Build) => {
     getSpecs(motherboard).pcie_generation,
     ...pcieSlots,
   ]);
-  let generationScore = BUILD_SCORING_CONFIG.COMPATIBILITY.GPU_BOARD.UNKNOWN_GENERATION;
+  let generationScore: number = BUILD_SCORING_CONFIG.COMPATIBILITY.GPU_BOARD.UNKNOWN_GENERATION;
   if (gpuGeneration !== null && motherboardGeneration !== null) {
     const difference = gpuGeneration - motherboardGeneration;
     const generationScores = BUILD_SCORING_CONFIG.GENERATION_SCORES;
@@ -185,7 +185,7 @@ export const getStorageCompatibility = (storage: Build, motherboard: Build) => {
     storageSpecs.pcie_generation,
   ]);
   const motherboardGeneration = getHighestGeneration(m2Slots);
-  let generationScore = BUILD_SCORING_CONFIG.COMPATIBILITY.STORAGE_BOARD.UNKNOWN_GENERATION;
+  let generationScore: number = BUILD_SCORING_CONFIG.COMPATIBILITY.STORAGE_BOARD.UNKNOWN_GENERATION;
   if (storageGeneration !== null && motherboardGeneration !== null) {
     const difference = storageGeneration - motherboardGeneration;
     const generationScores = BUILD_SCORING_CONFIG.GENERATION_SCORES;

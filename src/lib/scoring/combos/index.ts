@@ -10,6 +10,21 @@ import { calculateComboValue } from './calculations/value';
 import { normalizeCurrency } from '@/lib/currency';
 import { getComboPartPrice } from './calculations/prices';
 
+const getEmptyComboScores = (): ComboScores => ({
+  Potencia: 0,
+  Productividad: 0,
+  Gaming: 0,
+  Eficiencia: 0,
+  "Cuello Botella": 0,
+  "Calidad Precio": 0,
+});
+
+const hasCompleteCombo = (combo: any): boolean => (
+  Boolean(combo?.cpu) &&
+  Boolean(combo?.gpu) &&
+  Boolean(combo?.ram)
+);
+
 /**
  * Combo scoring orchestrator: resolve prices, calculate component notes, then
  * apply the six combo-level formulas. Final rounding remains at one decimal.
@@ -18,22 +33,13 @@ export const getComboNotes = (
   combo: any,
   currency: string = 'USD'
 ): ComboScores => {
-  if (!combo) {
-    return {
-      Potencia: 0,
-      Productividad: 0,
-      Gaming: 0,
-      Eficiencia: 0,
-      "Cuello Botella": 0,
-      "Calidad Precio": 0,
-    };
-  }
+  if (!hasCompleteCombo(combo)) return getEmptyComboScores();
 
   const activeCurrency = normalizeCurrency(currency);
 
-  const cpu = combo.cpu || {};
-  const gpu = combo.gpu || {};
-  const ram = combo.ram || {};
+  const cpu = combo.cpu;
+  const gpu = combo.gpu;
+  const ram = combo.ram;
 
   const draftCurrency = combo?.priceModes ? activeCurrency : undefined;
 

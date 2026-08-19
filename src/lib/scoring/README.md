@@ -19,6 +19,15 @@ The compatibility files under the former `scoringCombos` and `scoringBuilds`
 paths keep existing application imports working while the canonical code now
 lives under this directory.
 
+Build performance and value notes consume the visible component scoring notes.
+Compatibility and upgradeability also inspect raw component specifications
+because those two notes describe relationships between parts (socket, RAM
+support, PCIe slots and PSU headroom) that no individual component note can
+represent on its own. Their formulas and weights remain unchanged.
+
+Combos and builds without every required component are considered incomplete
+and return zeroed aggregate notes instead of evaluating partial data.
+
 Manual configuration entry points:
 
 - Components: `components/config/{cpu,gpu,ram,storage,motherboard,psu}.ts`

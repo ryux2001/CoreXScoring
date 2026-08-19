@@ -6,6 +6,7 @@ export interface ComboPrices {
 }
 
 export interface ComboScores {
+  [key: string]: number;
   Potencia: number;
   Productividad: number;
   Gaming: number;
