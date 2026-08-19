@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { ArrowUp, X } from "lucide-react";
 import Link from "next/link";
 import { useCompareStore } from "@/store/useCompareStore";
 import { getComponentNotes } from "@/lib/scoring";
@@ -9,6 +9,7 @@ import { getComboNotes } from "@/lib/scoringCombos";
 import { getBuildNotes } from "@/lib/scoringBuilds";
 import { convertPrice } from "@/lib/currency";
 import { getProductImage } from "@/lib/catalog/product-images";
+import { getComponentIcon } from "@/lib/catalog/component-icons";
 import {
   applyBuildPriceOverrides,
   applyComboPriceOverrides,
@@ -222,20 +223,29 @@ export default function CompareProductCard({
             <div className="grid w-full grid-cols-3 gap-2">
               {comboParts.map((part) => {
                 const component = product[part.key];
-                const imageSrc = getProductImage(component);
+                if (!component) return null;
+                const imageSrc = getComponentIcon(part.key);
 
                 return (
                   <div key={part.key} className="flex min-w-0 flex-col gap-1.5">
-                    <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-900/20">
+                    <Link
+                      href={`/catalog/${component.slug}?currency=${globalCurrency}`}
+                      aria-label={`Ver ${component.name} en el catálogo`}
+                      className="group relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-900/20 transition-colors hover:border-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                    >
                       {imageSrc ? (
-                        <img src={imageSrc} alt={component?.name || part.label} className="h-full w-full object-contain opacity-80" />
+                        <img src={imageSrc} alt={`Icono de ${component.name}`} className="h-full w-full object-contain opacity-80 transition-opacity group-hover:opacity-100" />
                       ) : (
                         <span className="text-[8px] font-black uppercase tracking-widest text-zinc-700">Imagen</span>
                       )}
-                    </div>
-                    <span className="truncate text-center text-[8px] font-bold text-zinc-400" title={component?.name}>
-                      {component?.name || part.label}
-                    </span>
+                    </Link>
+                    <Link
+                      href={`/catalog/${component.slug}?currency=${globalCurrency}`}
+                      className="truncate text-center text-[8px] font-bold text-zinc-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white"
+                      title={component.name}
+                    >
+                      {component.name}
+                    </Link>
                   </div>
                 );
               })}
@@ -261,15 +271,17 @@ export default function CompareProductCard({
                 const component = product[part.key];
                 if (!component) return null;
 
-                return (
-                  <div key={part.key} className="flex min-w-0 items-baseline gap-2">
-                    <span className="w-24 shrink-0 text-[8px] font-black uppercase tracking-wider text-zinc-600">
-                      {part.label}
-                    </span>
-                    <span className="truncate text-[10px] font-bold text-zinc-300" title={component.name}>
+                  return (
+                  <Link
+                    key={part.key}
+                    href={`/catalog/${component.slug}?currency=${globalCurrency}`}
+                    aria-label={`Ver ${component.name} en el catálogo`}
+                    className="group flex min-w-0 items-baseline rounded-md py-0.5 text-[10px] font-bold text-zinc-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  >
+                    <span className="truncate" title={component.name}>
                       {component.name}
                     </span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -340,19 +352,36 @@ export default function CompareProductCard({
 
       <div className={`flex flex-1 flex-col justify-between border-t border-zinc-900/50 ${notesSpacingClass}`}>
         <div className="text-left">
-          <h4 className={`${notesHeaderSpacingClass} text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600`}>Notas</h4>
-          <div className={`flex flex-col ${notesListGapClass} pl-1`}>
+          <div className={`${notesHeaderSpacingClass} border-b border-zinc-900/70 pb-3`}>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-200">Notas</h4>
+          </div>
+          <div className={`grid grid-cols-2 ${notesListGapClass} gap-x-3 pl-1`}>
             {masterCategories.map((category) => {
               const currentScore = Number(baseNotes[category] || 0);
+              const normalizedScore = Math.min(Math.max(currentScore, 0), 10);
               const isHighest = itemsCount > 1 && currentScore === (maxScores[category] || 0) && currentScore > 0;
 
               return (
-                <div key={category} className="flex items-center gap-3 animate-in fade-in duration-200">
-                  <span className="min-w-[22px] text-xs font-black tracking-tighter text-white">{currentScore.toFixed(1)}</span>
-                  <span className="flex items-center gap-1.5 select-none text-[10px] font-medium uppercase tracking-wider text-zinc-400">
-                    {category}
-                    {isHighest && <span className="ml-0.5 text-xs leading-none font-black text-emerald-400 animate-in zoom-in-50 duration-300">^</span>}
-                  </span>
+                <div key={category} className="group min-w-0 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-wider text-zinc-400" title={category}>
+                      {category}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1 text-[12px] uppercase tracking-wider font-thin tabular-nums text-zinc-300">
+                      {isHighest && (
+                        <span className="text-emerald-400" title="Mejor nota">
+                          <ArrowUp aria-hidden="true" size={10} strokeWidth={3} />
+                        </span>
+                      )}
+                      {normalizedScore.toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full border border-zinc-900/30 bg-zinc-900/60 p-[2px]">
+                    <div
+                      className="h-full rounded-full bg-zinc-400 shadow-[0_0_10px_rgba(255,255,255,0.05)] transition-all duration-1000 ease-out group-hover:bg-zinc-200"
+                      style={{ width: `${normalizedScore * 10}%` }}
+                    />
+                  </div>
                 </div>
               );
             })}
