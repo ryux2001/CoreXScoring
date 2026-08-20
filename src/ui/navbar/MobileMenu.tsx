@@ -8,9 +8,10 @@ import AuthStatus from "./AuthStatus"; // Importamos AuthStatus
 
 interface Props {
   links: { name: string; href: string }[];
+  onOpen?: () => void;
 }
 
-export default function MobileMenu({ links }: Props) {
+export default function MobileMenu({ links, onOpen }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -45,7 +46,10 @@ export default function MobileMenu({ links }: Props) {
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen((previous) => !previous)}
+        onClick={() => setIsOpen((previous) => {
+          if (!previous) onOpen?.();
+          return !previous;
+        })}
         aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
         aria-expanded={isOpen}
         aria-controls="mobile-navigation"

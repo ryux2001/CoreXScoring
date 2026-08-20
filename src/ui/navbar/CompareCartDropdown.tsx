@@ -5,7 +5,11 @@ import { ArrowLeftRight, X, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCompareStore } from "@/store/useCompareStore";
 
-export default function CompareCartDropdown() {
+interface CompareCartDropdownProps {
+  onOpen?: () => void;
+}
+
+export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const items = useCompareStore((state) => state.items);
   const componentType = useCompareStore((state) => state.componentType);
@@ -35,7 +39,10 @@ export default function CompareCartDropdown() {
       {/* Botón de la balanza - Siempre visible (flex) y protegido contra deformaciones (shrink-0) */}
       <button
         type="button"
-        onClick={() => setIsCartOpen(!isCartOpen)}
+        onClick={() => {
+          if (!isCartOpen) onOpen?.();
+          setIsCartOpen((previous) => !previous);
+        }}
         aria-label={`Abrir comparativa${items.length > 0 ? ` (${items.length} seleccionados)` : ""}`}
         aria-expanded={isCartOpen}
         aria-controls="comparison-dropdown"
@@ -99,7 +106,7 @@ export default function CompareCartDropdown() {
                   No hay productos seleccionados
                 </p>
                 <p className="text-[9px] text-zinc-700 mt-1 max-w-[200px]">
-                  Explora el catálogo y pulsa "Comparar" en los componentes.
+                  Explora el catálogo y pulsa &quot;Comparar&quot; en los componentes.
                 </p>
               </div>
             ) : (

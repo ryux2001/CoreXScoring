@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Search } from "lucide-react";
+import { useRef, useState } from "react";
 import MobileMenu from "./MobileMenu";
 import AuthStatus from "./AuthStatus";
 import SearchBar from "./SearchBar";
@@ -19,34 +21,69 @@ const navLinks = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
 
   const isActiveLink = (href: string) =>
     href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
+  const closeMobileSearch = () => {
+    setIsMobileSearchOpen(false);
+    window.requestAnimationFrame(() => searchButtonRef.current?.focus());
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/70 backdrop-blur-md">
       <nav aria-label="Navegación principal" className="mx-auto px-4 py-2 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
-          
-          {/* LADO IZQUIERDO: Título y Buscador */}
+        <div className="flex h-16 items-center justify-between gap-2 sm:hidden">
+          <Link
+            href="/"
+            className="min-w-0 truncate whitespace-nowrap text-lg font-bold tracking-tighter text-white"
+          >
+            CorexScoring
+          </Link>
+
+          <div className="flex shrink-0 items-center gap-2">
+            {!isMobileSearchOpen && (
+              <button
+                ref={searchButtonRef}
+                type="button"
+                onClick={() => setIsMobileSearchOpen(true)}
+                aria-label="Abrir búsqueda"
+                aria-expanded={false}
+                aria-controls="mobile-search"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            )}
+
+            <CompareCartDropdown onOpen={() => setIsMobileSearchOpen(false)} />
+            <MobileMenu links={navLinks} onOpen={() => setIsMobileSearchOpen(false)} />
+          </div>
+        </div>
+
+        {isMobileSearchOpen && (
+          <div id="mobile-search" className="pb-2 sm:hidden">
+            <SearchBar autoFocus showCloseButton onClose={closeMobileSearch} />
+          </div>
+        )}
+
+        <div className="hidden h-16 items-center justify-between gap-4 sm:flex">
           <div className="flex min-w-0 flex-1 items-center gap-4">
-            {/* El título desaparece en móvil con 'hidden sm:block' */}
             <Link
               href="/"
-              className="hidden sm:block text-xl font-bold tracking-tighter text-white sm:text-2xl whitespace-nowrap"
+              className="whitespace-nowrap text-xl font-bold tracking-tighter text-white sm:text-2xl"
             >
               CorexScoring
             </Link>
 
-            {/* El buscador ahora es visible siempre y se expande en móvil */}
             <div className="min-w-0 w-full max-w-sm flex-1">
               <SearchBar />
             </div>
           </div>
 
-          {/* LADO DERECHO: Acciones */}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {/* Links Desktop */}
             <div className="hidden lg:flex lg:items-center lg:gap-3 me-5">
               {navLinks.map((link) => (
                 <Link
@@ -64,15 +101,12 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Icono VS (Visible en desktop, puedes decidir si ocultarlo en móvil) */}
             <CompareCartDropdown />
 
-            {/* AuthStatus Desktop: Se oculta en móvil */}
             <div className="hidden lg:block">
               <AuthStatus />
             </div>
 
-            {/* Menú Móvil: Siempre presente en móvil */}
             <MobileMenu links={navLinks} />
           </div>
         </div>

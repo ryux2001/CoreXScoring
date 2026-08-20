@@ -2,7 +2,7 @@
 
 import { Search, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 interface SearchSuggestion {
@@ -11,7 +11,17 @@ interface SearchSuggestion {
   type: string;
 }
 
-export default function SearchBar() {
+interface SearchBarProps {
+  autoFocus?: boolean;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+}
+
+export default function SearchBar({
+  autoFocus = false,
+  showCloseButton = false,
+  onClose,
+}: SearchBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -21,8 +31,14 @@ export default function SearchBar() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
+  const suggestionsId = useId();
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -46,6 +62,7 @@ export default function SearchBar() {
     }
     setShowSuggestions(false);
     router.push(`/catalog?${params.toString()}`);
+    onClose?.();
   };
 
   const fetchSuggestions = async (value: string) => {
@@ -78,6 +95,24 @@ export default function SearchBar() {
     executeSearch(searchTerm);
   };
 
+  const clearSearch = () => {
+    setSearchTerm("");
+    requestIdRef.current += 1;
+    setSuggestions([]);
+    setSearchError(null);
+    setShowSuggestions(false);
+    setIsLoading(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  };
+
+  const closeSearch = () => {
+    requestIdRef.current += 1;
+    setShowSuggestions(false);
+    setIsLoading(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    onClose?.();
+  };
+
   return (
     <div className="relative w-full" ref={containerRef}>
       {/* AQUÍ ESTÁ LA MAGIA PARA LA 'X': 
@@ -88,11 +123,20 @@ export default function SearchBar() {
           type="text"
           placeholder="Buscar componente..."
           value={searchTerm}
+          role="combobox"
           aria-label="Buscar componentes"
+          aria-autocomplete="list"
           aria-expanded={showSuggestions}
-          aria-controls="search-suggestions"
+          aria-controls={suggestionsId}
           aria-busy={isLoading}
+          ref={inputRef}
           onFocus={() => searchTerm.length > 1 && setShowSuggestions(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && onClose) {
+              event.preventDefault();
+              closeSearch();
+            }
+          }}
           onChange={(e) => {
             const value = e.target.value;
             setSearchTerm(value);
@@ -126,24 +170,25 @@ export default function SearchBar() {
           <Search className="h-4 w-4" />
         </button>
 
-        {searchTerm && (
+        {showCloseButton ? (
           <button
             type="button"
-            aria-label="Limpiar búsqueda"
-            onClick={() => {
-              setSearchTerm("");
-              requestIdRef.current += 1;
-              setSuggestions([]);
-              setSearchError(null);
-              setShowSuggestions(false);
-              setIsLoading(false);
-              if (debounceRef.current) clearTimeout(debounceRef.current);
-            }}
+            aria-label="Cerrar búsqueda"
+            onClick={closeSearch}
             className="absolute right-1 top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           >
             <X className="h-4 w-4" />
           </button>
-        )}
+        ) : searchTerm ? (
+          <button
+            type="button"
+            aria-label="Limpiar búsqueda"
+            onClick={clearSearch}
+            className="absolute right-1 top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        ) : null}
       </form>
 
       <div aria-live="polite" className="sr-only">
@@ -152,7 +197,7 @@ export default function SearchBar() {
 
       {showSuggestions && searchTerm.trim().length >= 2 && (
         <div
-          id="search-suggestions"
+          id={suggestionsId}
           role="listbox"
           className="absolute top-full z-[100] mt-2 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/95 shadow-2xl backdrop-blur-xl"
         >
@@ -175,6 +220,7 @@ export default function SearchBar() {
                 key={item.name}
                 type="button"
                 role="option"
+                aria-selected={false}
                 onClick={() => {
                   setSearchTerm(item.name);
                   executeSearch(item.name);
