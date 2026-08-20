@@ -34,11 +34,11 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/70 backdrop-blur-md">
-      <nav aria-label="Navegación principal" className="mx-auto px-4 py-2 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-2 sm:hidden">
+      <nav aria-label="Navegación principal" className="relative mx-auto px-4 py-1.5 sm:px-6 sm:py-2 lg:px-8">
+        <div className="flex h-14 items-center justify-between gap-2 sm:hidden">
           <Link
             href="/"
-            className="min-w-0 truncate whitespace-nowrap text-lg font-bold tracking-tighter text-white"
+            className="min-w-0 truncate whitespace-nowrap text-xl font-bold tracking-tighter text-white"
           >
             CorexScoring
           </Link>
@@ -64,7 +64,7 @@ export default function Navbar() {
         </div>
 
         {isMobileSearchOpen && (
-          <div id="mobile-search" className="pb-2 sm:hidden">
+          <div id="mobile-search" className="absolute inset-x-4 top-full z-50 mt-2 sm:hidden">
             <SearchBar autoFocus showCloseButton onClose={closeMobileSearch} />
           </div>
         )}
