@@ -21,32 +21,85 @@ import {
   textValue,
 } from '../utils';
 
+type CompatibilityCheck = {
+  note: number;
+  confidence: number;
+};
+
+export type BuildCompatibilityAssessment = {
+  note: number;
+  confidence: number;
+};
+
+const hasOwnData = (record: Build, key: string): boolean => (
+  Object.prototype.hasOwnProperty.call(record, key) &&
+  record[key] !== null &&
+  record[key] !== undefined &&
+  record[key] !== ''
+);
+
+const getConnectorOptionMatch = (
+  requirement: string,
+  connectors: Build,
+): boolean | null => {
+  const normalized = normalize(requirement);
+  const count = Math.max(1, numberValue(normalized.match(/(\d+)\s*x/)?.[1], 1));
+  const pcieEightPin = numberValue(connectors.pcie_6plus2, 0);
+  const nativeHighPower = numberValue(connectors.pcie_12vhpwr, 0) +
+    numberValue(connectors.pcie_12v2x6, 0);
+
+  if (/16\s*-?\s*pin|12v-?2x6/.test(normalized)) {
+    return nativeHighPower >= count || pcieEightPin >= count * 3;
+  }
+  if (/12vhpwr|12\s*-?\s*pin/.test(normalized)) {
+    return nativeHighPower >= count || pcieEightPin >= count * 2;
+  }
+  if (/8\s*-?\s*pin/.test(normalized)) return pcieEightPin >= count;
+  if (/6\s*-?\s*pin/.test(normalized)) return pcieEightPin >= count;
+  return null;
+};
+
 /** CPU socket and chipset compatibility. */
 export const getCpuBoardCompatibility = (cpu: Build, motherboard: Build) => {
   const cpuSocket = getSocket(cpu);
   const motherboardSocket = getSocket(motherboard);
-  const socketMatch = !cpuSocket || !motherboardSocket
+  const socketKnown = Boolean(cpuSocket && motherboardSocket);
+  const socketMatch = !socketKnown
     ? BUILD_SCORING_CONFIG.COMPATIBILITY.CPU_BOARD.UNKNOWN_SOCKET
     : cpuSocket === motherboardSocket
       ? 10
       : 0;
 
-  const cpuChipsets = asArray(getCompatibility(cpu).chipsets).map(normalize);
-  const motherboardChipset = normalize(
-    getCompatibility(motherboard).chipset ?? getSpecs(motherboard).chipset,
-  );
-  const chipsetMatch = !motherboardChipset
+  const cpuCompatibility = getCompatibility(cpu);
+  const motherboardCompatibility = getCompatibility(motherboard);
+  const motherboardSpecs = getSpecs(motherboard);
+  const cpuChipsets = asArray(
+    cpuCompatibility.chipsets ?? cpuCompatibility.chipset,
+  ).map(normalize);
+  const motherboardChipsets = asArray(
+    motherboardCompatibility.chipsets ??
+      motherboardCompatibility.chipset ??
+      motherboardSpecs.chipsets ??
+      motherboardSpecs.chipset,
+  ).map(normalize);
+  const chipsetKnown = cpuChipsets.length > 0 && motherboardChipsets.length > 0;
+  const chipsetMatch = !chipsetKnown
     ? BUILD_SCORING_CONFIG.COMPATIBILITY.CPU_BOARD.UNKNOWN_CHIPSET
-    : cpuChipsets.length === 0
-      ? BUILD_SCORING_CONFIG.COMPATIBILITY.CPU_BOARD.UNKNOWN_CHIPSET
-      : cpuChipsets.some((chipset) => chipset.includes(motherboardChipset))
-        ? 10
-        : 0;
+    : cpuChipsets.some((cpuChipset) =>
+        motherboardChipsets.some((motherboardChipset) =>
+          cpuChipset === motherboardChipset ||
+          cpuChipset.includes(motherboardChipset) ||
+          motherboardChipset.includes(cpuChipset),
+        ),
+      )
+      ? 10
+      : 0;
 
   const weights = BUILD_SCORING_CONFIG.COMPATIBILITY.CPU_BOARD;
   return {
     note: clamp(socketMatch * weights.SOCKET + chipsetMatch * weights.CHIPSET),
-    socketMismatch: socketMatch === 0,
+    confidence: weights.SOCKET * Number(socketKnown) + weights.CHIPSET * Number(chipsetKnown),
+    socketMismatch: socketKnown && socketMatch === 0,
   };
 };
 
@@ -59,7 +112,8 @@ export const getRamPlatformCompatibility = (
   const ramType = getRamType(ram);
   const cpuRamType = getRamType(cpu);
   const motherboardRamTypes = getMotherboardRamTypes(motherboard);
-  const ramTypeMatch = !ramType || !cpuRamType || motherboardRamTypes.length === 0
+  const typeKnown = Boolean(ramType && cpuRamType && motherboardRamTypes.length > 0);
+  const ramTypeMatch = !typeKnown
     ? BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM.UNKNOWN_TYPE
     : ramType === cpuRamType && motherboardRamTypes.some((type) => type.includes(ramType))
       ? 10
@@ -73,7 +127,8 @@ export const getRamPlatformCompatibility = (
     ? Math.min(...capacityLimitValues)
     : 0;
   const ramCapacity = getRamCapacity(ram);
-  const capacityScore = !capacityLimit || !ramCapacity
+  const capacityKnown = capacityLimit > 0 && ramCapacity > 0;
+  const capacityScore = !capacityKnown
     ? BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM.UNKNOWN_CAPACITY
     : ramCapacity <= capacityLimit
       ? 10
@@ -81,8 +136,9 @@ export const getRamPlatformCompatibility = (
 
   const ramFrequency = getRamFrequency(ram);
   const motherboardFrequency = getMotherboardMaxRamFrequency(motherboard);
+  const frequencyKnown = ramFrequency > 0 && motherboardFrequency > 0;
   let frequencyScore: number = BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM.UNKNOWN_FREQUENCY;
-  if (ramFrequency && motherboardFrequency) {
+  if (frequencyKnown) {
     const frequencyConfig = BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM;
     frequencyScore = ramFrequency <= motherboardFrequency
       ? 10
@@ -92,7 +148,11 @@ export const getRamPlatformCompatibility = (
   const weights = BUILD_SCORING_CONFIG.COMPATIBILITY.RAM_PLATFORM;
   return {
     note: clamp(ramTypeMatch * weights.TYPE + capacityScore * weights.CAPACITY + frequencyScore * weights.FREQUENCY),
-    ramTypeMismatch: ramTypeMatch === 0,
+    confidence:
+      weights.TYPE * Number(typeKnown) +
+      weights.CAPACITY * Number(capacityKnown) +
+      weights.FREQUENCY * Number(frequencyKnown),
+    ramTypeMismatch: typeKnown && ramTypeMatch === 0,
   };
 };
 
@@ -101,9 +161,12 @@ export const getPsuCompatibility = (build: Build, scores: BuildScores) => {
   const estimatedConsumption = getEstimatedConsumption(build);
   const recommended = estimatedConsumption * BUILD_SCORING_CONFIG.COMPATIBILITY.PSU.RECOMMENDED_MARGIN;
   const watts = getPsuWatts(build.psu);
+  const wattageKnown = watts > 0 && estimatedConsumption > 0;
   let wattsScore = 0;
 
-  if (watts >= recommended) {
+  if (!wattageKnown) {
+    wattsScore = 5;
+  } else if (watts >= recommended) {
     wattsScore = 10;
   } else if (watts >= estimatedConsumption && recommended > estimatedConsumption) {
     wattsScore = BUILD_SCORING_CONFIG.COMPATIBILITY.PSU.PARTIAL_BASE_SCORE + ((watts - estimatedConsumption) / (recommended - estimatedConsumption)) * 4;
@@ -111,22 +174,46 @@ export const getPsuCompatibility = (build: Build, scores: BuildScores) => {
     wattsScore = Math.max(0, BUILD_SCORING_CONFIG.COMPATIBILITY.PSU.PARTIAL_BASE_SCORE * watts / estimatedConsumption);
   }
 
-  const connectorsScore = getNote(scores.psu, ['Conectividad']) ||
-    BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_PSU_CONNECTIVITY;
+  const gpuRequirements = asArray(getCompatibility(build.gpu).power_connectors)
+    .map(textValue)
+    .filter(Boolean);
+  const psuConnectors = getSpecs(build.psu).connectors;
+  const hasConnectorInventory = Boolean(
+    psuConnectors && typeof psuConnectors === 'object' && Object.keys(psuConnectors).length > 0,
+  );
+  const connectorMatches = hasConnectorInventory
+    ? gpuRequirements
+        .map((requirement) => getConnectorOptionMatch(requirement, psuConnectors))
+        .filter((match): match is boolean => match !== null)
+    : [];
+  const gpuTdp = numberValue(getSpecs(build.gpu).tdp ?? getSpecs(build.gpu).power, 0);
+  const noExternalConnectorRequired = gpuRequirements.length === 0 && gpuTdp > 0 && gpuTdp <= 75;
+  const connectorKnown = noExternalConnectorRequired || connectorMatches.length > 0;
+  const connectorMatch = noExternalConnectorRequired || connectorMatches.some(Boolean);
+  const connectorsScore = connectorKnown
+    ? connectorMatch ? 10 : 0
+    : getNote(scores.psu, ['Conectividad']) ||
+      BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_PSU_CONNECTIVITY;
   const weights = BUILD_SCORING_CONFIG.COMPATIBILITY.PSU;
   return {
     note: clamp(wattsScore * weights.WATTAGE + connectorsScore * weights.CONNECTIVITY),
-    belowEstimatedConsumption: watts < estimatedConsumption,
-    criticallyBelowEstimatedConsumption: watts < estimatedConsumption * BUILD_SCORING_CONFIG.COMPATIBILITY.PSU.CRITICAL_FACTOR,
-    missingRequiredConnector: false,
+    confidence:
+      weights.WATTAGE * Number(wattageKnown) +
+      weights.CONNECTIVITY * Number(connectorKnown),
+    belowEstimatedConsumption: wattageKnown && watts < estimatedConsumption,
+    criticallyBelowEstimatedConsumption:
+      wattageKnown && watts < estimatedConsumption * BUILD_SCORING_CONFIG.COMPATIBILITY.PSU.CRITICAL_FACTOR,
+    missingRequiredConnector: connectorKnown && !connectorMatch,
   };
 };
 
 /** PCIe slot and generation compatibility between GPU and motherboard. */
 export const getGpuBoardCompatibility = (gpu: Build, motherboard: Build) => {
-  const pcieSlots = asArray(getSpecs(motherboard).pcie_slots);
+  const motherboardSpecs = getSpecs(motherboard);
+  const pcieSlotDataKnown = hasOwnData(motherboardSpecs, 'pcie_slots');
+  const pcieSlots = asArray(motherboardSpecs.pcie_slots);
   const hasGpuSlot = pcieSlots.some((slot) => /x16/i.test(textValue(slot)) && !/\(x\d+\)/i.test(textValue(slot)));
-  const gpuSlotScore = pcieSlots.length === 0
+  const gpuSlotScore = !pcieSlotDataKnown
     ? BUILD_SCORING_CONFIG.COMPATIBILITY.GPU_BOARD.UNKNOWN_SLOT
     : hasGpuSlot ? 10 : 0;
   const gpuGeneration = getHighestGeneration([
@@ -134,11 +221,12 @@ export const getGpuBoardCompatibility = (gpu: Build, motherboard: Build) => {
     getSpecs(gpu).pcie,
   ]);
   const motherboardGeneration = getHighestGeneration([
-    getSpecs(motherboard).pcie_generation,
+    motherboardSpecs.pcie_generation,
     ...pcieSlots,
   ]);
+  const generationKnown = gpuGeneration !== null && motherboardGeneration !== null;
   let generationScore: number = BUILD_SCORING_CONFIG.COMPATIBILITY.GPU_BOARD.UNKNOWN_GENERATION;
-  if (gpuGeneration !== null && motherboardGeneration !== null) {
+  if (generationKnown) {
     const difference = gpuGeneration - motherboardGeneration;
     const generationScores = BUILD_SCORING_CONFIG.GENERATION_SCORES;
     generationScore = difference <= 0
@@ -153,7 +241,10 @@ export const getGpuBoardCompatibility = (gpu: Build, motherboard: Build) => {
   const weights = BUILD_SCORING_CONFIG.COMPATIBILITY.GPU_BOARD;
   return {
     note: clamp(gpuSlotScore * weights.SLOT + generationScore * weights.GENERATION),
-    missingGpuSlot: gpuSlotScore === 0,
+    confidence:
+      weights.SLOT * Number(pcieSlotDataKnown) +
+      weights.GENERATION * Number(generationKnown),
+    missingGpuSlot: pcieSlotDataKnown && gpuSlotScore === 0,
   };
 };
 
@@ -161,22 +252,28 @@ export const getGpuBoardCompatibility = (gpu: Build, motherboard: Build) => {
 export const getStorageCompatibility = (storage: Build, motherboard: Build) => {
   const storageCompatibility = getCompatibility(storage);
   const storageSpecs = getSpecs(storage);
-  const interfaceName = normalize(
+  const interfaceName = normalize([
     storageCompatibility.interface ??
       storageSpecs.interface ??
       storageCompatibility.form_factor ??
-      storageSpecs.form_factor,
-  );
+      storageSpecs.form_factor ?? '',
+    storage.name ?? '',
+  ].join(' '));
   const isM2 = interfaceName.includes('m.2') || interfaceName.includes('nvme') || interfaceName.includes('pcie');
   const isSata = interfaceName.includes('sata');
-  const m2Slots = asArray(getSpecs(motherboard).m2_slots);
-  const sataPorts = numberValue(getSpecs(motherboard).sata_ports, 0);
+  const interfaceKnown = isM2 || isSata;
+  const motherboardSpecs = getSpecs(motherboard);
+  const hasM2Data = hasOwnData(motherboardSpecs, 'm2_slots');
+  const hasSataData = hasOwnData(motherboardSpecs, 'sata_ports');
+  const m2Slots = asArray(motherboardSpecs.m2_slots);
+  const sataPorts = numberValue(motherboardSpecs.sata_ports, 0);
+  const relevantSlotKnown = isM2 ? hasM2Data : isSata ? hasSataData : false;
   const compatibleSlot = isM2
     ? m2Slots.length > 0
     : isSata
       ? sataPorts > 0
-      : m2Slots.length > 0 || sataPorts > 0;
-  const slotScore = m2Slots.length === 0 && sataPorts === 0
+      : false;
+  const slotScore = !interfaceKnown || !relevantSlotKnown
     ? BUILD_SCORING_CONFIG.COMPATIBILITY.STORAGE_BOARD.UNKNOWN_SLOT
     : compatibleSlot ? 10 : 0;
 
@@ -185,8 +282,13 @@ export const getStorageCompatibility = (storage: Build, motherboard: Build) => {
     storageSpecs.pcie_generation,
   ]);
   const motherboardGeneration = getHighestGeneration(m2Slots);
+  const generationKnown = isSata || (
+    isM2 && storageGeneration !== null && motherboardGeneration !== null
+  );
   let generationScore: number = BUILD_SCORING_CONFIG.COMPATIBILITY.STORAGE_BOARD.UNKNOWN_GENERATION;
-  if (storageGeneration !== null && motherboardGeneration !== null) {
+  if (isSata) {
+    generationScore = 10;
+  } else if (generationKnown && storageGeneration !== null && motherboardGeneration !== null) {
     const difference = storageGeneration - motherboardGeneration;
     const generationScores = BUILD_SCORING_CONFIG.GENERATION_SCORES;
     generationScore = difference <= 0
@@ -198,11 +300,12 @@ export const getStorageCompatibility = (storage: Build, motherboard: Build) => {
           : generationScores.MORE_THAN_TWO_LEVELS_BEHIND;
   }
 
-  const totalSlots = m2Slots.length + sataPorts;
+  const relevantSlots = isM2 ? m2Slots.length : isSata ? sataPorts : 0;
   const storageConfig = BUILD_SCORING_CONFIG.COMPATIBILITY.STORAGE_BOARD;
-  const marginScore = totalSlots === 0
+  const marginKnown = interfaceKnown && relevantSlotKnown;
+  const marginScore = !marginKnown
     ? storageConfig.EMPTY_BOARD_MARGIN
-    : compatibleSlot && totalSlots > 1
+    : compatibleSlot && relevantSlots > 1
       ? 10
       : compatibleSlot
         ? storageConfig.SINGLE_SLOT_MARGIN
@@ -211,28 +314,52 @@ export const getStorageCompatibility = (storage: Build, motherboard: Build) => {
 
   return {
     note: clamp(slotScore * weights.SLOT + generationScore * weights.GENERATION + marginScore * weights.MARGIN),
-    missingStorageSlot: slotScore === 0,
+    confidence:
+      weights.SLOT * Number(interfaceKnown && relevantSlotKnown) +
+      weights.GENERATION * Number(generationKnown) +
+      weights.MARGIN * Number(marginKnown),
+    missingStorageSlot: interfaceKnown && relevantSlotKnown && slotScore === 0,
   };
 };
 
-/** Aggregate all physical compatibility checks and apply the existing caps. */
-export const getBuildCompatibility = (build: Build, scores: BuildScores): number => {
+/** Aggregate physical compatibility and report how much was actually verified. */
+export const getBuildCompatibilityAssessment = (
+  build: Build,
+  scores: BuildScores,
+): BuildCompatibilityAssessment => {
   const cpuBoard = getCpuBoardCompatibility(build.cpu, build.motherboard);
   const ramPlatform = getRamPlatformCompatibility(build.ram, build.cpu, build.motherboard);
   const psu = getPsuCompatibility(build, scores);
   const gpuBoard = getGpuBoardCompatibility(build.gpu, build.motherboard);
   const storageBoard = getStorageCompatibility(build.storage, build.motherboard);
-  const platformBase = getNote(scores.motherboard, ['Compatibilidad']) ||
-    BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_COMPATIBILITY;
   const weights = BUILD_SCORING_CONFIG.COMPATIBILITY.BUILD;
+  const platformValue = scores.motherboard?.Compatibilidad;
+  const platformKnown = typeof platformValue === 'number' && Number.isFinite(platformValue);
+  const platformBase = platformKnown
+    ? clamp(platformValue)
+    : BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_COMPATIBILITY;
+  const relationalChecks: Array<{ check: CompatibilityCheck; weight: number }> = [
+    { check: cpuBoard, weight: weights.CPU_BOARD },
+    { check: ramPlatform, weight: weights.RAM_PLATFORM },
+    { check: psu, weight: weights.PSU },
+    { check: gpuBoard, weight: weights.GPU_BOARD },
+    { check: storageBoard, weight: weights.STORAGE_BOARD },
+  ];
 
   let note = clamp(
-    cpuBoard.note * weights.CPU_BOARD +
-      ramPlatform.note * weights.RAM_PLATFORM +
-      psu.note * weights.PSU +
-      gpuBoard.note * weights.GPU_BOARD +
-      storageBoard.note * weights.STORAGE_BOARD +
+    relationalChecks.reduce(
+      (total, entry) => total + entry.check.note * entry.weight,
+      0,
+    ) +
       platformBase * weights.MOTHERBOARD_BASE,
+  );
+  const confidence = clamp(
+    relationalChecks.reduce(
+      (total, entry) => total + entry.check.confidence * entry.weight,
+      0,
+    ) + Number(platformKnown) * weights.MOTHERBOARD_BASE,
+    0,
+    1,
   );
 
   const caps = BUILD_SCORING_CONFIG.COMPATIBILITY.CAPS;
@@ -244,5 +371,11 @@ export const getBuildCompatibility = (build: Build, scores: BuildScores): number
   if (gpuBoard.missingGpuSlot) note = Math.min(note, caps.MISSING_GPU_SLOT);
   if (storageBoard.missingStorageSlot) note = Math.min(note, caps.MISSING_STORAGE_SLOT);
 
-  return clamp(note);
+  return {
+    note: clamp(note),
+    confidence,
+  };
 };
+
+export const getBuildCompatibility = (build: Build, scores: BuildScores): number =>
+  getBuildCompatibilityAssessment(build, scores).note;

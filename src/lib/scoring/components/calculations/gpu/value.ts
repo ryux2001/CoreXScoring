@@ -34,6 +34,18 @@ export function getGpuValueUtility(
   );
 }
 
+export function getGpuFairPrice(
+  notes: GpuTechnicalNotes,
+  profile: GpuValueProfile = 'balanced',
+): number {
+  const utility = getGpuValueUtility(notes, profile);
+  if (utility <= 0) return 0;
+
+  const model = GPU_VALUE_FAIR_PRICE_MODELS[profile];
+  const fairPrice = Math.exp(model.intercept + model.utilitySlope * utility);
+  return Number.isFinite(fairPrice) && fairPrice > 0 ? fairPrice : 0;
+}
+
 export const calculateValueScore = (
   notes: GpuTechnicalNotes,
   evaluatedPrice: number,
@@ -43,11 +55,8 @@ export const calculateValueScore = (
   const price = getFiniteNumber(evaluatedPrice);
   if (price === null || price <= 0) return 0;
 
-  const utility = getGpuValueUtility(notes, profile);
-  if (utility <= 0) return 0;
-
-  const model = GPU_VALUE_FAIR_PRICE_MODELS[profile];
-  const fairPrice = Math.exp(model.intercept + model.utilitySlope * utility);
+  const fairPrice = getGpuFairPrice(notes, profile);
+  if (fairPrice <= 0) return 0;
 
   return clampScore(scoreFromFairPrice(price, fairPrice));
 };

@@ -35,6 +35,18 @@ export function getCpuValueUtility(
   );
 }
 
+export function getCpuFairPrice(
+  notes: CpuTechnicalNotes,
+  profile: CpuValueProfile = 'balanced',
+): number {
+  const utility = getCpuValueUtility(notes, profile);
+  if (utility <= 0) return 0;
+
+  const model = CPU_VALUE_FAIR_PRICE_MODELS[profile];
+  const fairPrice = Math.exp(model.intercept + model.utilitySlope * utility);
+  return Number.isFinite(fairPrice) && fairPrice > 0 ? fairPrice : 0;
+}
+
 export const calculateValueScore = (
   notes: CpuTechnicalNotes,
   evaluatedPrice: number,
@@ -44,11 +56,8 @@ export const calculateValueScore = (
   const price = getFiniteNumber(evaluatedPrice);
   if (price === null || price <= 0) return 0;
 
-  const utility = getCpuValueUtility(notes, profile);
-  if (utility <= 0) return 0;
-
-  const model = CPU_VALUE_FAIR_PRICE_MODELS[profile];
-  const fairPrice = Math.exp(model.intercept + model.utilitySlope * utility);
+  const fairPrice = getCpuFairPrice(notes, profile);
+  if (fairPrice <= 0) return 0;
 
   return clampScore(scoreFromFairPrice(price, fairPrice));
 };

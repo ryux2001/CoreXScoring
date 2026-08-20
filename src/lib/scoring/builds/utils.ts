@@ -2,7 +2,7 @@ import { Build } from './types';
 import { BUILD_SCORING_CONFIG } from './config';
 
 /** Parse JSONB values while preserving the old fallback for malformed input. */
-export const parseJson = (value: unknown): any => {
+export const parseJson = (value: unknown): unknown => {
   if (typeof value !== 'string') return value || {};
 
   try {
@@ -42,18 +42,42 @@ export const normalize = (value: unknown): string =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-export const asArray = (value: unknown): any[] => {
+export const asArray = (value: unknown): unknown[] => {
+  if (Array.isArray(value)) return value;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === 'string') return [parsed];
+    } catch {
+      // Catalogue compatibility fields also use comma-separated plain text.
+    }
+
+    return trimmed
+      .split(/[,;|]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
   const parsed = parseJson(value);
   if (Array.isArray(parsed)) return parsed;
   if (typeof parsed === 'string' && parsed.trim()) return [parsed];
   return [];
 };
 
+const getRecord = (value: unknown): Build => (
+  value && typeof value === 'object' ? value as Build : {}
+);
+
 export const getSpecs = (product: Build | undefined): Build =>
-  parseJson(product?.specs) || {};
+  getRecord(parseJson(product?.specs));
 
 export const getCompatibility = (product: Build | undefined): Build =>
-  parseJson(product?.compatibility) || {};
+  getRecord(parseJson(product?.compatibility));
 
 export const getNote = (notes: Build | undefined, keys: string[]): number => {
   for (const key of keys) {
@@ -64,6 +88,11 @@ export const getNote = (notes: Build | undefined, keys: string[]): number => {
 };
 
 export const parseGeneration = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const generation = Math.trunc(value);
+    return generation >= 3 && generation <= 5 ? generation : null;
+  }
+
   const normalized = normalize(value);
   const match = normalized.match(/(?:pcie|gen|generation)[^0-9]*([345])/);
   if (match) return Number(match[1]);

@@ -16,11 +16,20 @@ export const calculateValueScore = (
   const price = getPrice(evaluatedPrice);
   if (price === null) return 0;
 
+  const fairPrice = getMotherboardFairPrice(notes);
+  if (fairPrice <= 0) return 0;
+  return score10(scoreFromFairPrice(price, fairPrice));
+};
+
+export const getMotherboardFairPrice = (
+  notes: Record<string, number>,
+): number => {
+
   const weights = MOTHERBOARD_CONFIG.VALUE_WEIGHTS;
   const utility = (
-    (notes.ESTABILIDAD ?? 0) * (weights.ESTABILIDAD / 100) +
+    (notes.ESTABILIDAD ?? notes.Estabilidad ?? 0) * (weights.ESTABILIDAD / 100) +
     (notes.EXPANSION ?? notes['Expansión'] ?? 0) * (weights.EXPANSION / 100) +
-    (notes.CONECTIVIDAD ?? 0) * (weights.CONECTIVIDAD / 100) +
+    (notes.CONECTIVIDAD ?? notes.Conectividad ?? 0) * (weights.CONECTIVIDAD / 100) +
     (notes.TECNOLOGIAS ?? notes['Tecnologías'] ?? 0) * (weights.TECNOLOGIAS / 100) +
     (notes.COMPATIBILIDAD ?? notes['Compatibilidad'] ?? 0) * (weights.COMPATIBILIDAD / 100)
   );
@@ -32,6 +41,5 @@ export const calculateValueScore = (
     1 / MOTHERBOARD_CONFIG.VALUE_PRICE_EXPONENT,
   );
 
-  if (!Number.isFinite(fairPrice) || fairPrice <= 0) return 0;
-  return score10(scoreFromFairPrice(price, fairPrice));
+  return Number.isFinite(fairPrice) && fairPrice > 0 ? fairPrice : 0;
 };

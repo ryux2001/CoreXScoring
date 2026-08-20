@@ -10,16 +10,28 @@ export const calculateValueScore = (
   product: Record<string, unknown>,
 ): number => {
   const price = getPrice(evaluatedPrice, product?.price_base_usd);
+  if (price === null) return 0;
+
+  const fairPrice = getPsuFairPrice(notes, product);
+  if (fairPrice <= 0) return 0;
+
+  return score10(scoreFromFairPrice(price, fairPrice));
+};
+
+export const getPsuFairPrice = (
+  notes: Record<string, number>,
+  product: Record<string, unknown>,
+): number => {
   const wattage = finiteNumber(getSpecs(product).wattage, NaN);
-  if (price === null || !Number.isFinite(wattage) || wattage <= 0) return 0;
+  if (!Number.isFinite(wattage) || wattage <= 0) return 0;
 
   const weights = PSU_CONFIG.VALUE_WEIGHTS;
   const utility = (
-    finiteNumber(notes.ESTABILIDAD, 0) * weights.ESTABILIDAD +
-    finiteNumber(notes.PROTECCIONES, 0) * weights.PROTECCIONES +
-    finiteNumber(notes.CONSTRUCCION, 0) * weights.CONSTRUCCION +
-    finiteNumber(notes.EFICIENCIA, 0) * weights.EFICIENCIA +
-    finiteNumber(notes.CONECTIVIDAD, 0) * weights.CONECTIVIDAD
+    finiteNumber(notes.ESTABILIDAD ?? notes['Estabilidad Eléctrica'], 0) * weights.ESTABILIDAD +
+    finiteNumber(notes.PROTECCIONES ?? notes.Protecciones, 0) * weights.PROTECCIONES +
+    finiteNumber(notes.CONSTRUCCION ?? notes['Construcción'], 0) * weights.CONSTRUCCION +
+    finiteNumber(notes.EFICIENCIA ?? notes.Eficiencia, 0) * weights.EFICIENCIA +
+    finiteNumber(notes.CONECTIVIDAD ?? notes.Conectividad, 0) * weights.CONECTIVIDAD
   );
   if (utility <= 0) return 0;
 
@@ -32,7 +44,5 @@ export const calculateValueScore = (
     (utility / 10) / midpointIndex,
     1 / PSU_CONFIG.VALUE_PRICE_EXPONENT,
   );
-  if (!Number.isFinite(fairPrice) || fairPrice <= 0) return 0;
-
-  return score10(scoreFromFairPrice(price, fairPrice));
+  return Number.isFinite(fairPrice) && fairPrice > 0 ? fairPrice : 0;
 };

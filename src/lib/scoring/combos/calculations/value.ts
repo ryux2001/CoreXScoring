@@ -1,25 +1,23 @@
 import { ComboPrices } from '../types';
+import { scoreFromFairPrice } from '../../components/calculations/value-curve';
 
 /**
- * Calidad/Precio = Σ (Nota_Comp x (Precio_Comp / Precio_Total))
+ * Calidad/Precio = curve(Σ PrecioJusto / Σ PrecioEvaluado)
+ *
+ * Summing fair prices before applying the nonlinear curve ensures that making
+ * any component cheaper can never reduce the value note of the whole combo.
  */
-/** Price-weighted average of the three component value notes. */
 export const calculateComboValue = (
-  cpuValueScore: number,
-  gpuValueScore: number,
-  ramValueScore: number,
+  cpuFairPrice: number,
+  gpuFairPrice: number,
+  ramFairPrice: number,
   prices: ComboPrices
 ): number => {
   if (!prices.totalPrice || prices.totalPrice <= 0) return 0;
 
-  const cpuWeight = prices.cpuPrice / prices.totalPrice;
-  const gpuWeight = prices.gpuPrice / prices.totalPrice;
-  const ramWeight = prices.ramPrice / prices.totalPrice;
-
-  const score =
-    cpuValueScore * cpuWeight +
-    gpuValueScore * gpuWeight +
-    ramValueScore * ramWeight;
-
-  return Math.min(10, Math.max(0, score));
+  const totalFairPrice = cpuFairPrice + gpuFairPrice + ramFairPrice;
+  return Math.min(10, Math.max(0, scoreFromFairPrice(
+    prices.totalPrice,
+    totalFairPrice,
+  )));
 };

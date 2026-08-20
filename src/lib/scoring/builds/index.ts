@@ -50,8 +50,6 @@ export const getBuildNotes = (build: Build, currency = 'USD'): BuildNotes => {
     build,
     scores,
     compatibilidad,
-    cuelloBotella,
-    actualizaciones,
     currency,
   );
 

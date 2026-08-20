@@ -1,6 +1,9 @@
 import { SCORING_WEIGHTS } from '../config';
 
-/** Penalize the distance between CPU/GPU gaming scores and the RAM score. */
+/**
+ * Approximate balance from gaming notes. RAM only creates friction when it is
+ * below the main CPU/GPU level; surplus RAM performance is never a bottleneck.
+ */
 export const calculateComboBottleneck = (
   cpuGaming: number,
   gpuGaming: number,
@@ -10,7 +13,7 @@ export const calculateComboBottleneck = (
 
   const deltaCpuGpu = Math.abs(cpuGaming - gpuGaming);
   const maxCoreScore = Math.max(cpuGaming, gpuGaming);
-  const deltaRam = Math.abs(maxCoreScore - ramGaming);
+  const deltaRam = Math.max(0, maxCoreScore - ramGaming);
 
   const friction = deltaCpuGpu * DELTA_CPU_GPU + deltaRam * DELTA_RAM;
   const score = 10 - friction * FRICTION_MULTIPLIER;

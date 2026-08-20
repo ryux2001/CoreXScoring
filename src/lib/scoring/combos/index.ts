@@ -1,4 +1,4 @@
-import { getComponentNotes } from '@/lib/scoring/index';
+import { getComponentFairPrice, getComponentNotes } from '@/lib/scoring/index';
 import { getGpuGamingScore } from '@/lib/scoring/components/calculations/gpu/gpu';
 import { ComboScores, ComboPrices } from './types';
 import { calculateComboPotency } from './calculations/potency';
@@ -19,7 +19,7 @@ const getEmptyComboScores = (): ComboScores => ({
   "Calidad Precio": 0,
 });
 
-const hasCompleteCombo = (combo: any): boolean => (
+const hasCompleteCombo = (combo: Record<string, unknown>): boolean => (
   Boolean(combo?.cpu) &&
   Boolean(combo?.gpu) &&
   Boolean(combo?.ram)
@@ -30,16 +30,16 @@ const hasCompleteCombo = (combo: any): boolean => (
  * apply the six combo-level formulas. Final rounding remains at one decimal.
  */
 export const getComboNotes = (
-  combo: any,
+  combo: Record<string, unknown>,
   currency: string = 'USD'
 ): ComboScores => {
   if (!hasCompleteCombo(combo)) return getEmptyComboScores();
 
   const activeCurrency = normalizeCurrency(currency);
 
-  const cpu = combo.cpu;
-  const gpu = combo.gpu;
-  const ram = combo.ram;
+  const cpu = combo.cpu as Record<string, unknown>;
+  const gpu = combo.gpu as Record<string, unknown>;
+  const ram = combo.ram as Record<string, unknown>;
 
   const draftCurrency = combo?.priceModes ? activeCurrency : undefined;
 
@@ -48,18 +48,12 @@ export const getComboNotes = (
   const gpuPriceUSD = getComboPartPrice(combo, 'gpu', 'USD', draftCurrency);
   const ramPriceUSD = getComboPartPrice(combo, 'ram', 'USD', draftCurrency);
 
-  // 2. Precios efectivos según la divisa activa (para ponderar el combo)
-  const cpuPrice = getComboPartPrice(combo, 'cpu', activeCurrency, draftCurrency);
-  const gpuPrice = getComboPartPrice(combo, 'gpu', activeCurrency, draftCurrency);
-  const ramPrice = getComboPartPrice(combo, 'ram', activeCurrency, draftCurrency);
-
-  const totalPrice = cpuPrice + gpuPrice + ramPrice;
-
+  // 2. La calidad-precio se agrega en USD, la misma base de los precios justos.
   const prices: ComboPrices = {
-    cpuPrice,
-    gpuPrice,
-    ramPrice,
-    totalPrice,
+    cpuPrice: cpuPriceUSD,
+    gpuPrice: gpuPriceUSD,
+    ramPrice: ramPriceUSD,
+    totalPrice: cpuPriceUSD + gpuPriceUSD + ramPriceUSD,
   };
 
   // 3. Obtener notas individuales pasando los precios efectivos (Custom ?? Base)
@@ -100,9 +94,9 @@ export const getComboNotes = (
   );
 
   const value = calculateComboValue(
-    cpuNotes['Calidad precio'] || 0,
-    gpuNotes['Calidad precio'] || 0,
-    ramNotes['Calidad precio'] || 0,
+    getComponentFairPrice(cpu, cpuNotes),
+    getComponentFairPrice(gpu, gpuNotes),
+    getComponentFairPrice(ram, ramNotes),
     prices
   );
 

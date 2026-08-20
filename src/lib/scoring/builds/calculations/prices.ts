@@ -55,5 +55,11 @@ export const getBuildPartPrice = (
   const basePrice = numberValue(item?.[`price_base_${normalizedSuffix}`], -1);
   if (basePrice >= 0) return basePrice;
 
-  return numberValue(item?.price_base_usd, 0);
+  const genericBasePrice = numberValue(item?.price_base, -1);
+  if (genericBasePrice >= 0) return genericBasePrice;
+
+  const otherBasePrice = numberValue(item?.[`price_base_${otherSuffix}`], -1);
+  return otherBasePrice < 0
+    ? 0
+    : convertPrice(otherBasePrice, otherCurrency, normalizedCurrency);
 };

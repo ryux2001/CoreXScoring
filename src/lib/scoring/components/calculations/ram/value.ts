@@ -27,6 +27,21 @@ export const calculateValueScore = (
   const price = getPrice(evaluatedPrice);
   if (price === null) return 0;
 
+  const fairPrice = getRamFairPrice(notes, product);
+  if (fairPrice <= 0) return 0;
+
+  return score10(scoreFromFairPrice(
+    price,
+    fairPrice,
+    RAM_VALUE_RATIO_ANCHORS,
+  ));
+};
+
+export const getRamFairPrice = (
+  notes: Record<string, number>,
+  product: Record<string, unknown>,
+): number => {
+
   // Recalculate from the product when possible so the value score cannot be
   // distorted by stale or differently labelled notes from legacy callers.
   const calculatedNotes = {
@@ -70,10 +85,5 @@ export const calculateValueScore = (
   const qualityFactor = RAM_CONFIG.VALUE_FAIR_PRICE_QUALITY_BASE +
     utility * RAM_CONFIG.VALUE_FAIR_PRICE_QUALITY_WEIGHT;
   const fairPrice = capacityReference * qualityFactor;
-
-  return score10(scoreFromFairPrice(
-    price,
-    fairPrice,
-    RAM_VALUE_RATIO_ANCHORS,
-  ));
+  return Number.isFinite(fairPrice) && fairPrice > 0 ? fairPrice : 0;
 };

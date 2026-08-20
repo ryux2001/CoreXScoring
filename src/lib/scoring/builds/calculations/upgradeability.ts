@@ -14,6 +14,7 @@ import {
   getSpecs,
   numberValue,
   getSocket,
+  normalize,
 } from '../utils';
 import {
   getCpuBoardCompatibility,
@@ -97,6 +98,17 @@ const getRamUpgradeMargin = (ram: Build, cpu: Build, motherboard: Build): number
 
 const getStorageUpgradeMargin = (storage: Build, motherboard: Build, scores: BuildScores): number => {
   const specs = getSpecs(motherboard);
+  const storageSpecs = getSpecs(storage);
+  const storageCompatibility = getCompatibility(storage);
+  const interfaceName = normalize([
+    storageCompatibility.interface ??
+      storageSpecs.interface ??
+      storageCompatibility.form_factor ??
+      storageSpecs.form_factor ?? '',
+    storage.name ?? '',
+  ].join(' '));
+  const isM2 = interfaceName.includes('m.2') || interfaceName.includes('nvme') || interfaceName.includes('pcie');
+  const isSata = interfaceName.includes('sata');
   const m2Slots = asArray(specs.m2_slots);
   const sataPorts = numberValue(specs.sata_ports, 0);
   const hasUsageData = specs.m2_used !== undefined || specs.sata_used !== undefined;
@@ -104,9 +116,17 @@ const getStorageUpgradeMargin = (storage: Build, motherboard: Build, scores: Bui
   const sataUsed = numberValue(specs.sata_used, 0);
   const totalSlots = m2Slots.length + sataPorts;
   const freeSlots = Math.max(0, m2Slots.length - m2Used) + Math.max(0, sataPorts - sataUsed);
-  const slotsMargin = totalSlots > 0 && hasUsageData
-    ? clamp((freeSlots / totalSlots) * 10)
-    : getNote(scores.motherboard, ['Expansión', 'Expansi\u00f3n interna', 'Expansi\u00c3\u00b3n interna', 'Expansion interna']) || BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_MOTHERBOARD_EXPANSION;
+  let slotsMargin: number;
+  if (totalSlots > 0 && hasUsageData) {
+    slotsMargin = clamp((freeSlots / totalSlots) * 10);
+  } else if (isM2 && m2Slots.length > 0) {
+    slotsMargin = clamp(((m2Slots.length - 1) / m2Slots.length) * 10);
+  } else if (isSata && sataPorts > 0) {
+    slotsMargin = clamp(((sataPorts - 1) / sataPorts) * 10);
+  } else {
+    slotsMargin = getNote(scores.motherboard, ['Expansión', 'Expansi\u00f3n interna', 'Expansi\u00c3\u00b3n interna', 'Expansion interna']) ||
+      BUILD_SCORING_CONFIG.DEFAULTS.UNKNOWN_MOTHERBOARD_EXPANSION;
+  }
   const futureGeneration = getPcieGenerationScore(getHighestGeneration([
     getCompatibility(storage).pcie_generation,
     getSpecs(storage).pcie_generation,
