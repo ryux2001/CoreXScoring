@@ -212,10 +212,10 @@ export default function CompareProductCard({
         {isCombo && (
           <>
             <div className="mb-3 px-1">
-              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                 {product.category || "Combo"}
               </span>
-              <h3 className="mt-1 text-sm font-black leading-snug tracking-tight text-white">
+              <h3 className="mt-1 text-[14px] font-extrabold leading-snug tracking-tight text-white">
                 {product.title || product.name}
               </h3>
             </div>
@@ -241,7 +241,7 @@ export default function CompareProductCard({
                     </Link>
                     <Link
                       href={`/catalog/${component.slug}?currency=${globalCurrency}`}
-                      className="truncate text-center text-[8px] font-bold text-zinc-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white"
+                      className="truncate text-center text-[10px] font-bold text-zinc-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white"
                       title={component.name}
                     >
                       {component.name}
@@ -258,10 +258,10 @@ export default function CompareProductCard({
         {isBuild && (
           <>
             <div className="mb-3 px-1">
-              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                 {product.category || "Build"}
               </span>
-              <h3 className="mt-1 text-sm font-black leading-snug tracking-tight text-white">
+              <h3 className="mt-1 text-[14px] font-extrabold leading-snug tracking-tight text-white">
                 {product.title || product.name}
               </h3>
             </div>
@@ -293,10 +293,10 @@ export default function CompareProductCard({
         {!isCollection && (
           <>
             <div className="mb-3 px-1">
-              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                 {product.type || "Componente"}
               </span>
-              <h3 className="mt-1 truncate text-sm font-black leading-snug tracking-tight text-white" title={product.name}>
+              <h3 className="mt-1 truncate text-[14px] font-extrabold leading-snug tracking-tight text-white" title={product.name}>
                 {product.name}
               </h3>
             </div>
@@ -316,7 +316,7 @@ export default function CompareProductCard({
             <div className="flex w-full flex-col items-stretch gap-3 md:flex-row md:items-end">
               <div className="flex w-full max-w-[320px] flex-1 flex-col gap-3">
                 <div className="space-y-1">
-                  <label className="ml-0.5 text-[7px] font-black uppercase tracking-widest text-zinc-600">
+                  <label className="ml-0.5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
                     Escriba un precio...
                   </label>
                   <div className="flex h-[36px] items-center gap-1">
@@ -331,7 +331,7 @@ export default function CompareProductCard({
                     </div>
                     <button
                       onClick={() => setDisplayedPrice(customPrice)}
-                      className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[8px] font-black uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
+                      className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
                     >
                       aplicar
                     </button>
@@ -341,7 +341,7 @@ export default function CompareProductCard({
 
               <Link
                 href={`/catalog/${product.slug}?currency=${globalCurrency}`}
-                className="flex h-9 w-full flex-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900/20 py-2 text-center text-[9px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-[0.98] md:w-25"
+                className="flex h-9 w-full flex-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900/20 py-2 text-center text-[10px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-[0.98] md:w-25"
               >
                 ver producto
               </Link>
@@ -353,7 +353,7 @@ export default function CompareProductCard({
       <div className={`flex flex-1 flex-col justify-between border-t border-zinc-900/50 ${notesSpacingClass}`}>
         <div className="text-left">
           <div className={`${notesHeaderSpacingClass} border-b border-zinc-900/70 pb-3`}>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-200">Notas</h4>
+            <h4 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-200">Notas</h4>
           </div>
           <div className={`grid grid-cols-2 ${notesListGapClass} gap-x-3 pl-1`}>
             {masterCategories.map((category) => {
@@ -364,7 +364,7 @@ export default function CompareProductCard({
               return (
                 <div key={category} className="group min-w-0 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate text-[9px] font-bold uppercase tracking-wider text-zinc-400" title={category}>
+                    <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-zinc-400" title={category}>
                       {category}
                     </span>
                     <span className="flex shrink-0 items-center gap-1 text-[12px] uppercase tracking-wider font-thin tabular-nums text-zinc-300">
@@ -388,9 +388,9 @@ export default function CompareProductCard({
           </div>
         </div>
 
-        <div className={`${evaluationSpacingClass} flex items-center justify-between rounded-xl border transition-all duration-300 ${valueStyles.bg} ${valueStyles.border}`}>
+        <div className={`font-display ${evaluationSpacingClass} flex items-center justify-between rounded-xl border transition-all duration-300 ${valueStyles.bg} ${valueStyles.border}`}>
           <div className="flex flex-col text-left">
-            <span className={`text-[7.5px] font-black uppercase tracking-[0.2em] ${valueStyles.label}`}>Evaluacion global</span>
+            <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${valueStyles.label}`}>Evaluacion global</span>
             <span className="mt-0.5 text-[10px] font-bold uppercase tracking-tight text-zinc-200">Calidad Precio</span>
           </div>
           <div className={`flex h-9 w-11 items-center justify-center rounded-lg border border-zinc-900 bg-zinc-950 text-sm font-black tracking-tighter shadow-xl transition-colors duration-300 ${valueStyles.text}`}>
@@ -403,7 +403,7 @@ export default function CompareProductCard({
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Personalizar precio</h3>
+              <h3 className="text-[14px] font-extrabold uppercase tracking-widest text-white">Personalizar precio</h3>
               <button onClick={() => setIsCustomizeOpen(false)} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white">
                 <X size={14} />
               </button>

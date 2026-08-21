@@ -58,7 +58,7 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
   );
 
   return (
-    <main className="min-h-screen bg-black p-3 sm:p-6 md:p-12 lg:p-16">
+    <main className="combo-page font-technical min-h-screen bg-black p-3 sm:p-6 md:p-12 lg:p-16">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -90,7 +90,7 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
           <div className="mt-5 sm:mt-10 flex flex-col gap-14">
             {Object.entries(combosByCategory).map(([categoryName, categoryCombos]) => (
               <section key={categoryName}>
-                <h2 className="mb-6 border-b border-zinc-900 pb-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-400">
+                <h2 className="mb-6 border-b border-zinc-900 pb-3 text-[14px] font-extrabold uppercase tracking-[0.15em] text-zinc-400">
                   {categoryName}
                 </h2>
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

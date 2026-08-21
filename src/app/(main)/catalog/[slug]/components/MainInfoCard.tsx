@@ -90,7 +90,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
     <div className="flex flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-2xl transition-all duration-500">
       <div className="flex flex-row gap-5 p-5 lg:flex-col lg:p-0 lg:gap-0">
         <div className="relative flex flex-none items-center justify-center bg-black overflow-hidden rounded-2xl border border-zinc-900 w-32 h-32 p-4 lg:w-full lg:h-80 lg:rounded-none lg:border-0 lg:border-b lg:p-12">
-          <span className="absolute left-4 top-4 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white z-10">
+          <span className="absolute left-4 top-4 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white z-10">
             {product.type}
           </span>
           {imageUrl && (
@@ -105,7 +105,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
 
           <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3">
             <div className="rounded-lg border border-zinc-900 bg-black p-2 lg:p-4 lg:rounded-xl">
-              <span className="text-[7px] font-black uppercase text-zinc-600 block tracking-widest lg:text-[8px] lg:mb-1">MSRP</span>
+              <span className="text-[10px] font-black uppercase text-zinc-600 block tracking-widest lg:mb-1">MSRP</span>
               <div className="text-sm font-black text-white lg:text-xl">
                 {!isEUR && symbol}{Number(initialPrice).toLocaleString('es-ES')}{isEUR && symbol}
               </div>
@@ -113,7 +113,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
             
             {/* PRECIO EVALUADO DINÁMICO */}
             <div className="rounded-lg border border-zinc-800 border-dashed bg-zinc-900/10 p-2 lg:p-4 lg:rounded-xl">
-              <span className="text-[7px] font-black uppercase text-zinc-400 block mb-1 tracking-widest">Evaluado</span>
+              <span className="text-[10px] font-black uppercase text-zinc-400 block mb-1 tracking-widest">Evaluado</span>
               <div className="text-sm font-black text-white lg:text-xl">
                 {!isEUR && symbol}{Number(evaluatedPrice).toLocaleString('es-ES')}{isEUR && symbol}
               </div>
@@ -128,7 +128,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
         </button>
 
         <div className="hidden lg:flex flex-col mt-8 relative">
-          <h3 className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Detalles Técnicos</h3>
+          <h3 className="mb-4 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">Detalles Técnicos</h3>
           <div className="space-y-3 transition-all duration-500">
             {displayedDetails.map((detail, idx) => (
               <div key={idx} className="flex justify-between border-b border-zinc-900/30 pb-2.5">

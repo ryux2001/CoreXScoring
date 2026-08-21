@@ -197,14 +197,14 @@ export const Card = ({
 
   return (
     <div
-      className={`group flex w-full cursor-pointer flex-row overflow-hidden rounded-2xl border border-zinc-900 bg-black p-0 font-sans transition-all hover:border-zinc-700 ${wholeCardClickable ? "sm:flex-col" : "sm:cursor-default sm:flex-col"}`}
+      className={`group flex w-full cursor-pointer flex-row overflow-hidden rounded-2xl border border-zinc-900 bg-black p-0 font-technical transition-all hover:border-zinc-700 ${wholeCardClickable ? "sm:flex-col" : "sm:cursor-default sm:flex-col"}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
       role={wholeCardClickable ? "link" : undefined}
       tabIndex={0}
     >
       <div className="relative flex min-h-[180px] w-[42%] shrink-0 items-center justify-center overflow-hidden border-r border-zinc-800 bg-zinc-950 sm:aspect-square sm:min-h-0 sm:h-60 sm:w-full sm:border-r-0 sm:border-b">
-        <span className="absolute left-3 top-3 z-10 rounded-md border border-zinc-600 bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-300">
+        <span className="font-display absolute left-3 top-3 z-10 rounded-md border border-zinc-600 bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-300">
           {type}
         </span>
 
@@ -217,7 +217,7 @@ export const Card = ({
         ) : (
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-700">
+            <span className="font-technical text-[10px] uppercase tracking-[0.2em] text-zinc-700">
               No Image Available
             </span>
           </div>
@@ -226,7 +226,7 @@ export const Card = ({
 
       <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-5 sm:pt-0 sm:max-h-75">
         <div className="min-h-[34px] sm:mt-5 sm:min-h-[36px]">
-          <h3 className="text-base font-bold tracking-tight text-white line-clamp-2 leading-tight uppercase sm:text-lg">
+          <h3 className="font-display line-clamp-2 text-base font-bold uppercase leading-tight tracking-tight text-white sm:text-lg">
             {name}
           </h3>
         </div>
@@ -237,10 +237,10 @@ export const Card = ({
               key={index}
               className="flex items-center justify-between border-b border-zinc-900/50 pb-1 sm:pb-1"
             >
-              <span className="text-[9px] uppercase text-zinc-500 font-semibold tracking-wider sm:text-[10px]">
+              <span className="font-technical text-[10px] font-semibold uppercase tracking-wider text-zinc-500 sm:text-[11px]">
                 {detail.label}
               </span>
-              <span className="text-[10px] text-zinc-300 font-medium sm:text-[11px]">
+              <span className="font-technical text-[11px] font-medium text-zinc-300 sm:text-xs">
                 {detail.value}
               </span>
             </div>
@@ -248,7 +248,7 @@ export const Card = ({
         </div>
 
         <div className="mt-3 flex items-baseline gap-1 sm:mt-3">
-          <span className="text-xl font-black tracking-tighter text-white sm:text-2xl">
+          <span className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">
             {currencySymbol}
             {Number(price).toLocaleString("es-ES")}
           </span>
@@ -259,7 +259,7 @@ export const Card = ({
           {!wholeCardClickable && (
             <Link
               href={`/catalog/${slug}?currency=${currency}`}
-              className="hidden w-19 flex-none items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 active:scale-95 sm:flex"
+              className="font-display hidden w-19 flex-none items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 active:scale-95 sm:flex"
             >
               <Eye size={14} strokeWidth={2.5} />
               VER

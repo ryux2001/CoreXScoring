@@ -167,7 +167,7 @@ export default function ComboCard({
       
       {/* Cabecera de la tarjeta */}
       <div className="mb-1.5 sm:mb-3">
-        <h3 className="text-sm font-bold text-white leading-snug line-clamp-2">
+        <h3 className="text-[14px] font-extrabold text-white leading-snug line-clamp-2">
           {combo.title}
         </h3>
       </div>

@@ -49,10 +49,10 @@ const vaultSections = [
 
 export default function VaultPage() {
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-black px-2 py-8 sm:p4 md:px-8 md:py-12 lg:px-12">
+    <main className="vault-page font-technical min-h-[calc(100vh-4rem)] bg-black px-2 py-8 sm:p4 md:px-8 md:py-12 lg:px-12">
       <div className="mx-auto max-w-5xl rounded-[2rem] py-4 px-2 sm:p-4 shadow-2xl md:p-7">
         <header className="rounded-2xl px-2 py-5 md:px-7 md:py-6">
-          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-600">
+          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
             Espacio personal
           </span>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-white md:text-3xl">
@@ -74,10 +74,10 @@ export default function VaultPage() {
                 <Icon size={17} strokeWidth={2} className="md:h-5 md:w-5" />
               </div>
               <div className="contents min-w-0 md:block md:flex-1">
-                <h2 className="pt-0.5 text-[11px] font-black uppercase leading-tight tracking-wide text-zinc-200 md:text-xs">
+                <h2 className="pt-0.5 text-[14px] font-extrabold uppercase leading-tight tracking-wide text-zinc-200">
                   {title}
                 </h2>
-                <p className="col-span-2 mt-3 pt-0.5 text-[10px] leading-relaxed text-zinc-600 transition-colors group-hover:text-zinc-400 md:text-[11px]">
+                <p className="col-span-2 mt-3 pt-0.5 text-[11px] leading-relaxed text-zinc-500 transition-colors group-hover:text-zinc-300 md:text-[12px]">
                   {description}
                 </p>
               </div>

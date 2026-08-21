@@ -23,7 +23,7 @@ export default function Metrics({ combo }: MetricsProps) {
       
       {/* HEADER */}
       <div className="relative mb-8">
-        <h3 className="pr-10 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+        <h3 className="pr-10 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
           Métricas Clave
         </h3>
         
@@ -35,8 +35,8 @@ export default function Metrics({ combo }: MetricsProps) {
           >
             <Info size={11} strokeWidth={3} />
           </button>
-          <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-            <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">
+          <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">
               Análisis de Capacidades
             </div>
             <p>
@@ -56,11 +56,11 @@ export default function Metrics({ combo }: MetricsProps) {
               
               {/* Fila superior: Nombre + Porcentaje */}
               <div className="flex justify-between items-baseline">
-                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">
                   {metric.label}
                 </span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-sm font-black text-white tracking-tighter">
+                  <span className="text-[16px] font-bold text-white tracking-tighter">
                     {percentage.toFixed(1)}
                   </span>
                   <span className="text-[9px] font-bold text-zinc-700 uppercase">
@@ -84,7 +84,7 @@ export default function Metrics({ combo }: MetricsProps) {
 
       {/* FOOTER DISCRETO */}
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
-        <p className="text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
+        <p className="text-[10px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
           * Porcentajes normalizados basados en arquitectura de hilos y capacidades de renderizado.
         </p>
       </div>

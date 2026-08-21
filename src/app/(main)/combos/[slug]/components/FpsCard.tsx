@@ -111,10 +111,10 @@ export default function FpsCard({
       <div className="relative mb-5 lg:mb-6">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 pr-10 lg:justify-start">
           <div className="mr-0 pr-8 lg:mr-1 lg:pr-0">
-            <h2 className="text-sm font-black uppercase tracking-[0.16em] text-zinc-100">
+            <h2 className="text-[14px] font-extrabold uppercase tracking-[0.16em] text-zinc-100">
               FPS estimados
             </h2>
-            <p className="mt-1 text-[10px] font-medium text-zinc-500">
+            <p className="mt-1 text-[10px] font-medium text-zinc-400">
               Rendimiento nativo por resolución
             </p>
           </div>
@@ -171,8 +171,8 @@ export default function FpsCard({
           >
             <Info size={11} strokeWidth={3} />
           </button>
-          <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-            <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">
+          <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">
               Estimación de FPS
             </div>
             <p>
@@ -191,13 +191,13 @@ export default function FpsCard({
           return (
             <div
               key={metric.label}
-              className={`group flex min-h-24 flex-col items-center justify-center rounded-2xl border p-3 transition-all duration-300 lg:min-h-0 lg:p-5 lg:hover:-translate-y-0.5 ${styles.border} ${styles.bg}`}
+              className={`font-display group flex min-h-24 flex-col items-center justify-center rounded-2xl border p-3 transition-all duration-300 lg:min-h-0 lg:p-5 lg:hover:-translate-y-0.5 ${styles.border} ${styles.bg}`}
             >
-              <span className={`mb-2 text-[9px] font-black uppercase tracking-[0.15em] lg:mb-3 lg:text-[10px] lg:tracking-[0.2em] ${styles.label}`}>
+                <span className={`mb-2 text-[10px] font-black uppercase tracking-[0.15em] lg:mb-3 lg:tracking-[0.2em] ${styles.label}`}>
                 {metric.label}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className={`text-3xl font-semibold leading-none tracking-[-0.03em] tabular-nums lg:text-5xl ${styles.text}`}>
+                <span className={`text-[32px] font-bold leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
                   {metric.value}
                 </span>
               </div>

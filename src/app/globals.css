@@ -10,6 +10,29 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Semantic font roles: change these aliases to retheme typography globally. */
+  --font-display: var(--font-rajdhani), sans-serif;
+  --font-technical: var(--font-courier-prime), monospace;
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-technical {
+    font-family: var(--font-technical);
+  }
+
+  /* Product detail pages inherit technical copy; headings and actions use display type. */
+  .catalog-detail :is(h1, h2, h3, h4, h5, h6, button),
+  .combo-page :is(h1, h2, h3, h4, h5, h6, button),
+  .build-page :is(h1, h2, h3, h4, h5, h6, button),
+  .comparator-page :is(h1, h2, h3, h4, h5, h6, button),
+  .vault-page :is(h1, h2, h3, h4, h5, h6, button),
+  .auth-page :is(h1, h2, h3, h4, h5, h6, button) {
+    font-family: var(--font-display);
+  }
 }
 
 @media (prefers-color-scheme: dark) {

@@ -366,7 +366,7 @@ export default function CreatedComboWorkspace({
   };
 
   return (
-    <main className="min-h-screen bg-black p-4 md:p-8 lg:p-12">
+    <main className="vault-page font-technical min-h-screen bg-black p-4 md:p-8 lg:p-12">
       <div className="mx-auto max-w-[1600px]">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
           <div className="lg:col-span-4">

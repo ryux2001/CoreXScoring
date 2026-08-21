@@ -147,7 +147,7 @@ export default function MobileMenu({ links, onOpen }: Props) {
                   ref={index === 0 ? firstLinkRef : undefined}
                   onClick={closeMenu}
                   aria-current={isActiveLink(link.href) ? "page" : undefined}
-                  className={`flex min-h-11 items-center rounded-xl px-3 text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 ${
+                  className={`font-display flex min-h-11 items-center rounded-xl px-3 text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${
                     isActiveLink(link.href)
                       ? "bg-white/15 text-white focus-visible:ring-white/60"
                       : "text-zinc-300 hover:bg-white/10 hover:text-white focus-visible:ring-white/60"

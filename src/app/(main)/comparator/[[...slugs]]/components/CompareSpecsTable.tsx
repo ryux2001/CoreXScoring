@@ -67,8 +67,8 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
           <div className="col-span-9 grid grid-cols-3 gap-6">
             {items.map((item) => (
               <div key={item.id} className="truncate pr-2">
-                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tight truncate block">{item.title || item.name}</span>
-                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mt-0.5">{itemTypeLabel}</span>
+            <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tight truncate block">{item.title || item.name}</span>
+                <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mt-0.5">{itemTypeLabel}</span>
               </div>
             ))}
             {Array.from({ length: 3 - items.length }).map((_, index) => <div key={`empty-combo-head-${index}`} className="hidden md:block" />)}
@@ -79,7 +79,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
           {specs.map((spec) => (
             <div key={`${spec.part}-${spec.key}`} className="grid grid-cols-12 px-6 py-3.5 items-center hover:bg-zinc-900/10 transition-colors duration-200 group min-w-[650px] md:min-w-0">
               <div className="col-span-3 pr-4">
-                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">{spec.label}</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">{spec.label}</span>
               </div>
               <div className="col-span-9 grid grid-cols-3 gap-6">
                 {items.map((item) => {
@@ -91,7 +91,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
                   return (
                     <div key={`${item.id}-${spec.part}-${spec.key}`} className="text-left">
                       {formattedValue !== null ? (
-                        <span className="text-xs font-medium text-zinc-300 tracking-wide">{formattedValue}</span>
+                        <span className="text-[12px] font-medium text-zinc-300 tracking-wide">{formattedValue}</span>
                       ) : (
                         <span className="text-xs font-black text-zinc-700 uppercase tracking-wider select-none">No</span>
                       )}
@@ -131,7 +131,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
               <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tight truncate block">
                 {item.name}
               </span>
-              <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mt-0.5">
+              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mt-0.5">
                 {item.brand}
               </span>
             </div>
@@ -151,7 +151,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
             className="grid grid-cols-12 px-6 py-3.5 items-center hover:bg-zinc-900/10 transition-colors duration-200 group min-w-[650px] md:min-w-0"
           >
             <div className="col-span-3 pr-4">
-              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">
                 {spec.label}
               </span>
             </div>
@@ -166,7 +166,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
                 return (
                   <div key={`${item.id}-${spec.key}`} className="text-left">
                     {formattedValue !== null ? (
-                      <span className="text-xs font-medium text-zinc-300 tracking-wide">
+                      <span className="text-[12px] font-medium text-zinc-300 tracking-wide">
                         {formattedValue}
                       </span>
                     ) : (

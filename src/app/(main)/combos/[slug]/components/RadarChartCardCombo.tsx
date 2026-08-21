@@ -140,7 +140,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
 
       {/* HEADER */}
       <div className="relative mb-2 w-full">
-        <h3 className="pr-28 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 shrink-0">
+        <h3 className="pr-28 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400 shrink-0">
           Balance
         </h3>
 
@@ -163,8 +163,8 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
             >
               <Info size={11} strokeWidth={3} />
             </button>
-            <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[9px]">Mapa de Rendimiento</div>
+            <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+              <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[12px]">Mapa de Rendimiento</div>
               <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
             </div>
           </div>

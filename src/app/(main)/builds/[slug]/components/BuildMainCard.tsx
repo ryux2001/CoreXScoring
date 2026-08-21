@@ -50,7 +50,7 @@ export default function BuildMainCard({
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/40 p-5 shadow-2xl backdrop-blur-sm lg:p-8">
       <div className="mb-6 lg:mb-8">
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
           {build.category || 'Build'}
         </span>
         <h1 className="mt-2 text-xl font-black leading-snug tracking-tighter text-white md:text-2xl">
@@ -69,7 +69,7 @@ export default function BuildMainCard({
 
           return (
             <div key={part.key} className="flex w-full min-w-0 flex-col gap-1.5">
-              <span className="pl-1 text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500">
+              <span className="pl-1 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500">
                 {part.role}
               </span>
 
@@ -91,7 +91,7 @@ export default function BuildMainCard({
                       )}
                     </div>
                     <div className="flex min-w-0 flex-col overflow-hidden">
-                      <span className="truncate text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                      <span className="truncate text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                         {item.brand}
                       </span>
                       <span

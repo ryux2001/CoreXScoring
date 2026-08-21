@@ -41,7 +41,7 @@ export default async function BuildDetailPage({
   const { data: games } = await supabase.from('games').select('*');
 
   return (
-    <main className="relative min-h-screen bg-black p-4 md:p-8 lg:p-12">
+    <main className="build-page font-technical relative min-h-screen bg-black p-4 md:p-8 lg:p-12">
       <div className="mx-auto max-w-[1600px] animate-in fade-in duration-500">
         <div className="mt-6 grid grid-cols-1 gap-6 md:mt-0 lg:grid-cols-12 lg:items-start">
           <div className="block lg:hidden">

@@ -78,11 +78,11 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
             {/* Cabecera del Carrito */}
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-3">
               <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                <span className="font-display text-xs font-bold uppercase tracking-wider text-zinc-400">
                   Comparativa ({items.length}/3)
                 </span>
                 {items.length > 0 && (
-                  <span className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-600">
+                  <span className="font-technical mt-1 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
                     Comparando: <span className="text-zinc-400">{comparisonLabel}</span>
                   </span>
                 )}
@@ -91,7 +91,7 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
                 <button
                   type="button"
                   onClick={() => clearCompare()}
-                  className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-[9px] font-bold uppercase tracking-tight text-zinc-600 transition-colors hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  className="font-display flex min-h-11 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-tight text-zinc-600 transition-colors hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   <Trash2 size={10} />
                   Limpiar
@@ -102,10 +102,10 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
             {/* Listado interno */}
             {items.length === 0 ? (
               <div className="flex h-24 flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black uppercase tracking-wider text-zinc-600">
+                <p className="font-display text-xs font-bold uppercase tracking-wider text-zinc-600">
                   No hay productos seleccionados
                 </p>
-                <p className="text-[9px] text-zinc-700 mt-1 max-w-[200px]">
+                <p className="font-technical mt-1 max-w-[200px] text-[11px] text-zinc-700">
                   Explora el catálogo y pulsa &quot;Comparar&quot; en los componentes.
                 </p>
               </div>
@@ -117,10 +117,10 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
                     className="flex items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-zinc-900/20 p-2.5 hover:border-zinc-800 transition-colors"
                   >
                     <div className="flex flex-col min-w-0">
-                      <span className="truncate text-xs font-bold text-white tracking-tight">
+                      <span className="font-display truncate text-sm font-semibold tracking-tight text-white">
                         {item.name}
                       </span>
-                      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mt-0.5">
+                      <span className="font-technical mt-0.5 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
                         {item.brand} · {item.type}
                       </span>
                     </div>
@@ -142,7 +142,7 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
               <Link
                 href="/comparator"
                 onClick={() => setIsCartOpen(false)}
-                className={`w-full flex items-center justify-center rounded-xl py-3 text-[10px] font-black uppercase tracking-widest transition-all text-center ${
+                className={`font-display flex w-full items-center justify-center rounded-xl py-3 text-xs font-bold uppercase tracking-widest text-center transition-all ${
                   items.length < 2 
                     ? "bg-zinc-900 text-zinc-600 cursor-not-allowed border border-zinc-900" 
                     : "bg-white text-black hover:bg-zinc-200 active:scale-[0.98]"

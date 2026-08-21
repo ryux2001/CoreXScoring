@@ -93,20 +93,20 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
 
       <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl touch-pan-y animate-in fade-in zoom-in-95 duration-200 sm:max-h-none sm:overflow-visible sm:p-8">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-bold text-white tracking-tighter uppercase">Filtros</h2>
+          <h2 className="font-display text-xl font-bold uppercase tracking-tight text-white">Filtros</h2>
           <button onClick={onClose} className="text-zinc-500 hover:text-white cursor-pointer"><X size={20} /></button>
         </div>
 
         <div className="space-y-10">
           {/* MARCA */}
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 block mb-4">Marca</span>
+            <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">Marca</span>
             <div className="flex flex-wrap gap-2">
               {availableBrands.map(brand => (
                 <button
                   key={brand}
                   onClick={() => toggleBrand(brand)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                  className={`font-display rounded-xl px-4 py-2 text-xs font-semibold transition-all border ${
                     selectedBrands.includes(brand) 
                     ? "bg-white text-black border-white" 
                     : "bg-transparent text-zinc-400 border-zinc-800 hover:border-zinc-600 cursor-pointer"
@@ -120,13 +120,13 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
 
           {/* TIPO */}
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 block mb-4">Tipo de Componente</span>
+            <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">Tipo de Componente</span>
             <div className="grid grid-cols-3 gap-2">
               {availableTypes.map(type => (
                 <button
                   key={type}
                   onClick={() => setSelectedType(selectedType === type ? "" : type)}
-                  className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-all border ${
+                  className={`font-display rounded-xl px-3 py-2 text-[11px] font-semibold uppercase transition-all border ${
                     selectedType === type 
                     ? "bg-white text-black border-white" 
                     : "bg-transparent text-zinc-400 border-zinc-800 hover:border-zinc-600 cursor-pointer"
@@ -141,7 +141,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
           {/* PRECIO */}
           <div>
             {/* 3. MOSTRAMOS EL SÍMBOLO DINÁMICO EN EL TÍTULO */}
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 block mb-4">
+            <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">
               Rango de Precio ({currency === 'EUR' ? '€' : '$'})
             </span>
             <div className="flex items-center gap-4">
@@ -150,7 +150,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
                 placeholder="Min" 
                 value={priceRange.min}
                 onChange={handleMinChange}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="font-technical w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <div className="h-px w-8 bg-zinc-800" />
               <input 
@@ -159,7 +159,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
                 value={priceRange.max}
                 onChange={handleMaxChange}
                 onBlur={handleMaxBlur}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="font-technical w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           </div>
@@ -167,7 +167,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
 
          <button 
             onClick={applyFilters}
-            className="w-full mt-12 bg-white text-black py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-200 transition-all cursor-pointer"
+            className="font-display mt-12 w-full rounded-2xl bg-white py-4 text-sm font-bold uppercase tracking-widest text-black transition-all hover:bg-zinc-200 cursor-pointer"
           >
             Aplicar Filtros
           </button>

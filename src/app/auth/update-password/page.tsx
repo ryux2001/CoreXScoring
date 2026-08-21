@@ -13,7 +13,7 @@ export default async function UpdatePasswordPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-64px)] h-dvh flex items-center justify-center bg-black p-4 md:p-6 lg:p-8">
+    <main className="auth-page font-technical min-h-[calc(100vh-64px)] h-dvh flex items-center justify-center bg-black p-4 md:p-6 lg:p-8">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-8 shadow-2xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tighter text-white">

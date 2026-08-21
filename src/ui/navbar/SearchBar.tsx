@@ -160,7 +160,7 @@ export default function SearchBar({
           }}
           spellCheck={false} // Evita que extensiones como MS Editor rompan la hidratación
           suppressHydrationWarning // Le dice a Next.js que ignore cambios inyectados por extensiones
-          className="w-full rounded-xl border border-white/10 bg-zinc-900 py-2.5 pl-10 pr-10 text-sm text-zinc-200 transition-all focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+          className="font-technical w-full rounded-xl border border-white/10 bg-zinc-900 py-2.5 pl-10 pr-10 text-sm text-zinc-200 transition-all focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
         />
         <button
           type="submit"
@@ -227,8 +227,8 @@ export default function SearchBar({
                 }}
                 className="flex min-h-14 w-full flex-col justify-center px-4 py-2 text-left transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
               >
-                <span className="text-sm font-medium text-white">{item.name}</span>
-                <span className="text-[10px] uppercase tracking-widest text-zinc-500">
+                <span className="font-display text-base font-semibold text-white">{item.name}</span>
+                <span className="font-technical text-[10px] uppercase tracking-widest text-zinc-500">
                   {item.brand} • {item.type}
                 </span>
               </button>

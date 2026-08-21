@@ -174,8 +174,8 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
         >
           <Info size={11} strokeWidth={3} />
         </button>
-        <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-          <div className="mb-2 font-bold uppercase tracking-widest text-[9px] text-white">
+        <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+          <div className="mb-2 font-bold uppercase tracking-widest text-[12px] text-white">
             FPS aproximados
           </div>
           <p>
@@ -187,10 +187,10 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
       <div className="relative mb-5 lg:mb-0">
         <div className="flex flex-wrap items-center justify-between gap-4 lg:flex-col lg:items-start lg:justify-start">
           <div className="pr-8 lg:pr-0">
-            <h2 className="text-sm font-black uppercase tracking-[0.16em] text-zinc-100">
+            <h2 className="text-[14px] font-extrabold uppercase tracking-[0.16em] text-zinc-100">
               FPS en juegos
             </h2>
-            <p className="mt-1 text-[10px] font-medium text-zinc-500">
+            <p className="mt-1 text-[10px] font-medium text-zinc-400">
               Valores directos de la base de datos
             </p>
           </div>
@@ -248,12 +248,12 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
             return (
               <div
                 key={metric.label}
-                className={`flex min-h-24 flex-col items-center justify-center rounded-2xl border p-3 ${styles.border} ${styles.bg}`}
+                className={`font-display flex min-h-24 flex-col items-center justify-center rounded-2xl border p-3 ${styles.border} ${styles.bg}`}
               >
-                <span className={`mb-2 text-[9px] font-black uppercase tracking-[0.15em] ${styles.label}`}>
+              <span className={`mb-2 text-[10px] font-black uppercase tracking-[0.15em] ${styles.label}`}>
                   {metric.label}
                 </span>
-                <span className={`text-3xl font-semibold leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
+                <span className={`text-[32px] font-bold leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
                   {metric.value ?? "—"}
                 </span>
                 <span className="mt-1 text-[8px] font-bold uppercase tracking-widest text-zinc-600">

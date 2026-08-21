@@ -17,7 +17,7 @@ export default function EmptyState({ onOpenModal }: EmptyStateProps) {
         <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
       </button>
       
-      <h2 className="text-xs font-black uppercase text-zinc-400 mt-6">
+      <h2 className="mt-6 text-[14px] font-extrabold uppercase text-zinc-400">
         Agregar producto
       </h2>
       <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold mt-1.5 max-w-xs leading-relaxed">

@@ -41,7 +41,7 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
     .select('*');
 
   return (
-    <main className="min-h-screen bg-black p-4 md:p-8 lg:p-12 relative">
+    <main className="combo-page font-technical min-h-screen bg-black p-4 md:p-8 lg:p-12 relative">
       <div className="mx-auto max-w-[1600px] animate-in fade-in duration-500">
 
         {/* ESTRUCTURA MODULAR */}

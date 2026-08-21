@@ -36,7 +36,7 @@ export default function Pagination({ currentPage, totalPages }: Props) {
       <button
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={isFirstPage}
-        className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-xs font-bold text-zinc-400 transition-all hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+        className="font-display flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-xs font-semibold text-zinc-400 transition-all hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
       >
         <ChevronLeft size={16} />
         Anterior
@@ -48,7 +48,7 @@ export default function Pagination({ currentPage, totalPages }: Props) {
           <button
             key={page}
             onClick={() => handlePageChange(page)}
-            className={`h-9 w-9 rounded-xl text-xs font-bold transition-all border ${
+            className={`font-display h-9 w-9 rounded-xl text-xs font-semibold transition-all border ${
               currentPage === page
                 ? "bg-white text-black border-white"
                 : "bg-transparent text-zinc-500 border-transparent hover:border-zinc-800 hover:text-white cursor-pointer"
@@ -63,7 +63,7 @@ export default function Pagination({ currentPage, totalPages }: Props) {
       <button
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={isLastPage}
-        className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-xs font-bold text-zinc-400 transition-all hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+        className="font-display flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-xs font-semibold text-zinc-400 transition-all hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
       >
         Siguiente
         <ChevronRight size={16} />

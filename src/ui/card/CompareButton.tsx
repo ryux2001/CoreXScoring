@@ -54,7 +54,7 @@ export default function CompareButton(product: CompareButtonProps) {
     <>
       <button
         onClick={handleCompareClick}
-        className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-2 text-[10px] font-bold transition-all cursor-pointer active:scale-95 sm:gap-2 sm:py-3 sm:text-xs ${
+        className={`font-display flex-1 flex items-center justify-center gap-1 rounded-lg border py-2 text-[10px] font-bold transition-all cursor-pointer active:scale-95 sm:gap-2 sm:py-3 sm:text-xs ${
           isInCompare 
             ? "border-white bg-zinc-900 text-white" 
             : "border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white"
@@ -74,10 +74,10 @@ export default function CompareButton(product: CompareButtonProps) {
           
           {/* Mensaje de Error */}
           <div className="flex flex-col min-w-0">
-            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-red-500">
+            <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em] text-red-500">
               SISTEMA DE COMPARACIÓN
             </span>
-            <span className="text-xs font-medium text-zinc-300 tracking-tight mt-0.5 leading-tight">
+            <span className="font-technical mt-0.5 text-xs font-medium leading-tight tracking-tight text-zinc-300">
               {customError}
             </span>
           </div>

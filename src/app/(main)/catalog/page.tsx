@@ -59,10 +59,10 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const availableBrands = Array.from(new Set(brandsResponse.data?.map(p => p.brand))).filter(Boolean).sort() as string[];
   const availableTypes = Array.from(new Set(typesResponse.data?.map(p => p.type))).filter(Boolean).sort() as string[];
 
-  if (error) return <div className="text-white p-20 text-center">Error: {error.message}</div>;
+  if (error) return <div className="font-technical p-20 text-center text-white">Error: {error.message}</div>;
 
   return (
-    <main className="min-h-screen bg-black py-3 px-2.5 sm:p-6 md:p-12 lg:p-16">
+    <main className="font-technical min-h-screen bg-black py-3 px-2.5 sm:p-6 md:p-12 lg:p-16">
       <div className="mx-auto max-w-7xl">
         
         <FilterBar 

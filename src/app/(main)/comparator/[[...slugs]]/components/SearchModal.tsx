@@ -280,11 +280,11 @@ export default function SearchModal({
       <div className="flex w-full max-w-md flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950 p-5 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="mb-4 flex items-center justify-between border-b border-zinc-900 pb-4">
           <div className="flex flex-col">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-white">
+            <h3 className="text-[14px] font-extrabold uppercase tracking-widest text-white">
               Buscar {isComboMode ? 'Combo' : isBuildMode ? 'Build' : 'Componente'}
             </h3>
             {!isComboMode && !isBuildMode && componentType && (
-              <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-zinc-500">
+              <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                 Restringido a: <span className="text-zinc-400">{componentType}</span>
               </span>
             )}
@@ -295,7 +295,7 @@ export default function SearchModal({
         </div>
 
         <label className="mb-3 flex flex-col gap-1.5">
-          <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
             Comparar
           </span>
           <select
@@ -316,7 +316,7 @@ export default function SearchModal({
 
         {user && (
           <label className="mb-3 flex flex-col gap-1.5">
-            <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
               Origen
             </span>
             <select

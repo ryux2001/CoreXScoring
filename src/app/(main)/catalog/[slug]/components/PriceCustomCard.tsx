@@ -123,7 +123,7 @@ export default function PriceCustomCard({
       <div className="hidden lg:flex flex-col p-6 rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-xl h-full justify-between">
         <div>
           <div className="relative mb-2 pr-10">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+            <h3 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
               Evaluación de Precio
             </h3>
             <div className="group absolute right-0 top-0">
@@ -134,7 +134,7 @@ export default function PriceCustomCard({
               >
                 <Info size={11} strokeWidth={3} />
               </button>
-              <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+              <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                 Ajusta el precio para recalcular automáticamente la relación
                 Calidad/Precio.
               </div>
@@ -252,7 +252,7 @@ const PriceForm = ({
   <div className="space-y-4">
     {/* PRECIOS ALTERNATIVOS */}
     <div className="space-y-1.5">
-      <label className="text-[8px] font-black uppercase tracking-widest text-zinc-700 ml-1">
+      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
         Precios Alternativos
       </label>
       <div className="relative">
@@ -286,7 +286,7 @@ const PriceForm = ({
       <div className="space-y-1.5">
         <label
           htmlFor={profileSelectId}
-          className="ml-1 text-[8px] font-black uppercase tracking-widest text-zinc-700"
+          className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-500"
         >
           Perfil de valor
         </label>
@@ -311,7 +311,7 @@ const PriceForm = ({
             <ChevronDown size={14} />
           </div>
         </div>
-        <p id={`${profileSelectId}-description`} className="px-1 text-[8px] leading-relaxed text-zinc-600">
+        <p id={`${profileSelectId}-description`} className="px-1 text-[10px] leading-relaxed text-zinc-500">
           Cambia qué tipo de rendimiento pesa más en Calidad/Precio.
         </p>
       </div>

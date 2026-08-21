@@ -175,10 +175,10 @@ export default function BuildCard({
       tabIndex={wholeCardClickable ? 0 : undefined}
     >
       <div>
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
           {build.category || 'Build'}
         </span>
-        <h2 className="mt-2 line-clamp-2 text-sm font-black leading-snug text-white">
+        <h2 className="mt-2 line-clamp-2 text-[14px] font-extrabold leading-snug text-white">
           {build.title}
         </h2>
 

@@ -38,7 +38,7 @@ export default function Navbar() {
         <div className="flex h-14 items-center justify-between gap-2 sm:hidden">
           <Link
             href="/"
-            className="min-w-0 truncate whitespace-nowrap text-xl font-bold tracking-tighter text-white"
+            className="font-display min-w-0 truncate whitespace-nowrap text-xl font-bold tracking-tight text-white"
           >
             CorexScoring
           </Link>
@@ -73,7 +73,7 @@ export default function Navbar() {
           <div className="flex min-w-0 flex-1 items-center gap-4">
             <Link
               href="/"
-              className="whitespace-nowrap text-xl font-bold tracking-tighter text-white sm:text-2xl"
+              className="font-display whitespace-nowrap text-xl font-bold tracking-tight text-white sm:text-2xl"
             >
               CorexScoring
             </Link>
@@ -90,7 +90,7 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   aria-current={isActiveLink(link.href) ? "page" : undefined}
-                  className={`rounded-lg px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+                  className={`font-display rounded-lg px-2 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
                     isActiveLink(link.href)
                       ? "bg-white/10 text-white"
                       : "text-zinc-400 hover:bg-white/5 hover:text-white"

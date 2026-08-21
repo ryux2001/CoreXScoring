@@ -83,11 +83,11 @@ export default function BuildNotesCard({
     <div className="relative z-20 flex h-full flex-col justify-between rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:p-8">
       <div className="relative mb-8">
         <div className="flex min-w-0 flex-wrap items-center gap-4 pr-10">
-          <h2 className="shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
+          <h2 className="shrink-0 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
             Notas
           </h2>
           <div className="hidden items-center gap-2 rounded-full border border-zinc-900/50 bg-zinc-900/30 px-3 py-1 sm:flex">
-            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-zinc-700">
+            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-zinc-600">
               Precio evaluado:
             </span>
             <span className="text-xs font-black text-zinc-400">
@@ -104,9 +104,9 @@ export default function BuildNotesCard({
           >
             <Info size={11} strokeWidth={3} />
           </button>
-          <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-            <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-white">Criterios de Evaluación</div>
-            <div className="mb-3 space-y-1 text-[10px]">
+          <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div className="mb-2 text-[12px] font-bold uppercase tracking-widest text-white">Criterios de Evaluación</div>
+            <div className="mb-3 space-y-1 text-[12px]">
               <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
               <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span><span className="font-semibold text-blue-300">Azul:</span> Excelente</span></div>
               <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span><span className="font-semibold text-emerald-300">Verde:</span> Bueno</span></div>
@@ -126,14 +126,14 @@ export default function BuildNotesCard({
           return (
             <div
               key={note.label}
-              className={`group relative flex min-h-[100px] flex-col items-center justify-between rounded-2xl border px-3 py-3 transition-all ${styles.border} ${styles.bg}`}
+              className={`font-display group relative flex min-h-[100px] flex-col items-center justify-between rounded-2xl border px-3 py-3 transition-all ${styles.border} ${styles.bg}`}
             >
               <div className="flex h-6 items-center justify-center text-center">
-                <p className={`text-[8px] font-black uppercase leading-tight tracking-widest ${styles.label}`}>
+                <p className={`text-[10px] font-black uppercase leading-tight tracking-widest ${styles.label}`}>
                   {note.label}
                 </p>
               </div>
-              <p className={`font-semibold text-[26px] leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
+              <p className={`font-bold text-[32px] leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
                 {note.score.toFixed(1)}
               </p>
               <div className="h-[2px] w-1/2 overflow-hidden rounded-full bg-zinc-900">
@@ -145,7 +145,7 @@ export default function BuildNotesCard({
       </div>
 
       <div className="mt-8 border-t border-zinc-900/20 pt-4">
-        <p className="text-center text-[9px] font-bold uppercase leading-tight tracking-widest text-zinc-500 lg:text-left">
+        <p className="text-center text-[10px] font-bold uppercase leading-tight tracking-widest text-zinc-500 lg:text-left">
           * Datos mockeados pendientes de evaluación dinámica.
         </p>
       </div>

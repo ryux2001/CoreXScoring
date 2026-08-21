@@ -62,7 +62,7 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center bg-black p-1 md:p-6 relative overflow-hidden">
+    <main className="comparator-page font-technical flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center bg-black p-1 md:p-6 relative overflow-hidden">
       <ComparatorClient initialItems={initialItems} globalCurrency={currency} />
     </main>
   );

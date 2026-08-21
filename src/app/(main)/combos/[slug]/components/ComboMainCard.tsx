@@ -61,7 +61,7 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
       
       {/* Título y Categoría del Combo */}
       <div className="mb-6 lg:mb-8">
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
           {combo.category}
         </span>
         <h1 className="mt-2 text-xl md:text-2xl font-black tracking-tighter text-white leading-snug">
@@ -80,7 +80,7 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
             <div key={part.key} className="flex flex-col gap-1.5 w-full min-w-0">
               
               {/* Etiqueta del Componente */}
-              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500 pl-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 pl-1">
                 {part.role}
               </span>
 
@@ -109,7 +109,7 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
                     
                     {/* Nombre y Marca */}
                     <div className="flex flex-col min-w-0 overflow-hidden">
-                      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 truncate">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 truncate">
                         {part.item.brand}
                       </span>
                       <span 

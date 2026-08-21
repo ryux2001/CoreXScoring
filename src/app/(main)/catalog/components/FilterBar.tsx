@@ -41,7 +41,7 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
   };
 
   return (
-    <div className="mb-10 w-full space-y-6">
+    <div className="font-technical mb-10 w-full space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <button 
@@ -51,14 +51,14 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
             <Settings2Icon size={18} strokeWidth={2.5} />
           </button>
           
-          <span className="text-xs font-bold text-zinc-500 uppercase tracking-tighter">
+          <span className="font-technical text-xs font-semibold uppercase tracking-tight text-zinc-500">
             {count} Productos
           </span>
         </div>
 
         <button 
           onClick={toggleCurrency}
-          className="group flex items-center gap-3 rounded-full border border-zinc-800 px-5 py-2.5 text-[10px] font-black text-white hover:border-white/40 transition-all uppercase cursor-pointer bg-zinc-950 active:scale-95"
+          className="font-display group flex items-center gap-3 rounded-full border border-zinc-800 bg-zinc-950 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:border-white/40 active:scale-95 cursor-pointer"
         >
           {currency === 'USD' ? '$ USD' : '€ EUR'}
           <ArrowRightLeft 
@@ -76,7 +76,7 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
             <button 
               key={brand} 
               onClick={() => removeFilter("brand", brand)} 
-              className="group flex items-center gap-2 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-1.5 text-[10px] font-bold text-white uppercase transition-colors hover:border-zinc-600 cursor-pointer"
+              className="font-display group flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase transition-colors hover:border-zinc-600 cursor-pointer"
             >
               {brand} <X size={12} className="text-zinc-600 group-hover:text-white" />
             </button>
@@ -85,7 +85,7 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
           {activeType && (
             <button 
               onClick={() => removeFilter("type")} 
-              className="group flex items-center gap-2 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-1.5 text-[10px] font-bold text-white uppercase transition-colors hover:border-zinc-600 cursor-pointer"
+              className="font-display group flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase transition-colors hover:border-zinc-600 cursor-pointer"
             >
               {activeType} <X size={12} className="text-zinc-600 group-hover:text-white" />
             </button>
@@ -94,7 +94,7 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
           {hasPrice && (
             <button 
               onClick={() => {removeFilter("minPrice"); removeFilter("maxPrice")}} 
-              className="group flex items-center gap-2 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-1.5 text-[10px] font-bold text-white uppercase transition-colors hover:border-zinc-600 cursor-pointer"
+              className="font-display group flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase transition-colors hover:border-zinc-600 cursor-pointer"
             >
               Precio <X size={12} className="text-zinc-600 group-hover:text-white" />
             </button>
