@@ -35,7 +35,7 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
 
   if (user) {
     return (
-      <div className={`flex items-center gap-4 ${isMobile ? "w-full flex-col" : ""}`}>
+      <div className={`flex items-center gap-4 ${isMobile ? "w-full flex-col items-start gap-3" : ""}`}>
         <span className="text-sm font-medium text-white">
           Hola, {user.user_metadata.full_name || "Usuario"}
         </span>
@@ -57,7 +57,9 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
             router.replace("/");
             router.refresh();
           }}
-          className="min-h-11 rounded-lg px-2 text-xs text-zinc-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-wait disabled:opacity-60"
+          className={`min-h-11 rounded-lg text-xs text-zinc-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-wait disabled:opacity-60 ${
+            isMobile ? "w-full border border-white/10 px-3 text-left hover:bg-white/5" : "px-2"
+          }`}
         >
           {isSigningOut ? "Cerrando sesión..." : "Cerrar sesión"}
         </button>
@@ -75,7 +77,7 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
       href="/auth"
       className={`${
         isMobile
-          ? "mt-4 w-full rounded-xl border border-white/20 bg-transparent py-3 text-center text-sm font-bold text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          ? "flex min-h-11 w-full items-center justify-center rounded-xl bg-white px-3 text-center text-sm font-bold text-zinc-950 hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           : "hidden rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-black hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 lg:block"
       } transition-colors cursor-pointer`}
     >

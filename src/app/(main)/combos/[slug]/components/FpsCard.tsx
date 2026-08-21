@@ -106,11 +106,11 @@ export default function FpsCard({
   ];
 
   return (
-    <div className="flex flex-col p-6 lg:p-8 rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-xl h-full justify-between overflow-hidden min-h-[400px]">
+    <div className="flex h-auto min-h-0 flex-col justify-normal overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:h-full lg:min-h-[400px] lg:justify-between lg:overflow-hidden lg:p-8">
       {/* HEADER: SELECTORES + INFO */}
-      <div className="relative mb-6">
-        <div className="flex min-w-0 flex-wrap items-center gap-4 pr-10">
-          <div className="mr-1">
+      <div className="relative mb-5 lg:mb-6">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 pr-10 lg:justify-start">
+          <div className="mr-0 pr-8 lg:mr-1 lg:pr-0">
             <h2 className="text-sm font-black uppercase tracking-[0.16em] text-zinc-100">
               FPS estimados
             </h2>
@@ -118,42 +118,46 @@ export default function FpsCard({
               Rendimiento nativo por resolución
             </p>
           </div>
-          {/* Selector de Juego */}
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500">
-              <Gamepad2 size={12} className="text-zinc-400" />
-              Juego:
-            </span>
-            <select
-              value={selectedGameId}
-              onChange={(e) => setSelectedGameId(e.target.value)}
-              className="min-h-10 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-bold text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 cursor-pointer"
-            >
-              {games.map((game) => (
-                <option key={game.id} value={game.id} className="bg-zinc-950 text-zinc-200">
-                  {game.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 lg:gap-4">
+            {/* Selector de Juego */}
+            <div className="flex min-w-0 items-center gap-1.5 lg:gap-2">
+              <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500 lg:text-[10px] lg:tracking-[0.15em]">
+                <Gamepad2 size={12} className="text-zinc-400" />
+                <span className="sr-only lg:not-sr-only">Juego:</span>
+              </span>
+              <select
+                value={selectedGameId}
+                onChange={(e) => setSelectedGameId(e.target.value)}
+                aria-label="Seleccionar juego"
+                className="min-h-9 min-w-0 max-w-[10rem] cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 lg:min-h-10 lg:max-w-none lg:px-3"
+              >
+                {games.map((game) => (
+                  <option key={game.id} value={game.id} className="bg-zinc-950 text-zinc-200">
+                    {game.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Selector Dinámico de Gráficos */}
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500">
-              <Sliders size={12} className="text-zinc-400" />
-              Gráficos:
-            </span>
-            <select
-              value={selectedQuality}
-              onChange={(e) => setSelectedQuality(e.target.value)}
-              className="min-h-10 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-bold text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 cursor-pointer capitalize"
-            >
-              {availablePresets.map((preset) => (
-                <option key={preset} value={preset} className="bg-zinc-950 text-zinc-200">
-                  {formatPresetLabel(preset)}
-                </option>
-              ))}
-            </select>
+            {/* Selector Dinámico de Gráficos */}
+            <div className="flex min-w-0 items-center gap-1.5 lg:gap-2">
+              <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500 lg:text-[10px] lg:tracking-[0.15em]">
+                <Sliders size={12} className="text-zinc-400" />
+                <span className="sr-only lg:not-sr-only">Gráficos:</span>
+              </span>
+              <select
+                value={selectedQuality}
+                onChange={(e) => setSelectedQuality(e.target.value)}
+                aria-label="Seleccionar calidad gráfica"
+                className="min-h-9 min-w-0 cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold capitalize text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 lg:min-h-10 lg:px-3"
+              >
+                {availablePresets.map((preset) => (
+                  <option key={preset} value={preset} className="bg-zinc-950 text-zinc-200">
+                    {formatPresetLabel(preset)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
         </div>
@@ -167,7 +171,7 @@ export default function FpsCard({
           >
             <Info size={11} strokeWidth={3} />
           </button>
-          <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+          <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <div className="mb-2 font-bold text-white uppercase tracking-widest text-[9px]">
               Estimación de FPS
             </div>
@@ -180,31 +184,33 @@ export default function FpsCard({
       </div>
 
       {/* CUERPO: CAJAS DE FPS */}
-      <div className="my-auto grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:my-auto">
         {fpsMetrics.map((metric) => {
           const styles = getFpsStyles(metric.value);
 
           return (
             <div
               key={metric.label}
-              className={`group flex flex-col items-center justify-center rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5 ${styles.border} ${styles.bg}`}
+              className={`group flex min-h-24 flex-col items-center justify-center rounded-2xl border p-3 transition-all duration-300 lg:min-h-0 lg:p-5 lg:hover:-translate-y-0.5 ${styles.border} ${styles.bg}`}
             >
-              <span className={`mb-3 text-[10px] font-black uppercase tracking-[0.2em] ${styles.label}`}>
+              <span className={`mb-2 text-[9px] font-black uppercase tracking-[0.15em] lg:mb-3 lg:text-[10px] lg:tracking-[0.2em] ${styles.label}`}>
                 {metric.label}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className={`font-semibold text-5xl leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
+                <span className={`text-3xl font-semibold leading-none tracking-[-0.03em] tabular-nums lg:text-5xl ${styles.text}`}>
                   {metric.value}
                 </span>
-                
               </div>
+              <span className="mt-1 text-[8px] font-bold uppercase tracking-widest text-zinc-600 lg:hidden">
+                FPS
+              </span>
             </div>
           );
         })}
       </div>
 
       {/* FOOTER */}
-      <div className="mt-6 pt-4 border-t border-zinc-900/20">
+      <div className="mt-6 hidden border-t border-zinc-900/20 pt-4 lg:block">
         <p className="text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
           * Rendimiento nativo estimado sin tecnologías de reescalado (DLSS / FSR).
         </p>
