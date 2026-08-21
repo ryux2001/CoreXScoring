@@ -3,6 +3,7 @@ import ComboCurrencyToggle from '@/app/(main)/combos/components/ComboCurrencyTog
 import ComboFilterBar from '@/app/(main)/combos/components/ComboFilterBar';
 import ComboPagination from '@/app/(main)/combos/components/ComboPagination';
 import BuildCard from './components/BuildCard';
+import CategoryAccordion from '@/ui/catalog/CategoryAccordion';
 import {
   filterBuilds,
   getBuildCategories,
@@ -93,23 +94,22 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
             </p>
           </div>
         ) : (
-          <div className="mt-10 flex flex-col gap-14 sm:gap-8">
+          <div className="mt-10 flex flex-col gap-8 sm:gap-10">
             {Object.entries(buildsByCategory).map(([categoryName, categoryBuilds]) => (
-              <section key={categoryName}>
-                <h2 className="mb-6 border-b border-zinc-900 pb-3 text-[14px] font-extrabold uppercase tracking-[0.15em] text-zinc-400">
-                  {categoryName}
-                </h2>
-                <div className="grid grid-cols-1 gap-8 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  {categoryBuilds.map((build) => (
-                    <BuildCard
-                      key={build.id}
-                      build={build}
-                      currency={currency}
-                      wholeCardClickable
-                    />
-                  ))}
-                </div>
-              </section>
+              <CategoryAccordion
+                key={categoryName}
+                title={categoryName}
+                itemCount={categoryBuilds.length}
+              >
+                {categoryBuilds.map((build) => (
+                  <BuildCard
+                    key={build.id}
+                    build={build}
+                    currency={currency}
+                    wholeCardClickable
+                  />
+                ))}
+              </CategoryAccordion>
             ))}
           </div>
         )}

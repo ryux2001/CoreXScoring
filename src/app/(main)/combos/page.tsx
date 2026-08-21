@@ -3,6 +3,7 @@ import ComboCard from './components/ComboCard';
 import ComboCurrencyToggle from './components/ComboCurrencyToggle';
 import ComboFilterBar from './components/ComboFilterBar';
 import ComboPagination from './components/ComboPagination';
+import CategoryAccordion from '@/ui/catalog/CategoryAccordion';
 import {
   filterCombos,
   getComboCategories,
@@ -87,23 +88,22 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
             </p>
           </div>
         ) : (
-          <div className="mt-5 sm:mt-10 flex flex-col gap-14">
+          <div className="mt-5 flex flex-col gap-8 sm:mt-10 sm:gap-10">
             {Object.entries(combosByCategory).map(([categoryName, categoryCombos]) => (
-              <section key={categoryName}>
-                <h2 className="mb-6 border-b border-zinc-900 pb-3 text-[14px] font-extrabold uppercase tracking-[0.15em] text-zinc-400">
-                  {categoryName}
-                </h2>
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {categoryCombos.map((combo) => (
-                    <ComboCard
-                      key={combo.id}
-                      combo={combo}
-                      currency={currency}
-                      wholeCardClickable
-                    />
-                  ))}
-                </div>
-              </section>
+              <CategoryAccordion
+                key={categoryName}
+                title={categoryName}
+                itemCount={categoryCombos.length}
+              >
+                {categoryCombos.map((combo) => (
+                  <ComboCard
+                    key={combo.id}
+                    combo={combo}
+                    currency={currency}
+                    wholeCardClickable
+                  />
+                ))}
+              </CategoryAccordion>
             ))}
           </div>
         )}
