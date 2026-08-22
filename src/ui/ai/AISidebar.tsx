@@ -10,15 +10,30 @@ import {
   SendHorizontal,
   Square,
 } from "lucide-react";
+import ReactMarkdown, { type Components } from "react-markdown";
 import type { ChatMessage, ChatResponse } from "@/lib/ai/types";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 
 const INITIAL_MESSAGE: ChatMessage = {
   role: "assistant",
-  content: "Hola, soy CoreX AI. Pregúntame lo que necesites mientras navegues por CoreXScoring.",
+  content: "Hola, soy CoreX AI, tu asistente de hardware. Puedo ayudarte con componentes, compatibilidad, rendimiento y el uso de CoreXScoring.",
 };
 const MOBILE_TOAST_MAX_LENGTH = 120;
+
+const markdownComponents: Components = {
+  a: ({ children, href, title }) => (
+    <a
+      href={href}
+      title={title}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="font-semibold text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 transition-colors hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+    >
+      {children}
+    </a>
+  ),
+};
 
 function getMobileToastPreview(content: string): string {
   const normalizedContent = content.replace(/\s+/g, " ").trim();
@@ -80,7 +95,13 @@ function ChatPanel({
           <div className="min-w-0">
             <h2 className="font-display truncate text-base font-bold tracking-tight text-white">CoreX AI</h2>
             <p className="font-technical text-[10px] text-zinc-500">
-              {provider === "openrouter" ? "OpenRouter · respaldo" : "Groq · principal"}
+              {provider === "openrouter"
+                ? "OpenRouter · respaldo"
+                : provider === "guardrail"
+                  ? "CoreX AI · alcance protegido"
+                  : provider === "groq"
+                    ? "Groq · principal"
+                    : "Hardware · asistente especializado"}
             </p>
           </div>
         </div>
@@ -128,15 +149,23 @@ function ChatPanel({
             key={`${message.role}-${index}`}
             className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
           >
-            <p
+            <div
               className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
                 message.role === "user"
                   ? "bg-white text-zinc-950"
                   : "border border-white/10 bg-zinc-900/80 text-zinc-200"
               }`}
             >
-              {message.content}
-            </p>
+              {message.role === "assistant" ? (
+                <div className="[&_p]:m-0 [&_p+p]:mt-3 [&_strong]:font-bold [&_em]:italic [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:rounded-r-lg [&_blockquote]:bg-cyan-300/5 [&_blockquote]:pl-3 [&_blockquote]:text-cyan-100 [&_pre]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-black/70 [&_pre]:p-3 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_code]:py-0.5 [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+                  <ReactMarkdown skipHtml components={markdownComponents}>
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                message.content
+              )}
+            </div>
           </div>
         ))}
 
@@ -258,7 +287,14 @@ export default function AISidebar() {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages.slice(-12) }),
+        body: JSON.stringify({
+          messages: nextMessages.slice(-12),
+          context: {
+            pathname: window.location.pathname,
+            search: window.location.search,
+            title: document.title,
+          },
+        }),
         signal: controller.signal,
       });
       const payload = await response.json() as ChatResponse | { error?: string };

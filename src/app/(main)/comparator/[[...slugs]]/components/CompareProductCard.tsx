@@ -362,12 +362,12 @@ export default function CompareProductCard({
               const isHighest = itemsCount > 1 && currentScore === (maxScores[category] || 0) && currentScore > 0;
 
               return (
-                <div key={category} className="group min-w-0 animate-in fade-in duration-200">
+                <div key={category} className="group flex min-w-0 flex-col gap-1.5 animate-in fade-in duration-200 md:gap-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-zinc-400" title={category}>
                       {category}
                     </span>
-                    <span className="flex shrink-0 items-center gap-1 text-[12px] uppercase tracking-wider font-thin tabular-nums text-zinc-300">
+                    <span className="hidden shrink-0 items-center gap-1 text-[12px] font-thin uppercase tracking-wider tabular-nums text-zinc-300 md:flex">
                       {isHighest && (
                         <span className="text-emerald-400" title="Mejor nota">
                           <ArrowUp aria-hidden="true" size={10} strokeWidth={3} />
@@ -376,11 +376,21 @@ export default function CompareProductCard({
                       {normalizedScore.toFixed(1)}
                     </span>
                   </div>
-                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full border border-zinc-900/30 bg-zinc-900/60 p-[2px]">
-                    <div
-                      className="h-full rounded-full bg-zinc-400 shadow-[0_0_10px_rgba(255,255,255,0.05)] transition-all duration-1000 ease-out group-hover:bg-zinc-200"
-                      style={{ width: `${normalizedScore * 10}%` }}
-                    />
+                  <div className="flex min-w-0 items-center gap-2 md:block">
+                    <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full border border-zinc-900/30 bg-zinc-900/60 p-[2px] md:mt-1.5 md:w-full">
+                      <div
+                        className="h-full rounded-full bg-zinc-400 shadow-[0_0_10px_rgba(255,255,255,0.05)] transition-all duration-1000 ease-out group-hover:bg-zinc-200"
+                        style={{ width: `${normalizedScore * 10}%` }}
+                      />
+                    </div>
+                    <span className="flex shrink-0 items-center gap-1 text-[12px] font-thin uppercase tracking-wider tabular-nums text-zinc-300 md:hidden">
+                      {isHighest && (
+                        <span className="text-emerald-400" title="Mejor nota">
+                          <ArrowUp aria-hidden="true" size={10} strokeWidth={3} />
+                        </span>
+                      )}
+                      {normalizedScore.toFixed(1)}
+                    </span>
                   </div>
                 </div>
               );

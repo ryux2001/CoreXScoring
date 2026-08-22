@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { runChat } from "@/lib/ai/gateway";
-import { isChatRequest, normalizeMessages } from "@/lib/ai/types";
+import { isChatRequest, normalizeMessages, normalizePageContext } from "@/lib/ai/types";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const completion = await runChat(normalizeMessages(body.messages));
+    const completion = await runChat(normalizeMessages(body.messages), {
+      supabase,
+      pageContext: normalizePageContext(body.context),
+    });
     return NextResponse.json(completion, {
       headers: { "Cache-Control": "no-store" },
     });

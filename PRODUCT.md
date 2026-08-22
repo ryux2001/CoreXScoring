@@ -25,9 +25,9 @@ La experiencia incluye navegación de catálogo, fichas de componentes, comparad
 ## Capabilities and Constraints
 
 - Next.js, TypeScript, Tailwind, Supabase Auth y Supabase.
-- El chat de la primera fase usa Groq como proveedor principal y OpenRouter como fallback cuando Groq alcanza su cuota/rate limit.
+- CoreX AI usa Groq como proveedor principal y OpenRouter como fallback cuando Groq alcanza su cuota/rate limit.
 - Las claves de proveedor se mantienen exclusivamente en configuración de servidor.
-- La primera fase no ejecuta tools ni modifica datos de la aplicación.
+- El asistente está especializado en hardware de PC y uso de CoreXScoring mediante guardrails de servidor; todavía no ejecuta tools ni modifica datos de la aplicación.
 
 ## Brand Commitments
 
