@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import CreatedBuildWorkspace from '../components/CreatedBuildWorkspace';
 
 interface CreatedBuildDetailPageProps {
@@ -32,7 +33,7 @@ async function createVaultClient() {
 export default async function CreatedBuildDetailPage({ params, searchParams }: CreatedBuildDetailPageProps) {
   const { slug } = await params;
   const query = await searchParams;
-  const currency = query.currency === 'EUR' ? 'EUR' : 'USD';
+  const currency = await resolveRequestCurrency(query.currency);
   const supabase = await createVaultClient();
   const { data: { user } } = await supabase.auth.getUser();
 

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { ArrowRightLeft, Search, Settings2, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { setCurrencyPreference } from '@/lib/currency';
 
 interface ComboFilterBarProps {
   basePath: string;
@@ -111,7 +112,11 @@ export default function ComboFilterBar({
           {showCurrencyToggle && (
             <button
               type="button"
-              onClick={() => navigateWithParams({ currency: currency === 'EUR' ? 'USD' : 'EUR' })}
+              onClick={() => {
+                const nextCurrency: 'USD' | 'EUR' = currency === 'EUR' ? 'USD' : 'EUR';
+                setCurrencyPreference(nextCurrency);
+                navigateWithParams({ currency: nextCurrency });
+              }}
               className="flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
               title="Cambiar moneda"
             >

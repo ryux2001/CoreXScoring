@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { resolveRequestCurrency } from "@/lib/serverCurrency";
 import { notFound } from "next/navigation";
 import MainInfoCard from "./components/MainInfoCard";
 import PriceCustomCard from "./components/PriceCustomCard";
@@ -16,7 +17,8 @@ interface ProductPageProps {
 
 export default async function ProductPage({ params, searchParams }: ProductPageProps) {
   const { slug } = await params;
-  const { currency = 'USD' } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const currency = await resolveRequestCurrency(resolvedSearchParams.currency);
 
   const { data: product, error } = await supabase
     .from("products")

@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import ComparatorClient from './components/ComparatorClient';
 import { normalizeBuild, normalizeCombo } from './components/comparisonUtils';
 
@@ -13,7 +14,7 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
   const resolvedSearchParams = await searchParams;
 
   const slugs = resolvedParams.slugs || [];
-  const currency = (resolvedSearchParams.currency || 'USD').toUpperCase();
+  const currency = await resolveRequestCurrency(resolvedSearchParams.currency);
   let initialItems: any[] = [];
 
   if (slugs.length > 0) {

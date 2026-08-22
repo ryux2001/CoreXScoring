@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import ComboCard from '@/app/(main)/combos/components/ComboCard';
 import ComboPagination from '@/app/(main)/combos/components/ComboPagination';
 import CreatedCombosFilterBar from './components/CreatedCombosFilterBar';
@@ -52,7 +53,7 @@ export default async function CreatedCombosPage({
   searchParams,
 }: CreatedCombosPageProps) {
   const params = await searchParams;
-  const currency = params.currency === 'EUR' ? 'EUR' : 'USD';
+  const currency = await resolveRequestCurrency(params.currency);
   const supabase = await createVaultClient();
   const {
     data: { user },

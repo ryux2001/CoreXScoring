@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import BuildMainCard from './components/BuildMainCard';
 import MobileBuildIsland from './components/MobileBuildIsland';
 import BuildNotesCard from './components/BuildNotesCard';
@@ -17,7 +18,7 @@ export default async function BuildDetailPage({
 }: BuildDetailPageProps) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
-  const currency = (resolvedSearchParams.currency || 'USD').toUpperCase();
+  const currency = await resolveRequestCurrency(resolvedSearchParams.currency);
 
   const { data: build, error } = await supabase
     .from('builds')

@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import { notFound } from 'next/navigation';
 import ComboMainCard from './components/ComboMainCard';
 import MobileComboIsland from './components/MobileComboIsland';
@@ -17,7 +18,7 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
   const comboSlug = resolvedParams.slug;
 
   const resolvedSearch = await searchParams;
-  const currency = (resolvedSearch.currency || 'USD').toUpperCase();
+  const currency = await resolveRequestCurrency(resolvedSearch.currency);
 
   // 1. Consulta profunda: Obtenemos el combo y sus componentes
   const { data: combo, error } = await supabase

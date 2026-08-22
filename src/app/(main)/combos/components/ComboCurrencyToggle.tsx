@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ArrowRightLeft } from 'lucide-react';
+import { setCurrencyPreference } from '@/lib/currency';
 
 interface ComboCurrencyToggleProps {
   currentCurrency: string;
@@ -16,7 +17,8 @@ export default function ComboCurrencyToggle({ currentCurrency }: ComboCurrencyTo
   const handleToggle = () => {
     // Clonamos los parámetros de búsqueda actuales para no perder filtros si los hay en el futuro
     const params = new URLSearchParams(searchParams.toString());
-    const nextCurrency = currentCurrency === 'USD' ? 'EUR' : 'USD';
+    const nextCurrency: 'USD' | 'EUR' = currentCurrency === 'USD' ? 'EUR' : 'USD';
+    setCurrencyPreference(nextCurrency);
     
     params.set("currency", nextCurrency);
     

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import ComboCard from './components/ComboCard';
 import ComboCurrencyToggle from './components/ComboCurrencyToggle';
 import ComboFilterBar from './components/ComboFilterBar';
@@ -21,7 +22,7 @@ interface CombosPageProps {
 
 export default async function CombosPage({ searchParams }: CombosPageProps) {
   const params = await searchParams;
-  const currency = params.currency === 'EUR' ? 'EUR' : 'USD';
+  const currency = await resolveRequestCurrency(params.currency);
 
   const { data: combos, error } = await supabase
     .from('combos')

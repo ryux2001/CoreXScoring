@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import BuildCard from '@/app/(main)/builds/components/BuildCard';
 import ComboPagination from '@/app/(main)/combos/components/ComboPagination';
 import CreatedCombosFilterBar from '@/app/(main)/vault/combos-created/components/CreatedCombosFilterBar';
@@ -48,7 +49,7 @@ async function createVaultClient() {
 
 export default async function CreatedBuildsPage({ searchParams }: CreatedBuildsPageProps) {
   const params = await searchParams;
-  const currency = params.currency === 'EUR' ? 'EUR' : 'USD';
+  const currency = await resolveRequestCurrency(params.currency);
   const supabase = await createVaultClient();
   const { data: { user } } = await supabase.auth.getUser();
 

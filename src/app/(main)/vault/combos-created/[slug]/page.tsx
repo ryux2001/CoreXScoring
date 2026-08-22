@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import CreatedComboWorkspace from '../components/CreatedComboWorkspace';
 
 interface CreatedComboDetailPageProps {
@@ -40,7 +41,7 @@ export default async function CreatedComboDetailPage({
 }: CreatedComboDetailPageProps) {
   const { slug } = await params;
   const query = await searchParams;
-  const currency = query.currency === 'EUR' ? 'EUR' : 'USD';
+  const currency = await resolveRequestCurrency(query.currency);
   const supabase = await createVaultClient();
   const { data: { user } } = await supabase.auth.getUser();
 

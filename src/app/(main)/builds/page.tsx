@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import ComboCurrencyToggle from '@/app/(main)/combos/components/ComboCurrencyToggle';
 import ComboFilterBar from '@/app/(main)/combos/components/ComboFilterBar';
 import ComboPagination from '@/app/(main)/combos/components/ComboPagination';
@@ -21,7 +22,7 @@ interface BuildsPageProps {
 
 export default async function BuildsPage({ searchParams }: BuildsPageProps) {
   const params = await searchParams;
-  const currency = params.currency === 'EUR' ? 'EUR' : 'USD';
+  const currency = await resolveRequestCurrency(params.currency);
 
   const { data: builds, error } = await supabase
     .from('builds')

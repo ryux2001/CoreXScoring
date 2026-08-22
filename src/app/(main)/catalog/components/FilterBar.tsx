@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Settings2Icon, X, ArrowRightLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import FilterModal from "./FilterModal";
+import { setCurrencyPreference } from '@/lib/currency';
 
 interface Props {
   count: number;
@@ -23,7 +24,8 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
 
   const toggleCurrency = () => {
     const params = new URLSearchParams(searchParams);
-    const nextCurrency = currency === 'USD' ? 'EUR' : 'USD';
+    const nextCurrency: 'USD' | 'EUR' = currency === 'USD' ? 'EUR' : 'USD';
+    setCurrencyPreference(nextCurrency);
     params.set("currency", nextCurrency);
     router.push(`/catalog?${params.toString()}`);
   };

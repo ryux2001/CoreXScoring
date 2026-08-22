@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import { Card } from '@/ui/card/Card';
 import SavedProductsFilterBar from './components/SavedProductsFilterBar';
 import SavedProductsPagination from './components/SavedProductsPagination';
@@ -60,7 +61,7 @@ export default async function VaultProductsPage({
   searchParams,
 }: VaultProductsPageProps) {
   const params = await searchParams;
-  const currency = params.currency === 'EUR' ? 'EUR' : 'USD';
+  const currency = await resolveRequestCurrency(params.currency);
   const search = params.q?.trim().toLowerCase() || '';
   const selectedBrands = params.brand?.split(',').filter(Boolean) || [];
   const selectedType = params.type || '';

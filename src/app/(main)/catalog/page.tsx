@@ -1,5 +1,6 @@
 import React from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { resolveRequestCurrency } from '@/lib/serverCurrency'
 import { Card } from '@/ui/card/Card'
 import FilterBar from './components/FilterBar'
 import Pagination from './components/Pagination' // Importamos el nuevo componente
@@ -18,7 +19,8 @@ interface CatalogPageProps {
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const params = await searchParams;
-  const { q, brand, type, minPrice, maxPrice, currency = 'USD', page = '1' } = params;
+  const { q, brand, type, minPrice, maxPrice, page = '1' } = params;
+  const currency = await resolveRequestCurrency(params.currency);
 
   // Lógica de Paginación
   const currentPage = parseInt(page);
