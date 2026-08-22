@@ -5,8 +5,10 @@ import {
   FolderHeart,
   Hammer,
   Layers2,
+  ShieldCheck,
   UserRound,
 } from 'lucide-react';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 const vaultSections = [
   {
@@ -47,7 +49,20 @@ const vaultSections = [
   },
 ];
 
-export default function VaultPage() {
+export default async function VaultPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const sections = user?.app_metadata?.role === 'admin'
+    ? [...vaultSections, {
+      title: 'Panel de IA',
+      description: 'Consulta cuotas, proveedores, errores y uso del asistente.',
+      href: '/vault/admin/ai',
+      icon: ShieldCheck,
+    }]
+    : vaultSections;
+
   return (
     <main className="vault-page font-technical min-h-[calc(100vh-4rem)] bg-black px-2 py-8 sm:p4 md:px-8 md:py-12 lg:px-12">
       <div className="mx-auto max-w-5xl rounded-[2rem] py-4 px-2 sm:p-4 shadow-2xl md:p-7">
@@ -64,7 +79,7 @@ export default function VaultPage() {
         </header>
 
         <div className="mt-4 grid grid-cols-2 gap-3 md:mt-6 md:grid-cols-3 md:gap-5">
-          {vaultSections.map(({ title, description, href, icon: Icon }) => (
+          {sections.map(({ title, description, href, icon: Icon }) => (
             <Link
               key={title}
               href={href}

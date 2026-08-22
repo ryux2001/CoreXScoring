@@ -155,10 +155,10 @@ function ChatPanel({
             className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
+              className={`max-w-[88%] whitespace-pre-wrap rounded-2xl border px-3.5 py-3 text-sm leading-relaxed ${
                 message.role === "user"
-                  ? "bg-white text-zinc-950"
-                  : "border border-white/10 bg-zinc-900/80 text-zinc-200"
+                  ? "border-cyan-500/60 bg-cyan-950/35 text-cyan-100 shadow-[0_8px_20px_rgba(8,145,178,0.12)]"
+                  : "border-white/10 bg-zinc-900/80 text-zinc-200"
               }`}
             >
               {message.role === "assistant" ? (
