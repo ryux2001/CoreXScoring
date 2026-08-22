@@ -3,8 +3,14 @@ import type { PageContext } from "../types";
 
 export type AiSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
+export interface AiActor {
+  id: string;
+  isAnonymous: boolean;
+}
+
 export interface AiToolContext {
   supabase: AiSupabaseClient;
+  actor: AiActor;
   pageContext?: PageContext;
 }
 

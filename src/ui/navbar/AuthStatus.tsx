@@ -33,6 +33,22 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
     };
   }, [setUser]);
 
+  if (user?.is_anonymous) {
+    return (
+      <div className={`flex items-center gap-3 ${isMobile ? "w-full flex-col items-start" : ""}`}>
+        <span className="font-display text-sm font-semibold text-zinc-400">Modo invitado</span>
+        <Link
+          href="/auth"
+          className={`font-display rounded-lg text-xs font-bold text-white transition-colors hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+            isMobile ? "min-h-11 w-full border border-white/10 px-3 py-3 hover:bg-white/5" : "px-2"
+          }`}
+        >
+          Crear cuenta
+        </Link>
+      </div>
+    );
+  }
+
   if (user) {
     return (
       <div className={`flex items-center gap-4 ${isMobile ? "w-full flex-col items-start gap-3" : ""}`}>

@@ -27,7 +27,8 @@ La experiencia incluye navegación de catálogo, fichas de componentes, comparad
 - Next.js, TypeScript, Tailwind, Supabase Auth y Supabase.
 - CoreX AI usa Groq como proveedor principal y OpenRouter como fallback cuando Groq alcanza su cuota/rate limit.
 - Las claves de proveedor se mantienen exclusivamente en configuración de servidor.
-- El asistente está especializado en hardware de PC y uso de CoreXScoring mediante guardrails de servidor; todavía no ejecuta tools ni modifica datos de la aplicación.
+- El asistente está especializado en hardware de PC y uso de CoreXScoring mediante guardrails de servidor; puede consultar tools de solo lectura y no modifica datos de la aplicación.
+- CoreX AI admite sesiones anónimas para conversar sin registro, separadas de las cuentas permanentes y sin acceso a la bóveda.
 
 ## Brand Commitments
 

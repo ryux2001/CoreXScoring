@@ -39,7 +39,8 @@ export async function proxy(request: NextRequest) {
     user = null;
   }
 
-  const session = Boolean(user);
+  const isAnonymous = user?.is_anonymous === true;
+  const authenticatedSession = Boolean(user && !isAnonymous);
   const protectedRoutes = ['/vault', '/dashboard', '/settings'];
   const isProtectedRoute = protectedRoutes.some((route) => (
     request.nextUrl.pathname.startsWith(route)
@@ -53,15 +54,15 @@ export async function proxy(request: NextRequest) {
     return redirectResponse;
   };
 
-  if (isProtectedRoute && !session) {
+  if (isProtectedRoute && !authenticatedSession) {
     return redirectWithSessionCookies(new URL('/auth', request.url));
   }
 
-  if (request.nextUrl.pathname === '/auth/update-password' && !session) {
+  if (request.nextUrl.pathname === '/auth/update-password' && !authenticatedSession) {
     return redirectWithSessionCookies(new URL('/auth', request.url));
   }
 
-  if (request.nextUrl.pathname.startsWith('/auth') && session && !isAuthFlowRoute) {
+  if (request.nextUrl.pathname.startsWith('/auth') && authenticatedSession && !isAuthFlowRoute) {
     return redirectWithSessionCookies(new URL('/', request.url));
   }
 

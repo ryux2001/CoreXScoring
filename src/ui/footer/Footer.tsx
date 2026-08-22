@@ -3,6 +3,7 @@ import { Mail } from "lucide-react";
 
 const footerLinks = [
   { name: "Inicio", href: "/" },
+  { name: "Tutorial", href: "/" },
   { name: "Sobre nosotros", href: "#" },
   { name: "Preguntas frecuentes", href: "#" },
   { name: "Contáctanos", href: "#" },

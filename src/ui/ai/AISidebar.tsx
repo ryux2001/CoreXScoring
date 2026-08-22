@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import type { ChatMessage, ChatResponse } from "@/lib/ai/types";
+import { ensureAiSession } from "@/lib/ai/client-session";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 
@@ -55,6 +56,7 @@ interface ChatPanelProps {
   error: string | null;
   isSending: boolean;
   provider: ChatResponse["provider"] | null;
+  sessionKind: "anonymous" | "authenticated" | null;
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onStop: () => void;
@@ -73,6 +75,7 @@ function ChatPanel({
   error,
   isSending,
   provider,
+  sessionKind,
   onDraftChange,
   onSend,
   onStop,
@@ -95,7 +98,9 @@ function ChatPanel({
           <div className="min-w-0">
             <h2 className="font-display truncate text-base font-bold tracking-tight text-white">CoreX AI</h2>
             <p className="font-technical text-[10px] text-zinc-500">
-              {provider === "openrouter"
+              {sessionKind === "anonymous"
+                ? "Modo invitado · hardware"
+                : provider === "openrouter"
                 ? "OpenRouter · respaldo"
                 : provider === "guardrail"
                   ? "CoreX AI · alcance protegido"
@@ -249,6 +254,7 @@ export default function AISidebar() {
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [provider, setProvider] = useState<ChatResponse["provider"] | null>(null);
+  const [sessionKind, setSessionKind] = useState<"anonymous" | "authenticated" | null>(null);
   const [mobileMode, setMobileMode] = useState<MobileMode>("collapsed");
   const [isMobileToastVisible, setIsMobileToastVisible] = useState(true);
   const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
@@ -284,6 +290,9 @@ export default function AISidebar() {
     abortControllerRef.current = controller;
 
     try {
+      const session = await ensureAiSession();
+      setSessionKind(session.user.is_anonymous === true ? "anonymous" : "authenticated");
+
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -419,6 +428,7 @@ export default function AISidebar() {
     error,
     isSending,
     provider,
+    sessionKind,
     onDraftChange: setDraft,
     onSend: () => void sendMessage(),
     onStop: stopResponse,

@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatResponse } from "./types";
+import type { ChatMessage, ChatResponse, ChatUsage } from "./types";
 import { evaluateChatGuardrails } from "./guardrails";
 import { AI_TOOL_DEFINITIONS, executeAiTool } from "./tools";
 import type { AiToolContext } from "./tools/types";
@@ -49,6 +49,10 @@ interface CompletionPayload {
     };
   }>;
   model?: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+  };
 }
 
 interface ToolCall {
@@ -165,6 +169,9 @@ async function runProviderConversation({
     ...messages,
   ];
   const maxToolRounds = 4;
+  const usage: ChatUsage = { inputTokens: 0, outputTokens: 0 };
+  let toolCallCount = 0;
+  let usageReported = false;
 
   for (let round = 0; round < maxToolRounds; round += 1) {
     const payload = await requestCompletion({
@@ -174,6 +181,12 @@ async function runProviderConversation({
       model,
       messages: providerMessages,
     });
+    if (payload.usage) {
+      usageReported = usageReported || typeof payload.usage.prompt_tokens === "number"
+        || typeof payload.usage.completion_tokens === "number";
+      usage.inputTokens += payload.usage.prompt_tokens || 0;
+      usage.outputTokens += payload.usage.completion_tokens || 0;
+    }
     const assistantMessage = payload.choices?.[0]?.message;
     const toolCalls = assistantMessage?.tool_calls?.filter((toolCall) => toolCall.function?.name);
 
@@ -189,9 +202,12 @@ async function runProviderConversation({
         message: { role: "assistant", content },
         provider,
         model: payload.model || model,
+        ...(usageReported ? { usage } : {}),
+        toolCalls: toolCallCount,
       };
     }
 
+    toolCallCount += toolCalls.length;
     providerMessages.push({
       role: "assistant",
       content: assistantMessage.content ?? null,

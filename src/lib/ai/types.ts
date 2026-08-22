@@ -19,6 +19,11 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface ChatUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface ChatRequest {
   messages: ChatMessage[];
   context?: PageContext;
@@ -28,6 +33,8 @@ export interface ChatResponse {
   message: ChatMessage;
   provider: ChatProvider;
   model: string;
+  usage?: ChatUsage;
+  toolCalls?: number;
 }
 
 export function isChatRequest(value: unknown): value is ChatRequest {
