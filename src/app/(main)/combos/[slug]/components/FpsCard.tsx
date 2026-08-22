@@ -106,7 +106,7 @@ export default function FpsCard({
   ];
 
   return (
-    <div className="flex h-auto min-h-0 flex-col justify-normal overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:h-full lg:min-h-[400px] lg:justify-between lg:overflow-hidden lg:p-8">
+    <div className="flex h-auto min-h-0 flex-col justify-normal overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:h-full lg:min-h-[400px] lg:justify-between lg:p-8">
       {/* HEADER: SELECTORES + INFO */}
       <div className="relative mb-5 lg:mb-6">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 pr-10 lg:justify-start">

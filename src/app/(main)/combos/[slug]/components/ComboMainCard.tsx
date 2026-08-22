@@ -8,9 +8,16 @@ import { getComponentNotes } from '@/lib/scoring';
 interface ComboMainCardProps {
   combo: any;
   currency?: string;
+  showHeader?: boolean;
+  className?: string;
 }
 
-export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCardProps) {
+export default function ComboMainCard({
+  combo,
+  currency = 'USD',
+  showHeader = true,
+  className = '',
+}: ComboMainCardProps) {
   const draftCurrency = combo?.priceModes ? currency : undefined;
 
   // Configuración de las partes con su etiqueta y clave de custom_price
@@ -57,17 +64,18 @@ export default function ComboMainCard({ combo, currency = 'USD' }: ComboMainCard
   };
 
   return (
-    <div className="flex h-full flex-col rounded-3xl border border-zinc-900 bg-zinc-950/40 p-5 lg:p-8 shadow-2xl backdrop-blur-sm w-full overflow-hidden">
-      
+    <div className={`flex h-full w-full flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/40 p-5 shadow-2xl backdrop-blur-sm lg:p-8 ${className}`}>
       {/* Título y Categoría del Combo */}
-      <div className="mb-6 lg:mb-8">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-          {combo.category}
-        </span>
-        <h1 className="mt-2 text-xl md:text-2xl font-black tracking-tighter text-white leading-snug">
-          {combo.title}
-        </h1>
-      </div>
+      {showHeader && (
+        <div className="mb-6 lg:mb-8">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+            {combo.category}
+          </span>
+          <h1 className="mt-2 text-xl font-black leading-snug tracking-tighter text-white md:text-2xl">
+            {combo.title}
+          </h1>
+        </div>
+      )}
 
       {/* Lista de Componentes */}
       <div className="flex flex-col gap-4 sm:gap-5 mt-auto w-full">

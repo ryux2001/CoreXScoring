@@ -119,7 +119,7 @@ export default function BuildNotesCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8 lg:gap-3">
+      <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-8 lg:gap-3">
         {buildNotes.map((note) => {
           const styles = getScoreStyles(note.score);
 

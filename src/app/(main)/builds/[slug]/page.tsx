@@ -44,6 +44,7 @@ export default async function BuildDetailPage({
     <main className="build-page font-technical relative min-h-screen bg-black p-4 md:p-8 lg:p-12">
       <div className="mx-auto max-w-[1600px] animate-in fade-in duration-500">
         <div className="mt-6 grid grid-cols-1 gap-6 md:mt-0 lg:grid-cols-12 lg:items-start">
+          {/* 📱 VISTA MÓVIL: Tarjeta de componentes plegable */}
           <div className="block lg:hidden">
             <MobileBuildIsland build={build} currency={currency} />
           </div>

@@ -1,95 +1,82 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, Layers } from 'lucide-react';
+import { useId, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import ComboMainCard from './ComboMainCard';
 
 interface MobileComboIslandProps {
-  combo: any;
+  combo: {
+    title: string;
+    category?: string;
+    [key: string]: unknown;
+  };
+  currency?: string;
 }
 
-export default function MobileComboIsland({ combo }: MobileComboIslandProps) {
+export default function MobileComboIsland({
+  combo,
+  currency = 'USD',
+}: MobileComboIslandProps) {
   const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  const generatedId = useId();
+  const panelId = `mobile-combo-details-${generatedId.replace(/:/g, '')}`;
 
   return (
-    <>
-      {/* OVERLAY OSCURO DEL FONDO */}
-      <div 
-        className={`fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setIsOpen(false)}
-      />
-
-      {/* LA ISLA DINÁMICA */}
-      {/* 🛠️ SOLUCIÓN: Usamos rounded-[22px] (mitad de 44px) para que el salto de forma sea invisible y perfecto */}
-      {/* 🛠️ SOLUCIÓN: Cambiamos top-10 por top-16 (más abajo) y reducimos la altura máxima a 380px */}
-      <div 
-        className={`fixed left-1/2 z-[100] -translate-x-1/2 overflow-hidden border border-zinc-800/80 bg-black/95 shadow-2xl backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
-          isOpen 
-            ? 'top-[90px] h-[490px] w-[90vw] max-w-sm rounded-[32px]' // ESTADO EXPANDIDO (Justo para el contenido)
-            : 'top-[90px] h-[44px] w-[210px] rounded-[22px]'          // ESTADO CONTRAÍDO (Más abajo y radio matemático exacto)
+    <section className="w-full">
+      <div
+        className={`overflow-hidden border border-zinc-900 bg-zinc-950/40 shadow-2xl backdrop-blur-sm ${
+          isOpen ? 'rounded-t-3xl border-b-0' : 'rounded-3xl'
         }`}
       >
-        
-        {/* CONTENIDO 1: BOTÓN (Desaparece al abrir) */}
         <button
-          onClick={() => setIsOpen(true)}
-          className={`absolute inset-0 flex h-full w-full items-center justify-between px-4 transition-all duration-300 cursor-pointer ${
-            isOpen 
-              ? 'scale-95 opacity-0 pointer-events-none' 
-              : 'scale-100 opacity-100 delay-100'
-          }`}
+          type="button"
+          onClick={() => setIsOpen((open) => !open)}
+          aria-expanded={isOpen}
+          aria-controls={panelId}
+          aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} información de ${combo.title}`}
+          className="flex min-h-16 w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors active:bg-zinc-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-inset"
         >
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-zinc-400">
-              <Layers size={12} />
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white flex justify-center">
-              Ver Piezas
+          <span className="flex min-w-0 items-center">
+            <span className="min-w-0">
+              {isOpen && (
+                <span className="block truncate text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {combo.category}
+                </span>
+              )}
+              <span className="block truncate text-sm font-black leading-snug tracking-tight text-white">
+                {combo.title}
+              </span>
             </span>
-          </div>
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-[9px] font-bold text-emerald-400">
-            3
           </span>
+          <ChevronDown
+            size={20}
+            aria-hidden="true"
+            className={`shrink-0 text-zinc-400 transition-transform duration-300 ${
+              isOpen ? 'rotate-180 text-white' : ''
+            }`}
+          />
         </button>
-
-        {/* CONTENIDO 2: TARJETA INTERNA (Aparece al expandirse) */}
-        <div 
-          className={`absolute inset-0 flex h-full w-full flex-col transition-all duration-300 ${
-            isOpen 
-              ? 'scale-100 opacity-100 delay-150' 
-              : 'scale-95 opacity-0 pointer-events-none'
-          }`}
-        >
-          {/* Botón X superpuesto */}
-          <div className="absolute right-4 top-4 z-10">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900/80 text-zinc-400 backdrop-blur-md transition-colors hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          {/* Tarjeta del Combo (Ajustada al tamaño de la caja) */}
-          <div className="h-full w-full overflow-hidden">
-             <ComboMainCard combo={combo} />
-          </div>
-        </div>
-
       </div>
-    </>
+
+      <div
+        id={panelId}
+        role="region"
+        aria-label={`Componentes de ${combo.title}`}
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+        className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+          isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <ComboMainCard
+            combo={combo}
+            currency={currency}
+            showHeader={false}
+            className="rounded-t-none border-t-0 shadow-2xl"
+          />
+        </div>
+      </div>
+    </section>
   );
 }

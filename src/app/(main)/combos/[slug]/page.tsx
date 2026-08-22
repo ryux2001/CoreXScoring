@@ -47,9 +47,9 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
         {/* ESTRUCTURA MODULAR */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start mt-6 md:mt-0">
 
-          {/* 📱 VISTA MÓVIL: Botón Isla Flotante */}
+          {/* 📱 VISTA MÓVIL: Tarjeta de componentes plegable */}
           <div className="block lg:hidden">
-            <MobileComboIsland combo={combo} />
+            <MobileComboIsland combo={combo} currency={currency} />
           </div>
 
           {/* 💻 VISTA ESCRITORIO: Columna Izquierda Fija */}

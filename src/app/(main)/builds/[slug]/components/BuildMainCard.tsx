@@ -7,6 +7,8 @@ import { getComponentNotes } from '@/lib/scoring';
 interface BuildMainCardProps {
   build: any;
   currency?: string;
+  showHeader?: boolean;
+  className?: string;
 }
 
 const parts = [
@@ -21,6 +23,8 @@ const parts = [
 export default function BuildMainCard({
   build,
   currency = 'USD',
+  showHeader = true,
+  className = '',
 }: BuildMainCardProps) {
   const isEUR = currency === 'EUR';
   const symbol = isEUR ? '€' : '$';
@@ -48,15 +52,17 @@ export default function BuildMainCard({
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/40 p-5 shadow-2xl backdrop-blur-sm lg:p-8">
-      <div className="mb-6 lg:mb-8">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-          {build.category || 'Build'}
-        </span>
-        <h1 className="mt-2 text-xl font-black leading-snug tracking-tighter text-white md:text-2xl">
-          {build.title}
-        </h1>
-      </div>
+    <div className={`flex h-full w-full flex-col overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/40 p-5 shadow-2xl backdrop-blur-sm lg:p-8 ${className}`}>
+      {showHeader && (
+        <div className="mb-6 lg:mb-8">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+            {build.category || 'Build'}
+          </span>
+          <h1 className="mt-2 text-xl font-black leading-snug tracking-tighter text-white md:text-2xl">
+            {build.title}
+          </h1>
+        </div>
+      )}
 
       <div className="mt-auto flex w-full flex-col gap-3 sm:gap-4">
         {parts.map((part) => {
