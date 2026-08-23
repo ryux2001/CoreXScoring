@@ -11,7 +11,7 @@ import {
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { BuildDraft, ChatMessage, ChatResponse, PendingAction } from "@/lib/ai/types";
+import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, PendingAction } from "@/lib/ai/types";
 import { ensureAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
 
@@ -313,6 +313,7 @@ export default function AISidebar() {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [buildDraft, setBuildDraft] = useState<BuildDraft | null>(null);
+  const [comboDraft, setComboDraft] = useState<ComboDraft | null>(null);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef("");
@@ -375,6 +376,7 @@ export default function AISidebar() {
             title: document.title,
           },
           ...(buildDraft ? { buildDraft } : {}),
+          ...(comboDraft ? { comboDraft } : {}),
         }),
         signal: controller.signal,
       });
@@ -404,8 +406,18 @@ export default function AISidebar() {
       setMessages((currentMessages) => [...currentMessages, payload.message]);
       setProvider(payload.provider);
       setModel(payload.model);
-      if (payload.pendingAction) setPendingAction(payload.pendingAction);
-      if (payload.buildDraft) setBuildDraft(payload.buildDraft);
+      // Cada respuesta exitosa reemplaza el estado de confirmación anterior.
+      // Si una recomendación no trae pendingAction, no debe quedar visible una
+      // tarjeta antigua de otro build/combo.
+      setPendingAction(payload.pendingAction ?? null);
+      if (payload.buildDraft) {
+        setBuildDraft(payload.buildDraft);
+        setComboDraft(null);
+      }
+      if (payload.comboDraft) {
+        setComboDraft(payload.comboDraft);
+        setBuildDraft(null);
+      }
       setCanContinue(payload.truncated === true && !payload.pendingAction);
     } catch (requestError) {
       if (requestError instanceof DOMException && requestError.name === "AbortError") return;
@@ -459,6 +471,7 @@ export default function AISidebar() {
       setModel(payload.model);
       setPendingAction(null);
       setBuildDraft(null);
+      setComboDraft(null);
     } catch (requestError) {
       console.error("CoreX AI action confirmation network error", {
         name: requestError instanceof Error ? requestError.name : "unknown_error",

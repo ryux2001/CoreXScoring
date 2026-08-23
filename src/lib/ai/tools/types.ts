@@ -1,5 +1,5 @@
 import type { createSupabaseServerClient } from "@/lib/supabaseServer";
-import type { BuildDraft, PageContext, PendingAction } from "../types";
+import type { BuildDraft, ComboDraft, PageContext, PendingAction } from "../types";
 
 export type AiSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
@@ -13,6 +13,7 @@ export interface AiToolContext {
   actor: AiActor;
   pageContext?: PageContext;
   buildDraft?: BuildDraft;
+  comboDraft?: ComboDraft;
 }
 
 export interface AiToolSuccess {
@@ -20,6 +21,7 @@ export interface AiToolSuccess {
   data: unknown;
   pendingAction?: PendingAction;
   buildDraft?: BuildDraft;
+  comboDraft?: ComboDraft;
 }
 
 export interface AiToolFailure {

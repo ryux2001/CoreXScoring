@@ -1,11 +1,10 @@
 import { createHmac } from "node:crypto";
-import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, PendingAction, PendingActionComponent } from "./types";
+import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot, PendingAction, PendingActionComponent } from "./types";
 import type { AiToolContext, AiToolResult } from "./tools/types";
 
 type Row = Record<string, unknown>;
-type ComboSlot = "cpu" | "gpu" | "ram";
 type ActionSlot = ComboSlot | "motherboard" | "storage" | "psu";
-type BuildRequirementSlot = BuildSlot;
+type BuildRequirementSlot = BuildSlot | ComboSlot;
 
 export type ActionComponentIds = Partial<Record<BuildSlot, string>>;
 export type ActionPrices = Partial<Record<ActionSlot, { USD?: number; EUR?: number }>>;
@@ -673,6 +672,156 @@ export async function saveBuildDraft(args: unknown, context: AiToolContext): Pro
     pendingAction: action,
     buildDraft: titledDraft,
   };
+}
+
+function createComboDraft(
+  input: Row,
+  requirements: Record<ComboSlot, BuildComponentRequirement>,
+  rows: Row[],
+  componentIds: Pick<ActionComponentIds, ComboSlot>,
+): ComboDraft {
+  const byId = new Map(rows.map((row) => [asText(row.id), row]));
+  const components = Object.fromEntries(COMBO_SLOTS.map((slot) => {
+    const row = byId.get(componentIds[slot] || "");
+    const requirement = requirements[slot];
+    return [slot, {
+      id: componentIds[slot] || "",
+      name: asText(row?.name),
+      type: slot,
+      query: requirement.query,
+      priceMode: requirement.priceMode || "catalog",
+      ...(requirement.customPrice !== undefined ? { customPrice: requirement.customPrice } : {}),
+    } satisfies ComboDraftComponent];
+  })) as Record<ComboSlot, ComboDraftComponent>;
+
+  return {
+    ...(asText(input.title).trim() ? { title: sanitizeTitle(input.title, "") } : {}),
+    category: sanitizeCategory(input.category),
+    currency: input.currency === "EUR" ? "EUR" : "USD",
+    components,
+  };
+}
+
+function getComboDraftComponentIds(draft: ComboDraft): Pick<ActionComponentIds, ComboSlot> {
+  return Object.fromEntries(COMBO_SLOTS.map((slot) => [slot, draft.components[slot].id])) as Pick<ActionComponentIds, ComboSlot>;
+}
+
+function getComboDraftRequirements(draft: ComboDraft): Record<ComboSlot, BuildComponentRequirement> {
+  return Object.fromEntries(COMBO_SLOTS.map((slot) => {
+    const component = draft.components[slot];
+    return [slot, {
+      query: component.query,
+      priceMode: component.priceMode,
+      ...(component.customPrice !== undefined ? { customPrice: component.customPrice } : {}),
+    }];
+  })) as Record<ComboSlot, BuildComponentRequirement>;
+}
+
+function getComboDraftCustomPrices(draft: ComboDraft): ActionPrices {
+  const customPrices: ActionPrices = {};
+  for (const slot of COMBO_SLOTS) {
+    const component = draft.components[slot];
+    if (component.priceMode === "custom" && component.customPrice !== undefined) {
+      customPrices[slot] = { [draft.currency]: component.customPrice };
+    }
+  }
+  return customPrices;
+}
+
+function getComboPlanMessage(draft: ComboDraft): string {
+  const labels: Record<ComboSlot, string> = { cpu: "CPU", gpu: "GPU", ram: "RAM" };
+  const title = draft.title ? `Combo «${draft.title}»` : "Combo propuesto";
+  return `${title}:\n${COMBO_SLOTS.map((slot) => `${labels[slot]}: ${draft.components[slot].name}`).join("\n")}\n\nPuedes pedirme cambios antes de guardarlo.`;
+}
+
+export async function planCombo(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const input = asRow(args);
+  const components = asRow(input.components);
+  const requirements = Object.fromEntries(
+    COMBO_SLOTS.map((slot) => [slot, getBuildRequirement(components[slot])]),
+  ) as Record<ComboSlot, BuildComponentRequirement | null>;
+  const missing = COMBO_SLOTS.filter((slot) => !requirements[slot]);
+  if (missing.length > 0) return { ok: false, error: `Faltan requisitos para: ${missing.join(", ")}.` };
+
+  const resolved = await Promise.all(COMBO_SLOTS.map(async (slot) => ({
+    slot,
+    requirement: requirements[slot] as BuildComponentRequirement,
+    result: await resolveBuildComponent(slot, requirements[slot] as BuildComponentRequirement, context),
+  })));
+  const failures = resolved.filter((entry) => entry.result.error || !entry.result.row);
+  if (failures.length > 0) return { ok: false, error: failures.map((entry) => entry.result.error || `No encontré un componente ${entry.slot}.`).join(" ") };
+
+  const componentIds = Object.fromEntries(resolved.map((entry) => [entry.slot, asText(entry.result.row?.id)])) as Pick<ActionComponentIds, ComboSlot>;
+  const fetched = await fetchProducts(context, Object.values(componentIds));
+  if (fetched.error) return { ok: false, error: fetched.error };
+  const compatibilityError = validateProductSet(fetched.rows, componentIds, COMBO_SLOTS);
+  if (compatibilityError) return { ok: false, error: compatibilityError };
+  const requirementsBySlot = Object.fromEntries(resolved.map((entry) => [entry.slot, entry.requirement])) as Record<ComboSlot, BuildComponentRequirement>;
+  const comboDraft = createComboDraft(input, requirementsBySlot, fetched.rows, componentIds);
+  return {
+    ok: true,
+    data: {
+      status: "planned",
+      message: getComboPlanMessage(comboDraft),
+      resolvedComponents: getComponentSummary(fetched.rows, componentIds as Required<ActionComponentIds>, COMBO_SLOTS),
+      instruction: "Presenta el combo en texto y espera cambios o una orden explícita de guardado.",
+    },
+    comboDraft,
+  };
+}
+
+export async function updateComboPlan(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const draft = context.comboDraft;
+  if (!draft) return { ok: false, error: "No hay un combo activo que modificar." };
+  const changes = asRow(asRow(args).changes);
+  const changedSlots = COMBO_SLOTS.filter((slot) => Object.keys(asRow(changes[slot])).length > 0);
+  if (changedSlots.length === 0) return { ok: false, error: "Indica al menos un componente que quieras cambiar." };
+  const requirements = getComboDraftRequirements(draft);
+  const resolvedChanges = await Promise.all(changedSlots.map(async (slot) => {
+    const requirement = getBuildRequirement(changes[slot]);
+    return { slot, requirement, result: await resolveBuildComponent(slot, requirement || { query: "" }, context) };
+  }));
+  const failed = resolvedChanges.find((entry) => !entry.requirement || entry.result.error || !entry.result.row);
+  if (failed) return { ok: false, error: failed.result.error || `No pude resolver el componente ${failed.slot}.` };
+  for (const entry of resolvedChanges) requirements[entry.slot] = entry.requirement as BuildComponentRequirement;
+  const componentIds = getComboDraftComponentIds(draft);
+  for (const entry of resolvedChanges) componentIds[entry.slot] = asText(entry.result.row?.id);
+  const fetched = await fetchProducts(context, Object.values(componentIds));
+  if (fetched.error) return { ok: false, error: fetched.error };
+  const compatibilityError = validateProductSet(fetched.rows, componentIds as Required<ActionComponentIds>, COMBO_SLOTS);
+  if (compatibilityError) return { ok: false, error: compatibilityError };
+  const nextDraft = createComboDraft({ title: draft.title, category: draft.category, currency: draft.currency }, requirements, fetched.rows, componentIds);
+  return {
+    ok: true,
+    data: { status: "planned", message: `He actualizado solo ${resolvedChanges.map((entry) => entry.slot).join(" y ")} .\n\n${getComboPlanMessage(nextDraft)}` },
+    comboDraft: nextDraft,
+  };
+}
+
+export async function saveComboDraft(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const denied = requirePermanentAccount(context);
+  if (denied) return denied;
+  const draft = context.comboDraft;
+  if (!draft) return { ok: false, error: "No hay un combo planificado para guardar." };
+  const title = sanitizeTitle(asRow(args).title, "");
+  if (title.length < 3) return { ok: true, data: { status: "needs_title", message: "¿Qué título quieres ponerle a este combo?" }, comboDraft: { ...draft, awaitingTitle: true } };
+  const componentIds = getComboDraftComponentIds(draft);
+  const fetched = await fetchProducts(context, Object.values(componentIds));
+  if (fetched.error) return { ok: false, error: fetched.error };
+  const compatibilityError = validateProductSet(fetched.rows, componentIds as Required<ActionComponentIds>, COMBO_SLOTS);
+  if (compatibilityError) return { ok: false, error: compatibilityError };
+  const titledDraft: ComboDraft = { ...draft, title, awaitingTitle: false };
+  const payload: CreateComboActionPayload = {
+    title,
+    componentIds,
+    customPrices: getComboDraftCustomPrices(titledDraft),
+  };
+  const action = await createPendingAction(context, "create_combo", payload, "Crear combo personalizado", {
+    entityTitle: title,
+    entityType: "combo",
+    components: getComponentSummary(fetched.rows, componentIds as Required<ActionComponentIds>, COMBO_SLOTS),
+  });
+  return { ok: true, data: { status: "pending_confirmation", instruction: "Presenta el resumen y pide confirmación explícita; todavía no se ha guardado nada." }, pendingAction: action, comboDraft: titledDraft };
 }
 
 export async function proposeSetCustomPrice(args: unknown, context: AiToolContext): Promise<AiToolResult> {

@@ -391,6 +391,75 @@ const SAVE_BUILD_DRAFT_TOOL: AiToolDefinition = {
   },
 };
 
+const COMBO_COMPONENTS = Object.fromEntries([
+  ["cpu", "Procesador; por ejemplo Ryzen 5 5600."],
+  ["gpu", "Tarjeta gráfica; por ejemplo RTX 5060."],
+  ["ram", "Memoria RAM; por ejemplo Fury Beast 2x16."],
+].map(([slot, description]) => [slot, {
+  type: "object",
+  description,
+  properties: {
+    query: { type: "string", description: "Nombre o modelo; conserva números y variantes explícitas." },
+    customPrice: { type: "number", minimum: 0.01, maximum: 1_000_000 },
+    priceMode: { type: "string", enum: ["custom", "catalog", "msrp"] },
+  },
+  required: ["query"],
+  additionalProperties: false,
+}]));
+
+const PLAN_COMBO_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "plan_combo",
+    description: "Resuelve CPU, GPU y RAM, valida compatibilidad y devuelve una recomendación de combo en texto. No crea una propuesta ni guarda nada.",
+    parameters: {
+      type: "object",
+      properties: {
+        currency: { type: "string", enum: ["USD", "EUR"] },
+        components: {
+          type: "object",
+          properties: COMBO_COMPONENTS,
+          required: ["cpu", "gpu", "ram"],
+          additionalProperties: false,
+        },
+      },
+      required: ["components"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const UPDATE_COMBO_PLAN_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "update_combo_plan",
+    description: "Modifica solo los slots del combo que el usuario mencione y conserva los demás componentes sin sustituirlos. No crea ni guarda nada.",
+    parameters: {
+      type: "object",
+      properties: {
+        changes: { type: "object", properties: COMBO_COMPONENTS, additionalProperties: false },
+      },
+      required: ["changes"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const SAVE_COMBO_DRAFT_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "save_combo_draft",
+    description: "Prepara la confirmación para guardar el combo activo. Solo úsala si el usuario pide explícitamente guardarlo. El título debe venir del usuario; si falta, pregunta por él.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Título elegido por el usuario, entre 3 y 80 caracteres." },
+      },
+      additionalProperties: false,
+    },
+  },
+};
+
 const PROPOSE_SET_CUSTOM_PRICE_TOOL: AiToolDefinition = {
   type: "function",
   function: {
@@ -429,5 +498,8 @@ export const AI_TOOL_DEFINITIONS: AiToolDefinition[] = [
   PLAN_BUILD_TOOL,
   UPDATE_BUILD_PLAN_TOOL,
   SAVE_BUILD_DRAFT_TOOL,
+  PLAN_COMBO_TOOL,
+  UPDATE_COMBO_PLAN_TOOL,
+  SAVE_COMBO_DRAFT_TOOL,
   PROPOSE_SET_CUSTOM_PRICE_TOOL,
 ];

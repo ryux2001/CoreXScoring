@@ -6,6 +6,7 @@ export type ChatProvider = "local" | "groq" | "cerebras" | "openrouter" | "guard
 
 export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | "vault" | "other";
 export type BuildSlot = "cpu" | "gpu" | "ram" | "motherboard" | "storage" | "psu";
+export type ComboSlot = "cpu" | "gpu" | "ram";
 
 export interface PageContext {
   pathname: string;
@@ -69,6 +70,23 @@ export interface BuildDraft {
   components: Record<BuildSlot, BuildDraftComponent>;
 }
 
+export interface ComboDraftComponent {
+  id: string;
+  name: string;
+  type: ComboSlot;
+  query: string;
+  priceMode: "custom" | "catalog" | "msrp";
+  customPrice?: number;
+}
+
+export interface ComboDraft {
+  title?: string;
+  awaitingTitle?: boolean;
+  category?: string;
+  currency: "USD" | "EUR";
+  components: Record<ComboSlot, ComboDraftComponent>;
+}
+
 export interface AiActionRequest {
   id: string;
   digest: string;
@@ -78,6 +96,7 @@ export interface ChatRequest {
   messages: ChatMessage[];
   context?: PageContext;
   buildDraft?: BuildDraft;
+  comboDraft?: ComboDraft;
   action?: AiActionRequest;
 }
 
@@ -89,6 +108,7 @@ export interface ChatResponse {
   toolCalls?: number;
   pendingAction?: PendingAction;
   buildDraft?: BuildDraft;
+  comboDraft?: ComboDraft;
   /** El proveedor terminó por límite de salida; la interfaz puede pedir continuación. */
   truncated?: boolean;
 }
@@ -108,6 +128,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
 
   const buildDraft = (value as ChatRequest).buildDraft;
   if (buildDraft !== undefined && !isBuildDraft(buildDraft)) return false;
+  const comboDraft = (value as ChatRequest).comboDraft;
+  if (comboDraft !== undefined && !isComboDraft(comboDraft)) return false;
 
   const action = (value as ChatRequest).action;
   if (action !== undefined && (
@@ -148,6 +170,28 @@ function isBuildDraft(value: unknown): value is BuildDraft {
     || !draft.components || typeof draft.components !== "object" || Array.isArray(draft.components)) return false;
 
   const slots: BuildSlot[] = ["cpu", "gpu", "ram", "motherboard", "storage", "psu"];
+  return slots.every((slot) => {
+    const component = draft.components[slot];
+    return component
+      && typeof component.id === "string" && component.id.length <= 120
+      && typeof component.name === "string" && component.name.length <= 200
+      && component.type === slot
+      && typeof component.query === "string" && component.query.length <= 120
+      && ["custom", "catalog", "msrp"].includes(component.priceMode)
+      && (component.customPrice === undefined || (typeof component.customPrice === "number" && Number.isFinite(component.customPrice) && component.customPrice > 0 && component.customPrice <= 1_000_000));
+  });
+}
+
+function isComboDraft(value: unknown): value is ComboDraft {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const draft = value as ComboDraft;
+  if ((draft.title !== undefined && (typeof draft.title !== "string" || draft.title.length > 80))
+    || (draft.awaitingTitle !== undefined && typeof draft.awaitingTitle !== "boolean")
+    || (draft.category !== undefined && (typeof draft.category !== "string" || draft.category.length > 60))
+    || !["USD", "EUR"].includes(draft.currency)
+    || !draft.components || typeof draft.components !== "object" || Array.isArray(draft.components)) return false;
+
+  const slots: ComboSlot[] = ["cpu", "gpu", "ram"];
   return slots.every((slot) => {
     const component = draft.components[slot];
     return component

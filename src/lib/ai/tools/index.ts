@@ -16,10 +16,13 @@ import {
   proposeCreateCombo,
   proposeSetCustomPrice,
   planBuild,
+  planCombo,
+  saveComboDraft,
   saveBuildDraft,
   searchUserBuilds,
   searchUserCombos,
   updateBuildPlan,
+  updateComboPlan,
 } from "../actions";
 import type { AiToolContext, AiToolResult } from "./types";
 
@@ -43,6 +46,9 @@ const AI_TOOL_HANDLERS: Record<string, AiToolHandler> = {
   plan_build: planBuild,
   update_build_plan: updateBuildPlan,
   save_build_draft: saveBuildDraft,
+  plan_combo: planCombo,
+  update_combo_plan: updateComboPlan,
+  save_combo_draft: saveComboDraft,
   propose_set_custom_price: proposeSetCustomPrice,
 };
 

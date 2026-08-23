@@ -255,6 +255,7 @@ export async function POST(request: NextRequest) {
       },
       pageContext: normalizePageContext(body.context),
       buildDraft: body.buildDraft,
+      comboDraft: body.comboDraft,
     };
     const directVaultResponse = await resolveDirectVaultLookup(normalizedMessages, toolContext);
     if (directVaultResponse) {
