@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 
 import {
   Bot,
   ChevronDown,
-  LoaderCircle,
   Maximize2,
   Minimize2,
   SendHorizontal,
@@ -24,6 +23,8 @@ const INITIAL_MESSAGE: ChatMessage = {
   content: "Hola, soy CoreX AI, tu asistente de hardware. Puedo ayudarte con componentes, compatibilidad, rendimiento y el uso de CoreXScoring.",
 };
 const MOBILE_TOAST_MAX_LENGTH = 120;
+const INPUT_MIN_HEIGHT = 36;
+const INPUT_MAX_HEIGHT = 112;
 
 const markdownComponents: Components = {
   a: ({ children, href, title }) => (
@@ -50,6 +51,21 @@ function findFocusableElements(container: HTMLElement) {
   return Array.from(container.querySelectorAll<HTMLElement>(
     'button:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
   )).filter((element) => !element.hasAttribute("inert"));
+}
+
+function ThinkingWave() {
+  return (
+    <span className="ai-thinking-wave" aria-hidden="true">
+      {Array.from("Pensando…").map((character, index) => (
+        <span
+          key={`${character}-${index}`}
+          style={{ "--ai-wave-delay": `${index * 72}ms` } as CSSProperties}
+        >
+          {character}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 interface ChatPanelProps {
@@ -107,7 +123,7 @@ function ChatPanel({
 
   return (
     <section className="flex min-h-0 flex-1 flex-col" aria-label="Conversación con CoreX AI">
-      <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5">
+      <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-zinc-950/95 px-4 py-3.5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100 shadow-[0_8px_28px_rgba(34,211,238,0.12)]">
             <Bot aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -171,21 +187,21 @@ function ChatPanel({
         )}
       </header>
 
-      <div id={id} className="ai-chat-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5" aria-live="polite">
+      <div id={id} className="ai-chat-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto bg-black px-4 py-5" aria-live="polite">
         {messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
             className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[88%] whitespace-pre-wrap rounded-2xl border px-3.5 py-3 text-sm leading-relaxed ${
+              className={`font-technical max-w-[90%] whitespace-pre-wrap rounded-2xl border px-4 py-3.5 text-sm leading-6 ${
                 message.role === "user"
                   ? "border-cyan-500/60 bg-cyan-950/35 text-cyan-100 shadow-[0_8px_20px_rgba(8,145,178,0.12)]"
-                  : "border-white/10 bg-zinc-900/80 text-zinc-200"
+                  : "rounded-tl-md border-white/[0.08] bg-zinc-950/95 text-zinc-200 shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
               }`}
             >
               {message.role === "assistant" ? (
-                <div className="[&_p]:m-0 [&_p+p]:mt-3 [&_strong]:font-bold [&_em]:italic [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:rounded-r-lg [&_blockquote]:bg-cyan-300/5 [&_blockquote]:pl-3 [&_blockquote]:text-cyan-100 [&_pre]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-black/70 [&_pre]:p-3 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_code]:py-0.5 [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+                <div className="[&_p]:m-0 [&_p+p]:mt-3 [&_h1]:mb-3 [&_h1]:font-technical [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-white [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:font-technical [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-white [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:font-technical [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-cyan-100 [&_strong]:font-bold [&_strong]:text-white [&_em]:italic [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-cyan-300/15 [&_blockquote]:bg-cyan-300/5 [&_blockquote]:px-3 [&_blockquote]:py-2 [&_blockquote]:text-cyan-100 [&_pre]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-white/[0.06] [&_pre]:bg-black/70 [&_pre]:p-3 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-technical [&_code]:text-cyan-100 [&_pre_code]:bg-transparent [&_pre_code]:p-0">
                   <ReactMarkdown skipHtml components={markdownComponents}>
                     {message.content}
                   </ReactMarkdown>
@@ -199,9 +215,8 @@ function ChatPanel({
 
         {isSending && (
           <div className="flex justify-start" aria-label="CoreX AI está escribiendo">
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-zinc-900/80 px-3.5 py-3 text-xs text-zinc-400">
-              <LoaderCircle aria-hidden="true" className="animate-spin text-cyan-200" size={15} />
-              Pensando…
+            <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-cyan-300/10 bg-zinc-900/75 px-4 py-3.5 text-xs text-zinc-400 shadow-[0_10px_28px_rgba(0,0,0,0.12)]">
+              <ThinkingWave />
             </div>
           </div>
         )}
@@ -248,19 +263,26 @@ function ChatPanel({
       )}
 
       <form
-        className="border-t border-white/10 p-3"
+        className="border-t border-white/10 bg-zinc-950/45 p-3.5"
         onSubmit={(event) => {
           event.preventDefault();
           onSend();
         }}
       >
         <label className="sr-only" htmlFor={`${id}-input`}>Escribe un mensaje para CoreX AI</label>
-        <div className="flex items-end gap-2 rounded-2xl border border-zinc-700 bg-black px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.3)] transition-colors focus-within:border-cyan-200/70">
+        <div className="flex items-end gap-2 rounded-[1.25rem] border border-zinc-800 bg-black/70 px-3.5 py-2.5 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-[border-color,box-shadow] focus-within:border-cyan-400/50 focus-within:shadow-[0_0_0_3px_rgba(34,211,238,0.1),0_10px_28px_rgba(0,0,0,0.2)]">
           <textarea
             ref={inputRef}
             id={`${id}-input`}
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
+            onInput={(event) => {
+              const input = event.currentTarget;
+              input.style.height = "auto";
+              const nextHeight = Math.min(Math.max(input.scrollHeight, INPUT_MIN_HEIGHT), INPUT_MAX_HEIGHT);
+              input.style.height = `${nextHeight}px`;
+              input.style.overflowY = input.scrollHeight > INPUT_MAX_HEIGHT ? "auto" : "hidden";
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
@@ -270,14 +292,14 @@ function ChatPanel({
             rows={1}
             maxLength={2_000}
             placeholder="Escribe…"
-            className="font-technical max-h-28 min-h-8 flex-1 resize-none bg-transparent py-1 text-sm text-white outline-none placeholder:text-zinc-600"
+            className="ai-chat-input font-technical max-h-28 min-h-9 flex-1 resize-none overflow-y-hidden bg-transparent py-1 text-sm leading-6 text-zinc-100 outline-none placeholder:text-zinc-600"
           />
           {isSending ? (
             <button
               type="button"
               onClick={onStop}
               aria-label="Detener respuesta"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-700 text-white transition-colors hover:bg-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-cyan-100 transition-colors hover:border-cyan-500/35 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
             >
               <Square aria-hidden="true" size={13} fill="currentColor" />
             </button>
@@ -286,13 +308,13 @@ function ChatPanel({
               type="submit"
               disabled={!draft.trim()}
               aria-label="Enviar mensaje"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-black transition-colors hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:opacity-35"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-500 text-cyan-950 transition-colors hover:bg-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-cyan-100 disabled:opacity-100"
             >
               <SendHorizontal aria-hidden="true" size={16} />
             </button>
           )}
         </div>
-        <p className="mt-2 px-1 text-[10px] leading-relaxed text-zinc-600">La IA puede equivocarse. Verifica datos importantes.</p>
+        <p className="mt-2 px-1 text-[10px] leading-relaxed text-zinc-500">La IA puede equivocarse. Verifica datos importantes.</p>
       </form>
     </section>
   );
@@ -308,7 +330,7 @@ export default function AISidebar() {
   const [model, setModel] = useState<string | null>(null);
   const [sessionKind, setSessionKind] = useState<"anonymous" | "authenticated" | null>(null);
   const [mobileMode, setMobileMode] = useState<MobileMode>("collapsed");
-  const [isMobileToastVisible, setIsMobileToastVisible] = useState(true);
+  const [isMobileToastVisible, setIsMobileToastVisible] = useState(false);
   const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -318,12 +340,14 @@ export default function AISidebar() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef("");
   const mobileInputRef = useRef<HTMLTextAreaElement>(null);
+  const desktopInputRef = useRef<HTMLTextAreaElement>(null);
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const mobileExpandButtonRef = useRef<HTMLButtonElement>(null);
   const expandedPanelRef = useRef<HTMLDivElement>(null);
 
   const lastAssistantMessage = [...messages].reverse().find((message) => message.role === "assistant");
   const lastAssistantContent = lastAssistantMessage?.content;
+  const hasAssistantResponse = messages.slice(1).some((message) => message.role === "assistant");
   const mobileToastPreview = lastAssistantContent
     ? getMobileToastPreview(lastAssistantContent)
     : null;
@@ -516,12 +540,12 @@ export default function AISidebar() {
   useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   useEffect(() => {
-    if (!lastAssistantContent) return;
+    if (!lastAssistantContent || !hasAssistantResponse) return;
 
     setIsMobileToastVisible(true);
     const timer = window.setTimeout(() => setIsMobileToastVisible(false), 5_000);
     return () => window.clearTimeout(timer);
-  }, [lastAssistantContent]);
+  }, [hasAssistantResponse, lastAssistantContent]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -637,7 +661,7 @@ export default function AISidebar() {
   return (
     <>
       <aside className="fixed bottom-0 right-0 top-[81px] z-40 hidden w-80 border-l border-white/10 bg-zinc-950/95 shadow-[-20px_0_55px_rgba(0,0,0,0.28)] backdrop-blur-xl md:flex lg:w-[22.5rem]">
-        <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} />
+        <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} inputRef={desktopInputRef} />
       </aside>
 
       <div className="md:hidden">

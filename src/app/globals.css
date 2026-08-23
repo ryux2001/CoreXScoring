@@ -76,6 +76,49 @@ body {
   background: rgb(103 232 249 / 0.58);
 }
 
+.ai-thinking-wave {
+  display: inline-flex;
+}
+
+.ai-chat-input {
+  field-sizing: content;
+}
+
+.ai-thinking-wave > span {
+  display: inline-block;
+  animation: ai-thinking-wave 1.25s ease-in-out infinite;
+  animation-delay: var(--ai-wave-delay);
+  color: rgb(161 161 170);
+}
+
+@keyframes ai-thinking-wave {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+
+  32% {
+    color: rgb(103 232 249);
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+
+  62% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-thinking-wave > span {
+    animation: none;
+    color: rgb(165 243 252);
+    opacity: 0.85;
+    transform: none;
+  }
+}
+
 @keyframes mobile-drawer-enter {
   from {
     transform: translateX(100%);
