@@ -18,7 +18,7 @@ export interface AiAdminDailyUsage {
 }
 
 export interface AiAdminProviderUsage {
-  provider: "groq" | "openrouter" | "guardrail";
+  provider: "groq" | "cerebras" | "openrouter" | "guardrail";
   status: "success" | "error" | "guardrail" | "rate_limited";
   requests: number;
   tokens: number;

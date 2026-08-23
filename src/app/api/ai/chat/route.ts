@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { runChat } from "@/lib/ai/gateway";
+import { AiGatewayError, runChat } from "@/lib/ai/gateway";
+import { AiActionExecutionError, confirmPendingAction } from "@/lib/ai/actions";
+import { resolveDirectVaultLookup } from "@/lib/ai/vault-direct";
 import {
   AiQuotaUnavailableError,
   consumeAiQuota,
@@ -9,30 +11,73 @@ import {
   recordAiRequest,
   settleAiQuota,
 } from "@/lib/ai/limits";
-import { isChatRequest, normalizeMessages, normalizePageContext } from "@/lib/ai/types";
+import { isChatRequest, normalizeMessages, normalizePageContext, type ChatProvider } from "@/lib/ai/types";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 
+function withRequestId(response: NextResponse, requestId: string): NextResponse {
+  response.headers.set("X-CoreX-AI-Request-Id", requestId);
+  return response;
+}
+
+function getGatewayErrorResponse(error: AiGatewayError) {
+  if (error.stage === "configuration") {
+    return {
+      message: "El respaldo de CoreX AI necesita un modelo fijo compatible con tools. Revisa la configuración del servidor.",
+      code: error.code || "ai_configuration_error",
+      retryable: false,
+    };
+  }
+
+  if (error.code === "unstructured_tool_plan" || error.code === "tool_loop_limit") {
+    return {
+      message: "CoreX AI no pudo completar esta acción de forma segura. Puedes reformularla o reintentarla.",
+      code: error.code,
+      retryable: true,
+    };
+  }
+
+  if (error.status === 429) {
+    return {
+      message: "CoreX AI alcanzó un límite temporal del proveedor. Espera un momento antes de reintentar.",
+      code: error.code || "provider_rate_limited",
+      retryable: true,
+      retryAfterSeconds: error.retryAfterSeconds,
+    };
+  }
+
+  return {
+    message: "El proveedor de CoreX AI no está disponible en este momento. Inténtalo de nuevo.",
+    code: error.code || "provider_error",
+    retryable: error.retryable,
+  };
+}
+
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
   const origin = request.headers.get("origin");
   if (origin && origin !== request.nextUrl.origin) {
-    return NextResponse.json({ error: "Origen no permitido." }, { status: 403 });
+    console.warn("CoreX AI request rejected", { requestId, code: "origin_not_allowed" });
+    return withRequestId(NextResponse.json({ error: "Origen no permitido.", code: "origin_not_allowed", retryable: false }, { status: 403 }), requestId);
   }
 
   if (!request.headers.get("content-type")?.includes("application/json")) {
-    return NextResponse.json({ error: "El contenido debe ser JSON." }, { status: 415 });
+    console.warn("CoreX AI request rejected", { requestId, code: "content_type_invalid" });
+    return withRequestId(NextResponse.json({ error: "El contenido debe ser JSON.", code: "content_type_invalid", retryable: false }, { status: 415 }), requestId);
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Solicitud inválida." }, { status: 400 });
+    console.warn("CoreX AI request rejected", { requestId, code: "invalid_json" });
+    return withRequestId(NextResponse.json({ error: "Solicitud inválida.", code: "invalid_json", retryable: false }, { status: 400 }), requestId);
   }
 
   if (!isChatRequest(body)) {
-    return NextResponse.json({ error: "El historial de mensajes no es válido." }, { status: 400 });
+    console.warn("CoreX AI request rejected", { requestId, code: "invalid_chat_request" });
+    return withRequestId(NextResponse.json({ error: "El historial de mensajes no es válido.", code: "invalid_chat_request", retryable: false }, { status: 400 }), requestId);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -41,10 +86,119 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json(
+    console.warn("CoreX AI request rejected", { requestId, code: "missing_session" });
+    return withRequestId(NextResponse.json(
       { error: "No se pudo identificar tu sesión de CoreX AI. Recarga la página e inténtalo de nuevo." },
       { status: 401 },
-    );
+    ), requestId);
+  }
+
+  if (body.action) {
+    if (user.is_anonymous) {
+      return NextResponse.json({ error: "Las acciones de la bóveda requieren una cuenta registrada." }, { status: 403 });
+    }
+
+    const actionStartedAt = Date.now();
+    const actionIpHash = getClientIpHash(request);
+    try {
+      const actionQuota = await consumeAiQuota({
+        supabase,
+        userId: user.id,
+        ipHash: actionIpHash,
+        isAnonymous: false,
+        estimatedTokens: 0,
+      });
+
+      if (!actionQuota.allowed) {
+        const retryAfterSeconds = Math.max(1, Math.round(actionQuota.retryAfterSeconds || 60));
+        await recordAiRequest(supabase, {
+          userId: user.id,
+          isAnonymous: false,
+          ipHash: actionIpHash,
+          provider: "guardrail",
+          model: "action-confirmation",
+          durationMs: Date.now() - actionStartedAt,
+          inputTokens: 0,
+          outputTokens: 0,
+          toolCalls: 0,
+          status: "rate_limited",
+          errorCode: actionQuota.reason,
+        });
+        return NextResponse.json({ error: "Se alcanzó tu cuota temporal de CoreX AI. Inténtalo más tarde." }, {
+          status: 429,
+          headers: { "Cache-Control": "no-store", "Retry-After": String(retryAfterSeconds) },
+        });
+      }
+    } catch (error) {
+      if (error instanceof AiQuotaUnavailableError) {
+        return NextResponse.json({ error: "Las cuotas de CoreX AI no están disponibles. Inténtalo de nuevo más tarde." }, { status: 503 });
+      }
+      return NextResponse.json({ error: "No se pudo validar la cuota de la acción." }, { status: 503 });
+    }
+
+    try {
+      const result = await confirmPendingAction(
+        {
+          supabase,
+          actor: { id: user.id, isAnonymous: false },
+          pageContext: normalizePageContext(body.context),
+        },
+        body.action.id,
+        body.action.digest,
+      );
+
+      await recordAiRequest(supabase, {
+        userId: user.id,
+        isAnonymous: false,
+        ipHash: actionIpHash,
+        provider: "guardrail",
+        model: "action-confirmation",
+        durationMs: Date.now() - actionStartedAt,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolCalls: 0,
+        status: "guardrail",
+      });
+
+      return NextResponse.json({
+        message: { role: "assistant", content: result.message },
+        provider: "guardrail",
+        model: "action-confirmation",
+      }, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo confirmar la acción.";
+      const status = message.includes("caducó") || message.includes("utilizada") || message.includes("pertenece") ? 409 : 400;
+      const actionError = error instanceof AiActionExecutionError ? error : null;
+      console.error("CoreX AI action confirmation failed", {
+        requestId,
+        code: actionError?.code || "pending_action_failed",
+        databaseCode: actionError?.databaseCode,
+        databaseMessage: actionError?.databaseMessage,
+        exceptionName: error instanceof Error ? error.name : "unknown_error",
+      });
+      await recordAiRequest(supabase, {
+        userId: user.id,
+        isAnonymous: false,
+        ipHash: actionIpHash,
+        provider: "guardrail",
+        model: "action-confirmation",
+        durationMs: Date.now() - actionStartedAt,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolCalls: 0,
+        status: "error",
+        errorCode: status === 409 ? "pending_action_conflict" : actionError?.code || "pending_action_failed",
+      });
+      return withRequestId(NextResponse.json(
+        {
+          error: message,
+          code: status === 409 ? "pending_action_conflict" : actionError?.code || "pending_action_failed",
+          requestId,
+          retryable: false,
+        },
+        { status, headers: { "Cache-Control": "no-store" } },
+      ), requestId);
+    }
   }
 
   const normalizedMessages = normalizeMessages(body.messages);
@@ -52,8 +206,11 @@ export async function POST(request: NextRequest) {
   const ipHash = getClientIpHash(request);
   const startedAt = Date.now();
   const reservedTokens = estimateTokenBudget(normalizedMessages);
-  let completionProvider: "groq" | "openrouter" | "guardrail" = "groq";
-  let completionModel = process.env.AI_GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
+  const localProviderEnabled = process.env.AI_LOCAL_ENABLED?.trim().toLowerCase() === "true";
+  let completionProvider: ChatProvider = localProviderEnabled ? "local" : "groq";
+  let completionModel = localProviderEnabled
+    ? process.env.AI_LOCAL_MODEL?.trim() || "Qwen3.5-9B-UD-Q4_K_XL"
+    : process.env.AI_GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
 
   try {
     const quota = await consumeAiQuota({
@@ -90,14 +247,44 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const completion = await runChat(normalizedMessages, {
+    const toolContext = {
       supabase,
       actor: {
         id: user.id,
         isAnonymous,
       },
       pageContext: normalizePageContext(body.context),
-    });
+      buildDraft: body.buildDraft,
+    };
+    const directVaultResponse = await resolveDirectVaultLookup(normalizedMessages, toolContext);
+    if (directVaultResponse) {
+      completionProvider = directVaultResponse.provider;
+      completionModel = directVaultResponse.model;
+      await settleAiQuota({
+        supabase,
+        userId: user.id,
+        ipHash,
+        reservedTokens,
+        actualTokens: 0,
+      });
+      await recordAiRequest(supabase, {
+        userId: user.id,
+        isAnonymous,
+        ipHash,
+        provider: "guardrail",
+        model: directVaultResponse.model,
+        durationMs: Date.now() - startedAt,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolCalls: directVaultResponse.toolCalls || 0,
+        status: "guardrail",
+      });
+      return NextResponse.json(directVaultResponse, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    const completion = await runChat(normalizedMessages, toolContext, requestId);
 
     completionProvider = completion.provider;
     completionModel = completion.model;
@@ -142,6 +329,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const gatewayError = error instanceof AiGatewayError ? error : null;
+    if (gatewayError?.provider) {
+      completionProvider = gatewayError.provider;
+      completionModel = gatewayError.model || (gatewayError.provider === "local"
+        ? process.env.AI_LOCAL_MODEL?.trim() || "Qwen3.5-9B-UD-Q4_K_XL"
+        : gatewayError.provider === "openrouter"
+        ? process.env.AI_OPENROUTER_MODELS?.split(",")[0]?.trim() || "openai/gpt-oss-20b:free"
+        : gatewayError.provider === "cerebras"
+          ? process.env.AI_CEREBRAS_MODELS?.split(",")[0]?.trim() || "gpt-oss-120b"
+          : process.env.AI_GROQ_MODELS?.split(",")[0]?.trim() || "openai/gpt-oss-20b");
+    }
+
     await recordAiRequest(supabase, {
       userId: user.id,
       isAnonymous,
@@ -151,20 +350,50 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
       inputTokens: 0,
       outputTokens: 0,
-      toolCalls: 0,
+      toolCalls: gatewayError?.toolCalls || 0,
       status: "error",
-      errorCode: "provider_or_tool_error",
+      errorCode: gatewayError
+        ? `${gatewayError.stage}:${gatewayError.code || "unknown"}`
+        : "unknown:provider_or_tool_error",
+      failureStage: gatewayError?.stage,
+      providerHttpStatus: gatewayError?.status,
+      finishReason: gatewayError?.finishReason,
     });
 
-    console.error("AI chat request failed", {
-      userId: user.id,
+    console.error("CoreX AI request failed", {
+      requestId,
       isAnonymous,
-      message: error instanceof Error ? error.message : "unknown_error",
+      provider: gatewayError?.provider || completionProvider,
+      model: completionModel,
+      stage: gatewayError?.stage || "unknown",
+      code: gatewayError?.code || "unexpected_error",
+      providerHttpStatus: gatewayError?.status,
+      finishReason: gatewayError?.finishReason,
+      providerMessage: gatewayError?.providerMessage,
+      toolCalls: gatewayError?.toolCalls || 0,
+      exceptionName: error instanceof Error ? error.name : "unknown_error",
+      exceptionMessage: error instanceof Error ? error.message.slice(0, 500) : undefined,
     });
 
-    return NextResponse.json(
-      { error: "El asistente no está disponible en este momento. Inténtalo de nuevo." },
+    if (gatewayError) {
+      const response = getGatewayErrorResponse(gatewayError);
+      const retryAfterSeconds = "retryAfterSeconds" in response ? response.retryAfterSeconds : undefined;
+      const headers: Record<string, string> = { "Cache-Control": "no-store" };
+      if (retryAfterSeconds) headers["Retry-After"] = String(retryAfterSeconds);
+      return withRequestId(NextResponse.json(
+        { error: response.message, code: response.code, retryable: response.retryable, requestId, retryAfterSeconds },
+        {
+          status: gatewayError.status === 429
+            ? 429
+            : gatewayError.stage === "response" || gatewayError.stage === "tool_loop" ? 502 : 503,
+          headers,
+        },
+      ), requestId);
+    }
+
+    return withRequestId(NextResponse.json(
+      { error: "El asistente no está disponible en este momento. Inténtalo de nuevo.", code: "unexpected_error", retryable: true, requestId },
       { status: 503 },
-    );
+    ), requestId);
   }
 }

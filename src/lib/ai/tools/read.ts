@@ -549,6 +549,20 @@ export async function getBuild(args: unknown, context: AiToolContext): Promise<A
   return getToolSuccess({ build: summarizeBuild(asRow(data), currency) });
 }
 
+/** Tool compuesta de solo lectura: obtiene una build y sus datos para opinar sobre ella. */
+export async function analyzeBuild(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const result = await getBuild(args, context);
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: {
+      analysisType: "build_review",
+      instruction: "Analiza únicamente los datos devueltos por CoreXScoring; no modifiques ni propongas guardar la build.",
+      ...asRow(result.data),
+    },
+  };
+}
+
 /** Tool: recomienda candidatos reales ordenados por caso de uso y presupuesto, sin modificar datos. */
 export async function recommendComponents(args: unknown, context: AiToolContext): Promise<AiToolResult> {
   const input = asRow(args);

@@ -1,10 +1,11 @@
 import { createHmac } from "node:crypto";
 import type { NextRequest } from "next/server";
 import type { ChatMessage, ChatProvider } from "./types";
+import type { AiFailureStage } from "./gateway";
 import type { AiSupabaseClient } from "./tools/types";
 
-/** Reservamos la salida máxima de las rondas de tools para que la cuota sea conservadora. */
-export const AI_RESERVED_OUTPUT_TOKENS = 2_400;
+/** La reserva cubre la cadena externa; llama.cpp puede usar más rondas locales sin proveedor externo. */
+export const AI_RESERVED_OUTPUT_TOKENS = 6_000;
 const MAX_ESTIMATED_TOKEN_BUDGET = 20_000;
 
 export type AiQuotaReason = "user_messages" | "ip_messages" | "user_tokens" | "ip_tokens";
@@ -35,6 +36,9 @@ export interface AiRequestTelemetry {
   toolCalls: number;
   status: "success" | "error" | "guardrail" | "rate_limited";
   errorCode?: string;
+  failureStage?: AiFailureStage;
+  providerHttpStatus?: number;
+  finishReason?: string | null;
 }
 
 function getForwardedIp(request: NextRequest): string | null {
@@ -119,7 +123,7 @@ export async function recordAiRequest(
   telemetry: AiRequestTelemetry,
 ): Promise<void> {
   try {
-    const { error } = await supabase.rpc("record_ai_request", {
+    const { error } = await supabase.rpc("record_ai_request_v2", {
       p_user_id: telemetry.userId,
       p_is_anonymous: telemetry.isAnonymous,
       p_ip_hash: telemetry.ipHash,
@@ -131,6 +135,9 @@ export async function recordAiRequest(
       p_tool_calls: Math.max(Math.round(telemetry.toolCalls), 0),
       p_status: telemetry.status,
       p_error_code: telemetry.errorCode || null,
+      p_failure_stage: telemetry.failureStage || null,
+      p_provider_http_status: telemetry.providerHttpStatus || null,
+      p_finish_reason: telemetry.finishReason || null,
     });
 
     if (error) {

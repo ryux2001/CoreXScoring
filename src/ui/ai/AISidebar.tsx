@@ -11,10 +11,13 @@ import {
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { ChatMessage, ChatResponse } from "@/lib/ai/types";
+import type { BuildDraft, ChatMessage, ChatResponse, PendingAction } from "@/lib/ai/types";
 import { ensureAiSession } from "@/lib/ai/client-session";
+import PendingActionCard from "./PendingActionCard";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
+type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
+type ChatErrorPayload = { error?: string; code?: string; retryable?: boolean; requestId?: string; retryAfterSeconds?: number };
 
 const INITIAL_MESSAGE: ChatMessage = {
   role: "assistant",
@@ -53,14 +56,21 @@ interface ChatPanelProps {
   id: string;
   messages: ChatMessage[];
   draft: string;
-  error: string | null;
+  error: ChatError | null;
   isSending: boolean;
+  canContinue: boolean;
   provider: ChatResponse["provider"] | null;
+  model: string | null;
   sessionKind: "anonymous" | "authenticated" | null;
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onStop: () => void;
   onRetry: () => void;
+  onContinue: () => void;
+  pendingAction: PendingAction | null;
+  isConfirmingAction: boolean;
+  onConfirmAction: () => void;
+  onCancelAction: () => void;
   onMinimize?: () => void;
   onExpand?: () => void;
   onReduce?: () => void;
@@ -74,12 +84,19 @@ function ChatPanel({
   draft,
   error,
   isSending,
+  canContinue,
   provider,
+  model,
   sessionKind,
   onDraftChange,
   onSend,
   onStop,
   onRetry,
+  onContinue,
+  pendingAction,
+  isConfirmingAction,
+  onConfirmAction,
+  onCancelAction,
   onMinimize,
   onExpand,
   onReduce,
@@ -100,8 +117,14 @@ function ChatPanel({
             <p className="font-technical text-[12px] text-zinc-500 font-extrabold">
               {sessionKind === "anonymous"
                 ? "Modo invitado · hardware"
+                : provider === "local"
+                ? "Modelo local · llama.cpp"
+                : provider === "cerebras"
+                ? "Cerebras · respaldo"
                 : provider === "openrouter"
                 ? "OpenRouter · respaldo"
+                : provider === "guardrail" && model === "vault-direct-v1"
+                  ? "Bóveda · datos privados"
                 : provider === "guardrail"
                   ? "CoreX AI · alcance protegido"
                   : provider === "groq"
@@ -185,17 +208,44 @@ function ChatPanel({
 
         {error && (
           <div role="alert" className="rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2.5 text-xs leading-relaxed text-red-100">
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="ml-2 font-bold text-white underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Reintentar
-            </button>
+            <span>{error.message}</span>
+            {error.retryable && (
+              error.retryAfterSeconds && error.retryAfterSeconds > 0 ? (
+                <span className="ml-1 font-semibold text-red-50">
+                  Reintenta en {error.retryAfterSeconds} s.
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="ml-2 font-bold text-white underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  Reintentar
+                </button>
+              )
+            )}
           </div>
         )}
+
+        {canContinue && !isSending && !pendingAction && (
+          <button
+            type="button"
+            onClick={onContinue}
+            className="rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-left text-xs font-semibold text-cyan-100 transition-colors hover:bg-cyan-300/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+          >
+            La respuesta se cortó por longitud. Continuar respuesta
+          </button>
+        )}
       </div>
+
+      {pendingAction && (
+        <PendingActionCard
+          action={pendingAction}
+          isConfirming={isConfirmingAction}
+          onConfirm={onConfirmAction}
+          onCancel={onCancelAction}
+        />
+      )}
 
       <form
         className="border-t border-white/10 p-3"
@@ -251,14 +301,19 @@ function ChatPanel({
 export default function AISidebar() {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [draft, setDraft] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ChatError | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [canContinue, setCanContinue] = useState(false);
   const [provider, setProvider] = useState<ChatResponse["provider"] | null>(null);
+  const [model, setModel] = useState<string | null>(null);
   const [sessionKind, setSessionKind] = useState<"anonymous" | "authenticated" | null>(null);
   const [mobileMode, setMobileMode] = useState<MobileMode>("collapsed");
   const [isMobileToastVisible, setIsMobileToastVisible] = useState(true);
   const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [buildDraft, setBuildDraft] = useState<BuildDraft | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef("");
   const mobileInputRef = useRef<HTMLTextAreaElement>(null);
@@ -272,6 +327,21 @@ export default function AISidebar() {
     ? getMobileToastPreview(lastAssistantContent)
     : null;
 
+  useEffect(() => {
+    const retryAfterSeconds = error?.retryAfterSeconds;
+    if (!retryAfterSeconds || retryAfterSeconds <= 0) return;
+
+    const deadline = Date.now() + retryAfterSeconds * 1_000;
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1_000));
+      setError((currentError) => (
+        currentError ? { ...currentError, retryAfterSeconds: remaining } : currentError
+      ));
+    }, 250);
+
+    return () => window.clearInterval(timer);
+  }, [error?.retryAfterSeconds]);
+
   const sendMessage = async (rawMessage = draft, isRetry = false) => {
     const content = rawMessage.trim();
     if (!content || isSending) return;
@@ -282,6 +352,7 @@ export default function AISidebar() {
     if (!isRetry) {
       setMessages(nextMessages);
       setDraft("");
+      setCanContinue(false);
     }
     setError(null);
     setIsSending(true);
@@ -303,20 +374,49 @@ export default function AISidebar() {
             search: window.location.search,
             title: document.title,
           },
+          ...(buildDraft ? { buildDraft } : {}),
         }),
         signal: controller.signal,
       });
-      const payload = await response.json() as ChatResponse | { error?: string };
+      const payload = await response.json() as ChatResponse | ChatErrorPayload;
 
       if (!response.ok || !("message" in payload)) {
-        throw new Error("error" in payload && payload.error ? payload.error : "No se pudo obtener una respuesta.");
+        const errorPayload = payload as ChatErrorPayload;
+        const retryAfterHeader = Number(response.headers.get("Retry-After"));
+        const retryAfterSeconds = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+          ? Math.ceil(retryAfterHeader)
+          : errorPayload.retryAfterSeconds;
+        console.error("CoreX AI chat request failed", {
+          requestId: errorPayload.requestId || response.headers.get("X-CoreX-AI-Request-Id"),
+          status: response.status,
+          code: errorPayload.code || "unknown_error",
+          retryable: errorPayload.retryable !== false,
+          retryAfterSeconds,
+        });
+        setError({
+          message: errorPayload.error || "No se pudo obtener una respuesta.",
+          retryable: errorPayload.retryable !== false,
+          retryAfterSeconds,
+        });
+        return;
       }
 
       setMessages((currentMessages) => [...currentMessages, payload.message]);
       setProvider(payload.provider);
+      setModel(payload.model);
+      if (payload.pendingAction) setPendingAction(payload.pendingAction);
+      if (payload.buildDraft) setBuildDraft(payload.buildDraft);
+      setCanContinue(payload.truncated === true && !payload.pendingAction);
     } catch (requestError) {
       if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-      setError(requestError instanceof Error ? requestError.message : "No se pudo conectar con el asistente.");
+      console.error("CoreX AI chat network error", {
+        name: requestError instanceof Error ? requestError.name : "unknown_error",
+        message: requestError instanceof Error ? requestError.message : "No se pudo conectar con el asistente.",
+      });
+      setError({
+        message: requestError instanceof Error ? requestError.message : "No se pudo conectar con el asistente.",
+        retryable: true,
+      });
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -325,10 +425,74 @@ export default function AISidebar() {
     }
   };
 
+  const confirmAction = async () => {
+    if (!pendingAction || isSending || isConfirmingAction) return;
+    setError(null);
+    setIsConfirmingAction(true);
+    setIsSending(true);
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: messages.slice(-12),
+          action: { id: pendingAction.id, digest: pendingAction.digest },
+        }),
+      });
+      const payload = await response.json() as ChatResponse | ChatErrorPayload;
+      if (!response.ok || !("message" in payload)) {
+        const errorPayload = payload as ChatErrorPayload;
+        console.error("CoreX AI action confirmation failed", {
+          requestId: errorPayload.requestId || response.headers.get("X-CoreX-AI-Request-Id"),
+          status: response.status,
+          code: errorPayload.code || "unknown_error",
+        });
+        setError({
+          message: errorPayload.error || "No se pudo confirmar la acción.",
+          retryable: false,
+        });
+        return;
+      }
+      setMessages((currentMessages) => [...currentMessages, payload.message]);
+      setProvider(payload.provider);
+      setModel(payload.model);
+      setPendingAction(null);
+      setBuildDraft(null);
+    } catch (requestError) {
+      console.error("CoreX AI action confirmation network error", {
+        name: requestError instanceof Error ? requestError.name : "unknown_error",
+        message: requestError instanceof Error ? requestError.message : "No se pudo confirmar la acción.",
+      });
+      setError({
+        message: requestError instanceof Error ? requestError.message : "No se pudo confirmar la acción.",
+        retryable: false,
+      });
+    } finally {
+      setIsConfirmingAction(false);
+      setIsSending(false);
+    }
+  };
+
+  const cancelAction = () => {
+    if (isConfirmingAction) return;
+    setPendingAction(null);
+    setMessages((currentMessages) => [...currentMessages, {
+      role: "assistant",
+      content: "No se realizó ningún cambio en tu bóveda.",
+    }]);
+  };
+
   const stopResponse = () => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setIsSending(false);
+  };
+
+  const continueResponse = () => {
+    void sendMessage(
+      "Continúa exactamente tu respuesta anterior desde donde se interrumpió. No repitas contenido ni ejecutes acciones o tools.",
+    );
   };
 
   const collapseMobileChat = () => {
@@ -427,12 +591,19 @@ export default function AISidebar() {
     draft,
     error,
     isSending,
+    canContinue,
     provider,
+    model,
     sessionKind,
     onDraftChange: setDraft,
     onSend: () => void sendMessage(),
     onStop: stopResponse,
     onRetry: () => void sendMessage(lastMessageRef.current, true),
+    onContinue: continueResponse,
+    pendingAction,
+    isConfirmingAction,
+    onConfirmAction: () => void confirmAction(),
+    onCancelAction: cancelAction,
   };
 
   const mobilePanelBottom = keyboardInset > 0

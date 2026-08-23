@@ -2,9 +2,10 @@ export const MAX_CHAT_MESSAGE_LENGTH = 2_000;
 export const MAX_CHAT_HISTORY_MESSAGES = 12;
 
 export type ChatRole = "user" | "assistant";
-export type ChatProvider = "groq" | "openrouter" | "guardrail";
+export type ChatProvider = "local" | "groq" | "cerebras" | "openrouter" | "guardrail";
 
 export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | "vault" | "other";
+export type BuildSlot = "cpu" | "gpu" | "ram" | "motherboard" | "storage" | "psu";
 
 export interface PageContext {
   pathname: string;
@@ -24,9 +25,60 @@ export interface ChatUsage {
   outputTokens: number;
 }
 
+export type AiActionType = "create_combo" | "create_build" | "set_custom_price";
+
+export interface PendingActionComponent {
+  slot: string;
+  id: string;
+  name: string;
+  type: string;
+}
+
+export interface PendingAction {
+  id: string;
+  type: AiActionType;
+  title: string;
+  summary: {
+    entityTitle?: string;
+    components?: PendingActionComponent[];
+    entityType?: "combo" | "build";
+    targetId?: string;
+    slot?: string;
+    currency?: "USD" | "EUR";
+    price?: number;
+  };
+  digest: string;
+  expiresAt: string;
+}
+
+/** Borrador de build sin efectos persistentes; se revalida en cada operación de servidor. */
+export interface BuildDraftComponent {
+  id: string;
+  name: string;
+  type: BuildSlot;
+  query: string;
+  priceMode: "custom" | "catalog" | "msrp";
+  customPrice?: number;
+}
+
+export interface BuildDraft {
+  title?: string;
+  awaitingTitle?: boolean;
+  category?: string;
+  currency: "USD" | "EUR";
+  components: Record<BuildSlot, BuildDraftComponent>;
+}
+
+export interface AiActionRequest {
+  id: string;
+  digest: string;
+}
+
 export interface ChatRequest {
   messages: ChatMessage[];
   context?: PageContext;
+  buildDraft?: BuildDraft;
+  action?: AiActionRequest;
 }
 
 export interface ChatResponse {
@@ -35,6 +87,10 @@ export interface ChatResponse {
   model: string;
   usage?: ChatUsage;
   toolCalls?: number;
+  pendingAction?: PendingAction;
+  buildDraft?: BuildDraft;
+  /** El proveedor terminó por límite de salida; la interfaz puede pedir continuación. */
+  truncated?: boolean;
 }
 
 export function isChatRequest(value: unknown): value is ChatRequest {
@@ -49,6 +105,18 @@ export function isChatRequest(value: unknown): value is ChatRequest {
 
   const context = (value as ChatRequest).context;
   if (context !== undefined && !isPageContext(context)) return false;
+
+  const buildDraft = (value as ChatRequest).buildDraft;
+  if (buildDraft !== undefined && !isBuildDraft(buildDraft)) return false;
+
+  const action = (value as ChatRequest).action;
+  if (action !== undefined && (
+    !action
+    || typeof action.id !== "string"
+    || action.id.length > 120
+    || typeof action.digest !== "string"
+    || !/^[a-f0-9]{64}$/i.test(action.digest)
+  )) return false;
 
   return messages.every((message) => (
     message
@@ -68,6 +136,28 @@ function isPageContext(value: unknown): value is PageContext {
     && (context.title === undefined || (typeof context.title === "string" && context.title.length <= 200))
     && (context.route === undefined || ["home", "catalog", "comparator", "combo", "build", "vault", "other"].includes(context.route))
     && (context.identifier === undefined || (typeof context.identifier === "string" && context.identifier.length <= 120));
+}
+
+function isBuildDraft(value: unknown): value is BuildDraft {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const draft = value as BuildDraft;
+  if ((draft.title !== undefined && (typeof draft.title !== "string" || draft.title.length > 80))
+    || (draft.awaitingTitle !== undefined && typeof draft.awaitingTitle !== "boolean")
+    || (draft.category !== undefined && (typeof draft.category !== "string" || draft.category.length > 60))
+    || !["USD", "EUR"].includes(draft.currency)
+    || !draft.components || typeof draft.components !== "object" || Array.isArray(draft.components)) return false;
+
+  const slots: BuildSlot[] = ["cpu", "gpu", "ram", "motherboard", "storage", "psu"];
+  return slots.every((slot) => {
+    const component = draft.components[slot];
+    return component
+      && typeof component.id === "string" && component.id.length <= 120
+      && typeof component.name === "string" && component.name.length <= 200
+      && component.type === slot
+      && typeof component.query === "string" && component.query.length <= 120
+      && ["custom", "catalog", "msrp"].includes(component.priceMode)
+      && (component.customPrice === undefined || (typeof component.customPrice === "number" && Number.isFinite(component.customPrice) && component.customPrice > 0 && component.customPrice <= 1_000_000));
+  });
 }
 
 export function normalizeMessages(messages: ChatMessage[]): ChatMessage[] {

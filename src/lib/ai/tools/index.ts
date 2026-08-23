@@ -1,6 +1,7 @@
 import { AI_TOOL_DEFINITIONS } from "./definitions";
 import {
   compareComponents,
+  analyzeBuild,
   getBuild,
   getCombo,
   getComponent,
@@ -10,6 +11,16 @@ import {
   searchCombos,
   searchComponents,
 } from "./read";
+import {
+  proposeCreateBuild,
+  proposeCreateCombo,
+  proposeSetCustomPrice,
+  planBuild,
+  saveBuildDraft,
+  searchUserBuilds,
+  searchUserCombos,
+  updateBuildPlan,
+} from "../actions";
 import type { AiToolContext, AiToolResult } from "./types";
 
 type AiToolHandler = (args: unknown, context: AiToolContext) => Promise<AiToolResult>;
@@ -22,8 +33,17 @@ const AI_TOOL_HANDLERS: Record<string, AiToolHandler> = {
   get_combo: getCombo,
   search_builds: searchBuilds,
   get_build: getBuild,
+  analyze_build: analyzeBuild,
   recommend_components: recommendComponents,
   get_current_page_context: getCurrentPageContext,
+  search_user_combos: searchUserCombos,
+  search_user_builds: searchUserBuilds,
+  propose_create_combo: proposeCreateCombo,
+  propose_create_build: proposeCreateBuild,
+  plan_build: planBuild,
+  update_build_plan: updateBuildPlan,
+  save_build_draft: saveBuildDraft,
+  propose_set_custom_price: proposeSetCustomPrice,
 };
 
 export { AI_TOOL_DEFINITIONS };
