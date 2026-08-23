@@ -10,9 +10,10 @@ import {
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, PendingAction } from "@/lib/ai/types";
+import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, PageContext, PendingAction } from "@/lib/ai/types";
 import { ensureAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
+import ExternalPriceResultsCard from "./ExternalPriceResultsCard";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
@@ -45,6 +46,31 @@ function getMobileToastPreview(content: string): string {
   if (normalizedContent.length <= MOBILE_TOAST_MAX_LENGTH) return normalizedContent;
 
   return `${normalizedContent.slice(0, MOBILE_TOAST_MAX_LENGTH).trimEnd()}...`;
+}
+
+function getCurrentClientPageContext(): PageContext {
+  const pathname = window.location.pathname;
+  const segments = pathname.split("/").filter(Boolean);
+  const root = segments[0];
+  const route: PageContext["route"] = root === "catalog"
+    ? "catalog"
+    : root === "combos"
+      ? "combo"
+      : root === "builds"
+        ? "build"
+        : root === "comparator"
+          ? "comparator"
+          : root === "vault"
+            ? "vault"
+            : root ? "other" : "home";
+  const identifier = root === "vault" ? segments[2] || segments[1] : route === "comparator" ? undefined : segments[1];
+  return {
+    pathname,
+    search: window.location.search,
+    title: document.title,
+    route,
+    ...(identifier ? { identifier } : {}),
+  };
 }
 
 function findFocusableElements(container: HTMLElement) {
@@ -84,6 +110,7 @@ interface ChatPanelProps {
   onRetry: () => void;
   onContinue: () => void;
   pendingAction: PendingAction | null;
+  webSearch: ChatResponse["webSearch"];
   isConfirmingAction: boolean;
   onConfirmAction: () => void;
   onCancelAction: () => void;
@@ -110,6 +137,7 @@ function ChatPanel({
   onRetry,
   onContinue,
   pendingAction,
+  webSearch,
   isConfirmingAction,
   onConfirmAction,
   onCancelAction,
@@ -251,6 +279,8 @@ function ChatPanel({
             La respuesta se cortó por longitud. Continuar respuesta
           </button>
         )}
+
+        {webSearch && <ExternalPriceResultsCard result={webSearch} />}
       </div>
 
       {pendingAction && (
@@ -334,6 +364,7 @@ export default function AISidebar() {
   const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [webSearch, setWebSearch] = useState<ChatResponse["webSearch"]>(undefined);
   const [buildDraft, setBuildDraft] = useState<BuildDraft | null>(null);
   const [comboDraft, setComboDraft] = useState<ComboDraft | null>(null);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
@@ -394,11 +425,7 @@ export default function AISidebar() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextMessages.slice(-12),
-          context: {
-            pathname: window.location.pathname,
-            search: window.location.search,
-            title: document.title,
-          },
+          context: getCurrentClientPageContext(),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
         }),
@@ -434,6 +461,7 @@ export default function AISidebar() {
       // Si una recomendación no trae pendingAction, no debe quedar visible una
       // tarjeta antigua de otro build/combo.
       setPendingAction(payload.pendingAction ?? null);
+      setWebSearch(payload.webSearch);
       if (payload.buildDraft) {
         setBuildDraft(payload.buildDraft);
         setComboDraft(null);
@@ -494,6 +522,7 @@ export default function AISidebar() {
       setProvider(payload.provider);
       setModel(payload.model);
       setPendingAction(null);
+      setWebSearch(undefined);
       setBuildDraft(null);
       setComboDraft(null);
     } catch (requestError) {
@@ -514,6 +543,7 @@ export default function AISidebar() {
   const cancelAction = () => {
     if (isConfirmingAction) return;
     setPendingAction(null);
+    setWebSearch(undefined);
     setMessages((currentMessages) => [...currentMessages, {
       role: "assistant",
       content: "No se realizó ningún cambio en tu bóveda.",
@@ -638,6 +668,7 @@ export default function AISidebar() {
     onRetry: () => void sendMessage(lastMessageRef.current, true),
     onContinue: continueResponse,
     pendingAction,
+    webSearch,
     isConfirmingAction,
     onConfirmAction: () => void confirmAction(),
     onCancelAction: cancelAction,

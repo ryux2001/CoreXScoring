@@ -4,6 +4,7 @@ import {
   Boxes,
   FolderHeart,
   Hammer,
+  KeyRound,
   Layers2,
   ShieldCheck,
   UserRound,
@@ -46,6 +47,12 @@ const vaultSections = [
     description: 'Administra tu acceso y cambia tu contraseña.',
     href: '/vault/account',
     icon: UserRound,
+  },
+  {
+    title: 'Proveedores de búsqueda',
+    description: 'Configura tus claves de Tavily o Brave Search para el asistente.',
+    href: '/vault/account#web-search-providers',
+    icon: KeyRound,
   },
 ];
 

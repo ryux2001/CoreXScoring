@@ -5,6 +5,7 @@ export type ChatRole = "user" | "assistant";
 export type ChatProvider = "local" | "groq" | "cerebras" | "openrouter" | "guardrail";
 
 export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | "vault" | "other";
+export type PageEntityType = "product" | "combo" | "build" | "saved_combo" | "saved_build";
 export type BuildSlot = "cpu" | "gpu" | "ram" | "motherboard" | "storage" | "psu";
 export type ComboSlot = "cpu" | "gpu" | "ram";
 
@@ -14,6 +15,11 @@ export interface PageContext {
   title?: string;
   route?: PageRoute;
   identifier?: string;
+  entityType?: PageEntityType;
+  entityId?: string;
+  entitySlug?: string;
+  entityTitle?: string;
+  entitySummary?: string;
 }
 
 export interface ChatMessage {
@@ -109,6 +115,7 @@ export interface ChatResponse {
   pendingAction?: PendingAction;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  webSearch?: import("./web-search/types").ExternalPriceSearchResult;
   /** El proveedor terminó por límite de salida; la interfaz puede pedir continuación. */
   truncated?: boolean;
 }
@@ -157,7 +164,12 @@ function isPageContext(value: unknown): value is PageContext {
     && (context.search === undefined || (typeof context.search === "string" && context.search.length <= 500))
     && (context.title === undefined || (typeof context.title === "string" && context.title.length <= 200))
     && (context.route === undefined || ["home", "catalog", "comparator", "combo", "build", "vault", "other"].includes(context.route))
-    && (context.identifier === undefined || (typeof context.identifier === "string" && context.identifier.length <= 120));
+    && (context.identifier === undefined || (typeof context.identifier === "string" && context.identifier.length <= 120))
+    && (context.entityType === undefined || ["product", "combo", "build", "saved_combo", "saved_build"].includes(context.entityType))
+    && (context.entityId === undefined || (typeof context.entityId === "string" && context.entityId.length <= 120))
+    && (context.entitySlug === undefined || (typeof context.entitySlug === "string" && context.entitySlug.length <= 120))
+    && (context.entityTitle === undefined || (typeof context.entityTitle === "string" && context.entityTitle.length <= 200))
+    && (context.entitySummary === undefined || (typeof context.entitySummary === "string" && context.entitySummary.length <= 500));
 }
 
 function isBuildDraft(value: unknown): value is BuildDraft {
@@ -227,5 +239,10 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
     title: context.title?.slice(0, 200),
     route: context.route,
     identifier: context.identifier?.slice(0, 120),
+    entityType: context.entityType,
+    entityId: context.entityId?.slice(0, 120),
+    entitySlug: context.entitySlug?.slice(0, 120),
+    entityTitle: context.entityTitle?.slice(0, 200),
+    entitySummary: context.entitySummary?.slice(0, 500),
   };
 }

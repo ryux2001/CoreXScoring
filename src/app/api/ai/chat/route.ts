@@ -12,6 +12,7 @@ import {
   settleAiQuota,
 } from "@/lib/ai/limits";
 import { isChatRequest, normalizeMessages, normalizePageContext, type ChatProvider } from "@/lib/ai/types";
+import { resolvePageContext } from "@/lib/ai/page-context";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
@@ -247,13 +248,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const normalizedPageContext = normalizePageContext(body.context);
+    const resolvedPageContext = await resolvePageContext(supabase, normalizedPageContext, user.id, isAnonymous);
     const toolContext = {
       supabase,
       actor: {
         id: user.id,
         isAnonymous,
       },
-      pageContext: normalizePageContext(body.context),
+      pageContext: resolvedPageContext,
+      ipHash,
       buildDraft: body.buildDraft,
       comboDraft: body.comboDraft,
     };

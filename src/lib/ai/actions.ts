@@ -1,6 +1,13 @@
 import { createHmac } from "node:crypto";
 import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot, PendingAction, PendingActionComponent } from "./types";
 import type { AiToolContext, AiToolResult } from "./tools/types";
+import { resolveTrustedRetailer, TRUSTED_RETAILERS } from "./web-search/trusted-domains";
+import { searchTavily, TavilySearchError } from "./web-search/tavily-client";
+import { searchBrave, BraveSearchError } from "./web-search/brave-client";
+import { getWebSearchProviderSettings } from "./web-search/provider-settings";
+import { validateTavilyCandidate } from "./web-search/validate-price-candidate";
+import type { ExternalPriceCandidate, ExternalPriceSearchInput, ExternalPriceSearchResult } from "./web-search/types";
+import { consumeAiWebSearchQuota, AiWebSearchQuotaUnavailableError } from "./limits";
 
 type Row = Record<string, unknown>;
 type ActionSlot = ComboSlot | "motherboard" | "storage" | "psu";
@@ -55,6 +62,48 @@ const COMBO_SLOTS: ComboSlot[] = ["cpu", "gpu", "ram"];
 const BUILD_SLOTS: BuildSlot[] = ["cpu", "gpu", "ram", "motherboard", "storage", "psu"];
 const PRODUCT_TYPES = new Set(BUILD_SLOTS);
 const ACTION_TYPES = new Set<AiActionType>(["create_combo", "create_build", "set_custom_price"]);
+
+function escapeExternalMarkdown(value: string): string {
+  return value.replace(/[\\`*_[\]<>]/g, "\\$&");
+}
+
+function formatExternalPrice(candidate: ExternalPriceCandidate): string {
+  if (candidate.price === undefined || !candidate.currency) return "precio no detectado";
+  const original = `${candidate.price.toFixed(2).replace(".", ",")} ${candidate.currency === "EUR" ? "€" : candidate.currency}`;
+  return candidate.currency !== "EUR" && candidate.eurEquivalent !== undefined
+    ? `${original} (≈ ${candidate.eurEquivalent.toFixed(2).replace(".", ",")} €)`
+    : original;
+}
+
+function formatExternalSearchMessage(result: ExternalPriceSearchResult): string {
+  if (result.candidates.length === 0) {
+    return `No encontré un precio verificable para **${escapeExternalMarkdown(result.product)}** en PcComponentes, Amazon, eBay o AliExpress. Puedes probar con el modelo exacto o revisar las tiendas manualmente.`;
+  }
+
+  const retailers = [...new Set(result.candidates.map((candidate) => candidate.retailer))].join(", ");
+  const approximate = result.bestApproximateCandidate && !result.bestCandidate
+    ? ` No encontré un precio publicado en euros; la mejor referencia aproximada es ${formatExternalPrice(result.bestApproximateCandidate)} en ${result.bestApproximateCandidate.retailer}.`
+    : result.bestCandidate
+      ? ` El mejor candidato publicado en euros es ${formatExternalPrice(result.bestCandidate)} en ${result.bestCandidate.retailer}.`
+      : " Revisa los candidatos en la tarjeta para comparar las fuentes.";
+  const providerLabel = result.provider === "brave" ? "Brave Search" : "Tavily";
+  return `He buscado **${escapeExternalMarkdown(result.product)}** en ${retailers} usando ${providerLabel}. He encontrado ${result.candidates.length} referencia${result.candidates.length === 1 ? "" : "s"}.${approximate} Verifica vendedor, stock, envío e impuestos antes de comprar.`;
+}
+
+function sanitizeExternalProductQuery(value: unknown): string {
+  const raw = asText(value)
+    .trim()
+    .slice(0, 160)
+    .replace(/[^\p{L}\p{N}\s._+-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return raw
+    .replace(/\b(?:me\s+interesa|puedes|podrias|podrías|buscar|busca|buscame|búscame|encontrar|encuentra|dime|mira|el|la|un|una|mejor|precio|precios|actual|actuales|online|web|fuentes?|tiendas?|confiables?|fiables?|españa|espana|por\s+favor)\b/giu, " ")
+    .replace(/\b(?:a|por)\s+\d+(?:[.,]\d+)?\s*(?:usd|eur|\$|€)?\b/giu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+}
 
 function asRow(value: unknown): Row {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Row : {};
@@ -401,6 +450,200 @@ export async function searchUserBuilds(args: unknown, context: AiToolContext): P
     components: [row.cpu, row.gpu, row.ram, row.motherboard, row.storage, row.psu].map(summarizeNestedComponent).filter((component): component is { id: string; name: string; type: string } => component !== null),
     createdAt: row.created_at,
   })) } };
+}
+
+function getExternalSearchInput(args: unknown): ExternalPriceSearchInput {
+  const input = asRow(args);
+  const productQuery = sanitizeExternalProductQuery(input.productQuery);
+  const componentId = asText(input.componentId).trim().slice(0, 120);
+  return {
+    ...(productQuery ? { productQuery } : {}),
+    ...(componentId ? { componentId } : {}),
+    country: "ES",
+    ...(asText(input.retailer).trim() ? { retailer: asText(input.retailer).trim().slice(0, 80) } : {}),
+    mode: input.mode === "specific_retailer" ? "specific_retailer" : "best_price",
+  };
+}
+
+function getExternalProductQuery(input: ExternalPriceSearchInput, row: Row | null): string {
+  return asText(row?.name, input.productQuery || "").trim().slice(0, 120);
+}
+
+function getReferencePriceEur(row: Row | null): number | undefined {
+  const eur = Number(row?.price_base_eur);
+  if (Number.isFinite(eur) && eur > 0) return eur;
+  const usd = Number(row?.price_base_usd);
+  if (!Number.isFinite(usd) || usd <= 0) return undefined;
+  return Number((usd * 0.92).toFixed(2));
+}
+
+export async function findExternalPrice(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const input = getExternalSearchInput(args);
+  if (!input.productQuery && !input.componentId) {
+    return { ok: false, error: "Indica el nombre exacto o el identificador del componente que quieres buscar." };
+  }
+
+  let productRow: Row | null = null;
+  if (input.componentId) {
+    const { data, error } = await context.supabase
+      .from("products_with_priority")
+      .select("id,name,brand,slug,type,price_base_usd,price_base_eur")
+      .eq("id", input.componentId)
+      .maybeSingle();
+    if (error) return { ok: false, error: "No se pudo identificar el componente del catálogo." };
+    if (!data) return { ok: false, error: "No encontré ese componente en el catálogo de CoreXScoring." };
+    productRow = asRow(data);
+  }
+
+  const productQuery = getExternalProductQuery(input, productRow);
+  if (!productQuery) return { ok: false, error: "No pude determinar qué producto buscar." };
+
+  const retailer = resolveTrustedRetailer(input.retailer);
+  if (input.mode === "specific_retailer" && !retailer) {
+    return { ok: false, error: "Solo puedo buscar en PcComponentes, Amazon, eBay o AliExpress." };
+  }
+
+  const query = [
+    `"${productQuery}"`,
+    "precio",
+    "comprar",
+    "España",
+  ].join(" ");
+
+  try {
+    const quota = await consumeAiWebSearchQuota({
+      supabase: context.supabase,
+      userId: context.actor.id,
+      ipHash: context.ipHash || null,
+      isAnonymous: context.actor.isAnonymous,
+      units: process.env.WEB_SEARCH_DEFAULT_DEPTH?.trim().toLowerCase() === "advanced" ? 2 : 1,
+    });
+    if (!quota.allowed) return { ok: false, error: "Se alcanzó el límite diario de búsquedas web. Inténtalo mañana." };
+
+    const providerSettings = await getWebSearchProviderSettings(context.supabase, context.actor.id);
+    const provider = providerSettings.preferredProvider;
+    const apiKey = provider === "brave" ? providerSettings.braveApiKey : providerSettings.tavilyApiKey;
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: provider === "brave"
+          ? "Brave Search no está configurado. Añade tu API key en la bóveda o configura BRAVE_SEARCH_API_KEY en el servidor."
+          : "Tavily no está configurado. Añade tu API key en la bóveda o configura TAVILY_API_KEY en el servidor.",
+      };
+    }
+
+    const retailersToSearch = retailer ? [retailer] : TRUSTED_RETAILERS;
+    const searchResults = await Promise.allSettled(retailersToSearch.map((source) => (
+      provider === "brave"
+        ? searchBrave({
+          apiKey,
+          query: `${query} ${source.label}`,
+          includeDomains: source.domains,
+          maxResults: retailer ? 5 : 2,
+        })
+        : searchTavily({
+          apiKey,
+          query: `${query} ${source.label}`,
+          includeDomains: source.domains,
+          maxResults: retailer ? 5 : 2,
+        })
+    )));
+    const searchErrors = searchResults.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+    const externalResults = searchResults.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+    if (externalResults.length === 0 && searchErrors.length > 0) throw searchErrors[0].reason;
+    const validatedCandidates = externalResults.map((result) => ({
+      source: result,
+      candidate: validateTavilyCandidate(result, productQuery, getReferencePriceEur(productRow)),
+    }));
+    if (process.env.NODE_ENV !== "production") {
+      console.log("CoreX AI web search debug", {
+        receivedProductQuery: asText(asRow(args).productQuery).trim().slice(0, 160),
+        receivedComponentId: asText(asRow(args).componentId).trim().slice(0, 120) || undefined,
+        normalizedProductQuery: productQuery,
+        mode: input.mode,
+        provider,
+        retailer: retailer?.key || "all",
+        searchedRetailers: retailersToSearch.map((source) => source.key),
+        query,
+        externalResults: externalResults.map((result) => ({
+          title: asText(result.title).slice(0, 240),
+          url: asText(result.url).slice(0, 300),
+          content: asText(result.content).slice(0, 600),
+          rawContentLength: asText(result.raw_content).length,
+          score: result.score,
+        })),
+        validatedCandidates: validatedCandidates.map(({ source, candidate }) => ({
+          url: asText(source.url).slice(0, 300),
+          price: candidate?.price,
+          currency: candidate?.currency,
+          eurEquivalent: candidate?.eurEquivalent,
+          confidence: candidate?.confidence,
+          notes: candidate?.notes,
+        })),
+        validatedCandidateCount: validatedCandidates.filter(({ candidate }) => candidate !== null).length,
+      });
+    }
+    const candidates = validatedCandidates
+      .map(({ candidate }) => candidate)
+      .filter((candidate): candidate is ExternalPriceCandidate => candidate !== null)
+      .filter((candidate) => candidate.price !== undefined && candidate.currency !== undefined)
+      .filter((candidate, index, all) => all.findIndex((other) => other.url === candidate.url) === index)
+      .sort((left, right) => {
+        const leftHasPrice = left.price !== undefined;
+        const rightHasPrice = right.price !== undefined;
+        if (leftHasPrice !== rightHasPrice) return leftHasPrice ? -1 : 1;
+        if (left.eurEquivalent !== undefined && right.eurEquivalent !== undefined && left.eurEquivalent !== right.eurEquivalent) return left.eurEquivalent - right.eurEquivalent;
+        return right.confidence - left.confidence;
+      })
+      .slice(0, 5);
+    const bestCandidate = candidates.find((candidate) => (
+      candidate.price !== undefined
+        && candidate.currency === "EUR"
+        && candidate.availability !== "unavailable"
+        && candidate.confidence >= 0.58
+    ));
+    const bestApproximateCandidate = bestCandidate ? undefined : candidates.find((candidate) => (
+      candidate.eurEquivalent !== undefined
+        && candidate.currency !== "EUR"
+        && candidate.availability !== "unavailable"
+        && candidate.confidence >= 0.45
+    ));
+    const result: ExternalPriceSearchResult = {
+      product: productQuery,
+      query,
+      country: "ES",
+      provider,
+      searchedAt: new Date().toISOString(),
+      candidates,
+      ...(bestCandidate ? { bestCandidate } : {}),
+      ...(bestApproximateCandidate ? { bestApproximateCandidate } : {}),
+      warnings: [
+        "Los precios externos pueden cambiar y los marketplaces pueden mostrar vendedores distintos.",
+        ...(bestCandidate ? [] : ["No se encontró un precio publicado en EUR; las equivalencias se muestran solo como referencia aproximada."]),
+        "La búsqueda no modifica precios ni datos de CoreXScoring.",
+      ],
+    };
+    return {
+      ok: true,
+      data: { message: formatExternalSearchMessage(result), webSearch: result },
+      webSearch: result,
+    };
+  } catch (error) {
+    if (error instanceof AiWebSearchQuotaUnavailableError) {
+      return { ok: false, error: "La cuota de búsquedas web no está disponible. Aplica la migración de Fase 6 y vuelve a intentarlo." };
+    }
+    if (error instanceof TavilySearchError) {
+      if (error.code === "tavily_not_configured") return { ok: false, error: "La búsqueda web todavía no está configurada en el servidor." };
+      if (error.code === "tavily_rate_limited") return { ok: false, error: "Tavily alcanzó su límite temporal. Inténtalo más tarde." };
+      if (error.code === "tavily_timeout") return { ok: false, error: "La búsqueda web tardó demasiado. Inténtalo de nuevo." };
+    }
+    if (error instanceof BraveSearchError) {
+      if (error.code === "brave_rate_limited") return { ok: false, error: "Brave Search alcanzó su límite temporal. Inténtalo más tarde." };
+      if (error.code === "brave_timeout") return { ok: false, error: "La búsqueda con Brave tardó demasiado. Inténtalo de nuevo." };
+      if (error.code === "brave_request_failed") return { ok: false, error: "Brave Search rechazó la consulta. Verifica la API key guardada en la bóveda." };
+    }
+    return { ok: false, error: "No se pudo completar la búsqueda de precios externos." };
+  }
 }
 
 export async function proposeCreateCombo(args: unknown, context: AiToolContext): Promise<AiToolResult> {

@@ -352,6 +352,11 @@ function getLatestContext(context: PageContext | undefined): Row {
     title: context.title || "",
     route: context.route,
     identifier: context.identifier ?? null,
+    entityType: context.entityType ?? null,
+    entityId: context.entityId ?? null,
+    entitySlug: context.entitySlug ?? null,
+    entityTitle: context.entityTitle ?? null,
+    entitySummary: context.entitySummary ?? null,
   };
 }
 
