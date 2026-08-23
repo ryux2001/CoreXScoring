@@ -97,7 +97,7 @@ function ChatPanel({
           </span>
           <div className="min-w-0">
             <h2 className="font-display truncate text-base font-bold tracking-tight text-white">CoreX AI</h2>
-            <p className="font-technical text-[10px] text-zinc-500">
+            <p className="font-technical text-[12px] text-zinc-500 font-extrabold">
               {sessionKind === "anonymous"
                 ? "Modo invitado · hardware"
                 : provider === "openrouter"
@@ -148,7 +148,7 @@ function ChatPanel({
         )}
       </header>
 
-      <div id={id} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5" aria-live="polite">
+      <div id={id} className="ai-chat-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5" aria-live="polite">
         {messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
@@ -219,7 +219,7 @@ function ChatPanel({
             }}
             rows={1}
             maxLength={2_000}
-            placeholder="Escribe tu pregunta…"
+            placeholder="Escribe…"
             className="font-technical max-h-28 min-h-8 flex-1 resize-none bg-transparent py-1 text-sm text-white outline-none placeholder:text-zinc-600"
           />
           {isSending ? (
