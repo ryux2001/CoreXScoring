@@ -1,5 +1,5 @@
 import type { AiSupabaseClient } from "./tools/types";
-import type { PageContext, PageEntityType, PageRoute } from "./types";
+import type { ComparisonContext, PageContext, PageEntityType, PageRoute } from "./types";
 
 interface PageLocation {
   route: PageRoute;
@@ -46,6 +46,31 @@ function getEntitySummary(row: Row, slots: string[]): string | undefined {
   return parts.length > 0 ? parts.join(" · ").slice(0, 500) : undefined;
 }
 
+async function resolveComparisonContext(
+  supabase: AiSupabaseClient,
+  context: PageContext,
+  route: PageRoute,
+): Promise<ComparisonContext | undefined> {
+  if (route !== "comparator" || !context.comparison?.itemIds.length) return undefined;
+
+  const requestedIds = Array.from(new Set(context.comparison.itemIds)).slice(0, 3);
+  const { data } = await supabase
+    .from("products")
+    .select("id,type")
+    .in("id", requestedIds);
+
+  const foundById = new Map(
+    (data || []).map((row) => [String((row as Row).id), String((row as Row).type || "").toLowerCase()]),
+  );
+  const itemIds = requestedIds.filter((id) => foundById.has(id));
+  const types = new Set(itemIds.map((id) => foundById.get(id)).filter(Boolean));
+
+  return {
+    itemIds,
+    ...(types.size === 1 ? { componentType: [...types][0] } : {}),
+  };
+}
+
 export async function resolvePageContext(
   supabase: AiSupabaseClient,
   context: PageContext | undefined,
@@ -54,12 +79,14 @@ export async function resolvePageContext(
 ): Promise<PageContext | undefined> {
   if (!context) return undefined;
   const location = getPageLocation(context.pathname);
+  const comparison = await resolveComparisonContext(supabase, context, location.route);
   const resolved: PageContext = {
     ...context,
     route: location.route,
     identifier: location.identifier || context.identifier,
     entityType: location.entityType,
     entitySlug: location.slug,
+    ...(comparison ? { comparison } : { comparison: undefined }),
   };
   if (!location.slug || !location.entityType) return resolved;
 
@@ -101,5 +128,8 @@ export function formatPageContextForPrompt(context: PageContext | undefined): st
     ? `Está viendo ${context.entityType === "product" ? "el componente" : context.entityType === "combo" || context.entityType === "saved_combo" ? "el combo" : "la build"} «${context.entityTitle}».`
     : `Está en la sección «${context.route || "otra"}» de CoreXScoring.`;
   const summary = context.entitySummary ? ` Componentes visibles: ${context.entitySummary}.` : "";
-  return `\n\nContexto actual de la página (dato verificado por el servidor): ${location}${summary} Si la pregunta se refiere a «esto», «este componente», «esta build» o «este combo», usa este contexto como referencia y consulta la tool adecuada para obtener detalles completos.`;
+  const comparison = context.comparison?.itemIds.length
+    ? ` La comparación actual contiene ${context.comparison.itemIds.length} componente(s) de catálogo. Si el usuario se refiere a «estos», «el primero» o «el segundo», consulta get_current_comparison antes de responder.`
+    : "";
+  return `\n\nContexto actual de la página (dato verificado por el servidor): ${location}${summary}${comparison} Si la pregunta se refiere a «esto», «este componente», «esta build» o «este combo», usa este contexto como referencia y consulta la tool adecuada para obtener detalles completos.`;
 }

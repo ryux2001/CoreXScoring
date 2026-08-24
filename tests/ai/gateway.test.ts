@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runChat } from "@/lib/ai/gateway";
-import { createSupabaseStub } from "./helpers/query-builder";
+import { createQueryBuilder, createSupabaseStub } from "./helpers/query-builder";
 import { cpuFixture } from "./helpers/fixtures";
 
 function providerResponse(body: unknown, status = 200): Response {
@@ -79,6 +79,83 @@ describe("AI gateway conversational protocol", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const secondRequest = JSON.parse(String(fetchMock.mock.calls[1]?.[0] && (fetchMock.mock.calls[1]?.[1] as RequestInit).body));
     expect(secondRequest.messages.some((message: { role: string; tool_call_id?: string }) => message.role === "tool" && message.tool_call_id === "call-search-1")).toBe(true);
+  });
+
+  it("returns a structured local action for an explicit comparison add request", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    const secondCpu = { ...cpuFixture, id: "cpu-7700x3d", name: "AMD Ryzen 7 7700X3D" };
+    const currentBuilder = createQueryBuilder({ data: [cpuFixture], error: null });
+    const productBuilder = createQueryBuilder({ data: secondCpu, error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "products" ? currentBuilder : productBuilder),
+    };
+    const fetchMock = vi.fn(async () => providerResponse({
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: "call-add-1",
+            type: "function",
+            function: { name: "propose_add_to_comparison", arguments: JSON.stringify({ id: secondCpu.id }) },
+          }],
+        },
+      }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "Añade el Ryzen 7 7700X3D a la comparación." },
+    ], {
+      supabase: supabase as never,
+      actor: { id: "user-1", isAnonymous: false },
+      pageContext: {
+        pathname: "/comparator",
+        route: "comparator",
+        comparison: { itemIds: [cpuFixture.id] },
+      },
+    }, "gateway-comparison-add");
+
+    expect(result.comparisonAction).toMatchObject({ type: "add", itemId: secondCpu.id });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes an explicit comparison price request to the local price action", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    const productBuilder = createQueryBuilder({ data: cpuFixture, error: null });
+    const supabase = { from: vi.fn(() => productBuilder) };
+    const fetchMock = vi.fn(async () => providerResponse({
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: "call-price-1",
+            type: "function",
+            function: { name: "propose_set_comparison_price", arguments: JSON.stringify({ id: cpuFixture.id, price: 200, currency: "USD" }) },
+          }],
+        },
+      }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "Coloca el Ryzen 5 5600 a 200$." },
+    ], {
+      supabase: supabase as never,
+      actor: { id: "user-1", isAnonymous: false },
+      pageContext: {
+        pathname: "/comparator",
+        search: "?currency=USD",
+        route: "comparator",
+        comparison: { itemIds: [cpuFixture.id] },
+      },
+    }, "gateway-comparison-price");
+
+    expect(result.comparisonAction).toMatchObject({ type: "set_price", itemId: cpuFixture.id, price: 200, currency: "USD" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("rejects a provider response that describes a tool instead of using tool_calls", async () => {

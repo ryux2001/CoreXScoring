@@ -1,5 +1,5 @@
 import type { createSupabaseServerClient } from "@/lib/supabaseServer";
-import type { BuildDraft, CatalogPriceEvaluationRequest, ComboDraft, PageContext, PendingAction } from "../types";
+import type { BuildDraft, CatalogPriceEvaluationRequest, ComboDraft, ComparisonUiAction, PageContext, PendingAction } from "../types";
 import type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 import type { ExternalPriceSearchResult } from "../web-search/types";
 
@@ -29,6 +29,7 @@ export interface AiToolSuccess {
   catalogPriceEvaluation?: CatalogPriceEvaluation;
   catalogPriceUpdate?: CatalogPriceEvaluation;
   webSearch?: ExternalPriceSearchResult;
+  comparisonAction?: ComparisonUiAction;
 }
 
 export interface AiToolFailure {

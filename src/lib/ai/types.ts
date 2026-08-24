@@ -36,7 +36,33 @@ export interface PageContext {
   entitySlug?: string;
   entityTitle?: string;
   entitySummary?: string;
+  comparison?: ComparisonContext;
 }
+
+export interface ComparisonContext {
+  itemIds: string[];
+  componentType?: string;
+}
+
+export type ComparisonUiAction =
+  | {
+      type: "add";
+      itemId: string;
+      itemName: string;
+      item: Record<string, unknown>;
+    }
+  | {
+      type: "remove";
+      itemId: string;
+      itemName: string;
+    }
+  | {
+      type: "set_price";
+      itemId: string;
+      itemName: string;
+      price: number;
+      currency: "USD" | "EUR";
+    };
 
 export interface ChatMessage {
   role: ChatRole;
@@ -166,6 +192,7 @@ export interface ChatResponse {
   catalogPriceEvaluation?: CatalogPriceEvaluation;
   catalogPriceUpdate?: CatalogPriceEvaluation;
   webSearch?: import("./web-search/types").ExternalPriceSearchResult;
+  comparisonAction?: ComparisonUiAction;
   /** El proveedor terminó por límite de salida; la interfaz puede pedir continuación. */
   truncated?: boolean;
 }
@@ -239,7 +266,17 @@ function isPageContext(value: unknown): value is PageContext {
     && (context.entityId === undefined || (typeof context.entityId === "string" && context.entityId.length <= 120))
     && (context.entitySlug === undefined || (typeof context.entitySlug === "string" && context.entitySlug.length <= 120))
     && (context.entityTitle === undefined || (typeof context.entityTitle === "string" && context.entityTitle.length <= 200))
-    && (context.entitySummary === undefined || (typeof context.entitySummary === "string" && context.entitySummary.length <= 500));
+    && (context.entitySummary === undefined || (typeof context.entitySummary === "string" && context.entitySummary.length <= 500))
+    && (context.comparison === undefined || isComparisonContext(context.comparison));
+}
+
+function isComparisonContext(value: unknown): value is ComparisonContext {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const comparison = value as ComparisonContext;
+  return Array.isArray(comparison.itemIds)
+    && comparison.itemIds.length <= 3
+    && comparison.itemIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 120)
+    && (comparison.componentType === undefined || (typeof comparison.componentType === "string" && comparison.componentType.length <= 30));
 }
 
 function isBuildDraft(value: unknown): value is BuildDraft {
@@ -314,5 +351,13 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
     entitySlug: context.entitySlug?.slice(0, 120),
     entityTitle: context.entityTitle?.slice(0, 200),
     entitySummary: context.entitySummary?.slice(0, 500),
+    ...(context.comparison && context.comparison.itemIds.length > 0
+      ? {
+          comparison: {
+            itemIds: Array.from(new Set(context.comparison.itemIds.map((id) => id.trim()).filter(Boolean))).slice(0, 3),
+            ...(context.comparison.componentType ? { componentType: context.comparison.componentType.slice(0, 30) } : {}),
+          },
+        }
+      : {}),
   };
 }

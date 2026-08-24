@@ -12,12 +12,13 @@ import {
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
+import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
 import { ensureAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
 import ExternalPriceResultsCard from "./ExternalPriceResultsCard";
 import ChatHistoryPanel from "./ChatHistoryPanel";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
+import { useCompareStore, type CompareProduct } from "@/store/useCompareStore";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
@@ -52,7 +53,7 @@ function getMobileToastPreview(content: string): string {
   return `${normalizedContent.slice(0, MOBILE_TOAST_MAX_LENGTH).trimEnd()}...`;
 }
 
-function getCurrentClientPageContext(): PageContext {
+function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageContext {
   const pathname = window.location.pathname;
   const segments = pathname.split("/").filter(Boolean);
   const root = segments[0];
@@ -74,6 +75,9 @@ function getCurrentClientPageContext(): PageContext {
     title: document.title,
     route,
     ...(identifier ? { identifier } : {}),
+    ...(route === "comparator" && comparisonItems.length > 0
+      ? { comparison: { itemIds: comparisonItems.map((item) => String(item.id)).slice(0, 3) } }
+      : {}),
   };
 }
 
@@ -404,6 +408,7 @@ function ChatPanel({
 
 export default function AISidebar() {
   const pathname = usePathname() || "/";
+  const comparisonItems = useCompareStore((state) => state.items);
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<ChatError | null>(null);
@@ -448,6 +453,23 @@ export default function AISidebar() {
   const pageStatus = pathname.startsWith("/catalog/") && catalogPriceEvaluation
     ? `${getPageStatusLabel(pathname)} · Evaluado: ${catalogPriceEvaluation.price}${catalogPriceEvaluation.currency === "EUR" ? "€" : "$"} · C/P: ${catalogPriceEvaluation.qualityPriceScore.toFixed(2)}`
     : getPageStatusLabel(pathname);
+
+  const applyComparisonAction = (action: ComparisonUiAction): string | null => {
+    const comparisonStore = useCompareStore.getState();
+    if (action.type === "add") {
+      const result = comparisonStore.addItem(action.item as unknown as CompareProduct);
+      return result.success ? null : result.error || "No se pudo actualizar la comparación.";
+    }
+
+    const isPresent = comparisonStore.items.some((item) => String(item.id) === action.itemId);
+    if (!isPresent) return "Ese componente ya no está en la comparación actual.";
+    if (action.type === "set_price") {
+      comparisonStore.setEvaluatedPrice(action.itemId, action.price);
+      return null;
+    }
+    comparisonStore.removeItem(action.itemId);
+    return null;
+  };
 
   const resetConversation = (mode: AiConversationMode) => {
     setConversationMode(mode);
@@ -586,7 +608,7 @@ export default function AISidebar() {
           messages: nextMessages.slice(-12),
           conversationMode,
           ...(conversationId ? { conversationId } : {}),
-          context: getCurrentClientPageContext(),
+          context: getCurrentClientPageContext(comparisonItems),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
           ...(catalogPriceEvaluation ? {
@@ -625,7 +647,16 @@ export default function AISidebar() {
         return;
       }
 
-      setMessages((currentMessages) => [...currentMessages, payload.message]);
+      const comparisonActionError = payload.comparisonAction
+        ? applyComparisonAction(payload.comparisonAction)
+        : null;
+      const responseMessage = comparisonActionError
+        ? {
+            role: "assistant" as const,
+            content: `No pude actualizar la comparación: ${comparisonActionError}`,
+          }
+        : payload.message;
+      setMessages((currentMessages) => [...currentMessages, responseMessage]);
       setProvider(payload.provider);
       setModel(payload.model);
       if (payload.conversationId) {
@@ -650,7 +681,10 @@ export default function AISidebar() {
         setComboDraft(payload.comboDraft);
         setBuildDraft(null);
       }
-      setCanContinue(payload.truncated === true && !payload.pendingAction);
+      if (comparisonActionError) {
+        setError({ message: comparisonActionError, retryable: false });
+      }
+      setCanContinue(payload.truncated === true && !payload.pendingAction && !payload.comparisonAction);
     } catch (requestError) {
       if (requestError instanceof DOMException && requestError.name === "AbortError") return;
       console.error("CoreX AI chat network error", {

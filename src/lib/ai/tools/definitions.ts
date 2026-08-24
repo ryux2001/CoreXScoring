@@ -202,6 +202,69 @@ const GET_CURRENT_PAGE_CONTEXT_TOOL: AiToolDefinition = {
   },
 };
 
+const GET_CURRENT_COMPARISON_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "get_current_comparison",
+    description: "Lee los componentes de catálogo que el usuario tiene actualmente en el comparador y devuelve sus datos, métricas y notas verificadas. Solo funciona en la página del comparador.",
+    parameters: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+};
+
+const PROPOSE_ADD_TO_COMPARISON_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "propose_add_to_comparison",
+    description: "Prepara una acción local para añadir al comparador un componente de catálogo identificado por su ID. Úsala únicamente cuando el usuario lo pida explícitamente; respeta el límite de tres y el tipo de componente actual.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "ID exacto del componente obtenido del catálogo." },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const PROPOSE_REMOVE_FROM_COMPARISON_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "propose_remove_from_comparison",
+    description: "Prepara una acción local para quitar del comparador un componente que aparece en la comparación actual. Úsala únicamente cuando el usuario lo pida explícitamente y tengas un ID inequívoco.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "ID exacto de un componente presente en la comparación actual." },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const PROPOSE_SET_COMPARISON_PRICE_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "propose_set_comparison_price",
+    description: "Prepara un precio temporal para un componente que ya está en la comparación. Úsala únicamente cuando el usuario pida explícitamente colocar, cambiar o fijar su precio; no modifica el catálogo ni datos persistentes.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "ID exacto del componente presente en la comparación actual." },
+        price: { type: "number", minimum: 0.01, maximum: 1000000, description: "Precio personalizado positivo." },
+        currency: { type: "string", enum: ["USD", "EUR"], description: "Moneda del comparador. Si no se indica, usa la moneda visible." },
+      },
+      required: ["id", "price"],
+      additionalProperties: false,
+    },
+  },
+};
+
 const SET_CURRENT_CATALOG_PRICE_TOOL: AiToolDefinition = {
   type: "function",
   function: {
@@ -528,6 +591,10 @@ export const AI_TOOL_DEFINITIONS: AiToolDefinition[] = [
   ANALYZE_BUILD_TOOL,
   RECOMMEND_COMPONENTS_TOOL,
   GET_CURRENT_PAGE_CONTEXT_TOOL,
+  GET_CURRENT_COMPARISON_TOOL,
+  PROPOSE_ADD_TO_COMPARISON_TOOL,
+  PROPOSE_REMOVE_FROM_COMPARISON_TOOL,
+  PROPOSE_SET_COMPARISON_PRICE_TOOL,
   SET_CURRENT_CATALOG_PRICE_TOOL,
   SEARCH_USER_COMBOS_TOOL,
   SEARCH_USER_BUILDS_TOOL,

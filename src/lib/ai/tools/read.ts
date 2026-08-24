@@ -4,7 +4,7 @@ import { getBuildNotes, getBuildPartPrice } from "@/lib/scoring/builds";
 import { getProductMetrics } from "@/lib/metricsProducts";
 import { calculateCatalogPriceEvaluation, isCatalogValueProfile } from "@/lib/catalog/price-evaluation";
 import { isCurrency } from "@/lib/currency";
-import type { PageContext } from "../types";
+import type { ComparisonUiAction, PageContext } from "../types";
 import type { AiToolContext, AiToolResult } from "./types";
 
 type Row = Record<string, unknown>;
@@ -623,6 +623,160 @@ export async function getCurrentPageContext(args: unknown, context: AiToolContex
     route: pageContext.route || normalizePageRoute(pageContext.pathname).route,
     identifier: pageContext.identifier || normalizePageRoute(pageContext.pathname).identifier || null,
   });
+}
+
+/** Tool: lee la comparación local actual usando únicamente IDs verificados por el servidor. */
+export async function getCurrentComparison(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  void args;
+  const pageContext = context.pageContext;
+  const itemIds = pageContext?.route === "comparator" ? pageContext.comparison?.itemIds || [] : [];
+  if (itemIds.length === 0) return getToolFailure("No hay componentes de catálogo en la comparación actual.");
+
+  const currency = getCurrency(new URLSearchParams(pageContext?.search || "").get("currency"));
+  const { data, error } = await getProductQuery(context.supabase).in("id", itemIds);
+  if (error) return getToolFailure("No se pudo consultar la comparación actual.");
+
+  const productsById = new Map(asRows(data).map((product) => [asText(product.id), product]));
+  const components = itemIds
+    .map((id) => productsById.get(id))
+    .filter((product): product is Row => Boolean(product))
+    .map((product) => getProductSummary(product, currency));
+
+  if (components.length < itemIds.length) return getToolFailure("Uno de los componentes de la comparación ya no está disponible.");
+
+  return getToolSuccess({
+    currency,
+    count: components.length,
+    components,
+    note: "Estos datos proceden de la comparación local actual y fueron reconsultados por el servidor.",
+  });
+}
+
+function getComparisonIds(context: AiToolContext): string[] {
+  return context.pageContext?.route === "comparator"
+    ? context.pageContext.comparison?.itemIds || []
+    : [];
+}
+
+/** Tool: prepara una acción local para añadir un producto ya resuelto al comparador. */
+export async function proposeAddToComparison(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const input = asRow(args);
+  const itemId = sanitizeIdentifier(input.id);
+  const currentIds = getComparisonIds(context);
+  if (!context.pageContext || context.pageContext.route !== "comparator") {
+    return getToolFailure("Abre el comparador para poder añadir un componente.");
+  }
+  if (!itemId) return getToolFailure("Falta el ID del componente que quieres añadir.");
+  if (currentIds.includes(itemId)) return getToolFailure("Ese componente ya está en la comparación.");
+  if (currentIds.length >= 3) return getToolFailure("La comparación ya tiene tres componentes.");
+
+  const { data: currentProducts, error: currentError } = await getProductQuery(context.supabase).in("id", currentIds);
+  if (currentError) return getToolFailure("No pude validar los componentes actuales de la comparación.");
+
+  const currentTypes = new Set(asRows(currentProducts).map((product) => asText(product.type).toLowerCase()).filter(Boolean));
+  if (currentTypes.size > 1) return getToolFailure("La comparación actual contiene tipos incompatibles; corrígela desde la interfaz antes de añadir otro componente.");
+
+  const { data: product, error } = await context.supabase
+    .from("products_with_priority")
+    .select("*")
+    .eq("id", itemId)
+    .maybeSingle();
+  if (error || !product) return getToolFailure("No encontré ese componente en el catálogo.");
+
+  const productRow = asRow(product);
+  const productType = asText(productRow.type).toLowerCase();
+  if (!COMPONENT_TYPES.has(productType)) return getToolFailure("El producto seleccionado no es un componente comparable.");
+  if (currentTypes.size === 1 && !currentTypes.has(productType)) {
+    return getToolFailure(`No puedes mezclar ${productType.toUpperCase()} con ${[...currentTypes][0].toUpperCase()} en esta comparación.`);
+  }
+
+  const currency = getCurrency(new URLSearchParams(context.pageContext.search || "").get("currency"));
+  const selectedPrice = currency === "EUR" ? asNumber(productRow.price_base_eur) ?? asNumber(productRow.price_base_usd) ?? 0 : asNumber(productRow.price_base_usd) ?? asNumber(productRow.price_base_eur) ?? 0;
+  const action: ComparisonUiAction = {
+    type: "add",
+    itemId,
+    itemName: asText(productRow.name, "el componente"),
+    item: {
+      ...productRow,
+      comparisonType: "product",
+      price: selectedPrice,
+      currency,
+    },
+  };
+  return {
+    ok: true,
+    data: { status: "ready", message: `He preparado ${action.itemName} para añadirlo a la comparación.` },
+    comparisonAction: action,
+  };
+}
+
+/** Tool: prepara una acción local para quitar un producto que sigue en la comparación. */
+export async function proposeRemoveFromComparison(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const itemId = sanitizeIdentifier(asRow(args).id);
+  const currentIds = getComparisonIds(context);
+  if (!context.pageContext || context.pageContext.route !== "comparator") {
+    return getToolFailure("Abre el comparador para poder quitar un componente.");
+  }
+  if (!itemId || !currentIds.includes(itemId)) return getToolFailure("Ese componente no está en la comparación actual.");
+
+  const { data: product, error } = await getProductQuery(context.supabase).eq("id", itemId).maybeSingle();
+  if (error || !product) return getToolFailure("No pude validar el componente que quieres quitar.");
+
+  const productName = asText(asRow(product).name, "el componente");
+  return {
+    ok: true,
+    data: { status: "ready", message: `He preparado la eliminación de ${productName} de la comparación.` },
+    comparisonAction: { type: "remove", itemId, itemName: productName },
+  };
+}
+
+/** Tool: prepara un precio temporal para un componente que ya está en la comparación. */
+export async function proposeSetComparisonPrice(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const input = asRow(args);
+  const itemId = sanitizeIdentifier(input.id);
+  const pageContext = context.pageContext;
+  const currentIds = getComparisonIds(context);
+  if (!pageContext || pageContext.route !== "comparator") {
+    return getToolFailure("Abre el comparador para poder personalizar un precio.");
+  }
+  if (!itemId || !currentIds.includes(itemId)) {
+    return getToolFailure("Ese componente no está en la comparación actual.");
+  }
+
+  const price = Number(input.price);
+  const pageCurrency = getCurrency(new URLSearchParams(pageContext.search || "").get("currency"));
+  const requestedCurrency = input.currency === undefined
+    ? null
+    : isCurrency(input.currency) ? input.currency.toUpperCase() as Currency : null;
+  if (!Number.isFinite(price) || price <= 0 || price > 1_000_000 || (input.currency !== undefined && !requestedCurrency)) {
+    return getToolFailure("Indica un precio positivo y una moneda válida.");
+  }
+  if (requestedCurrency && requestedCurrency !== pageCurrency) {
+    return getToolFailure(`El comparador está mostrando precios en ${pageCurrency}. Usa esa moneda para personalizar este precio.`);
+  }
+
+  const { data: product, error } = await getProductQuery(context.supabase).eq("id", itemId).maybeSingle();
+  if (error || !product) return getToolFailure("No pude validar el componente de la comparación.");
+
+  const productRow = asRow(product);
+  const productType = asText(productRow.type).toLowerCase();
+  if (!COMPONENT_TYPES.has(productType)) return getToolFailure("Solo se pueden personalizar precios de componentes de catálogo.");
+
+  const normalizedPrice = Number(price.toFixed(2));
+  return {
+    ok: true,
+    data: {
+      status: "ready",
+      message: `He preparado ${asText(productRow.name, "el componente")} a ${normalizedPrice} ${pageCurrency}.`,
+    },
+    comparisonAction: {
+      type: "set_price",
+      itemId,
+      itemName: asText(productRow.name, "el componente"),
+      price: normalizedPrice,
+      currency: pageCurrency,
+    },
+  };
 }
 
 /** Tool de escritura local: recalcula el precio de la ficha actual sin tocar el catálogo. */

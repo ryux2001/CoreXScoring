@@ -37,6 +37,7 @@ const SYSTEM_PROMPT = [
   "Diferencia hechos conocidos, estimaciones y recomendaciones. No presentes una estimación como un dato verificado.",
   "Puedes usar tools de lectura para consultar componentes, combos, builds, scoring, contexto de página y datos propios de la bóveda cuando el usuario tenga una cuenta permanente.",
   "El sistema incluye el contexto validado de la página actual. Si el usuario dice ‘este componente’, ‘esta build’ o ‘este combo’, usa ese contexto antes de pedir aclaraciones; consulta la tool de lectura correspondiente para los detalles.",
+  "En la página del comparador, usa get_current_comparison para leer los componentes actuales. Si el usuario pide explícitamente añadir, quitar o cambiar el precio temporal de un componente, resuélvelo primero con la tool adecuada y después usa la acción local de comparación correspondiente. Nunca inventes un ID ni alteres una comparación sin una orden clara.",
   "Para recomendar una build usa plan_build: debe responder en texto y nunca crear una confirmación. Solo usa save_build_draft cuando el usuario pida explícitamente guardar la build.",
   "Para recomendar un combo usa plan_combo; solo tiene CPU, GPU y RAM. Usa update_combo_plan para cambios parciales y save_combo_draft únicamente cuando el usuario pida guardarlo.",
   "Nunca muestres al usuario razonamientos internos, planes de ejecución, nombres de tools, parámetros ni pseudocódigo. Si necesitas una tool, emite una tool call estructurada; si no puedes hacerlo, responde normalmente sin describir una llamada interna.",
@@ -357,6 +358,25 @@ function hasCatalogPriceChangeIntent(value: string): boolean {
   return hasPrice && hasNumber && hasAction;
 }
 
+function hasComparisonAddIntent(value: string): boolean {
+  return /\b(?:anade|agrega|agregar|aniade|incluir|incluye|mete|pon|poner)\b/.test(normalizeIntentText(value));
+}
+
+function hasComparisonPriceIntent(value: string): boolean {
+  const text = normalizeIntentText(value);
+  const hasAmount = /\b\d+(?:[.,]\d{1,2})?\s*(?:\$|usd|€|eur)?\b/.test(text);
+  const hasAction = /\b(?:pon|ponme|coloca|colocar|fija|fijar|cambia|cambiar|establece|establecer|aplica|aplicar|usa|usar)\b/.test(text);
+  return hasAmount && hasAction;
+}
+
+function hasComparisonRemoveIntent(value: string): boolean {
+  return /\b(?:quita|quitar|elimina|eliminar|saca|sacar|retira|retirar)\b/.test(normalizeIntentText(value));
+}
+
+function hasComparisonReadIntent(value: string): boolean {
+  return /\b(?:compara|comparar|comparacion|comparación|diferencia|diferencias|mejor|peor|estos|estas)\b/.test(normalizeIntentText(value));
+}
+
 /**
  * Reduce el espacio de decisión del modelo para operaciones compuestas. En
  * particular, una build explícita no debe exponerse simultáneamente a las
@@ -371,6 +391,38 @@ function getToolDefinitionsForMessages(messages: ChatMessage[], buildDraft?: Bui
   const hasBuildComponents = /\b(?:ryzen|intel|rtx|gtx|radeon|cpu|gpu|ram|placa|b[3-5]50|ssd|nvme|fuente|psu|procesador|grafica)\b/.test(text);
   const hasSaveIntent = hasBuildSaveIntent(latestUserMessage);
   const hasChangeIntent = /\b(?:cambiar|cambia|modifica|modificar|sustituye|sustituir|reemplaza|reemplazar)\b/.test(text);
+
+  if (pageContext?.route === "comparator" && hasComparisonPriceIntent(latestUserMessage)) {
+    return AI_TOOL_DEFINITIONS.filter((tool) => [
+      "get_current_comparison",
+      "propose_set_comparison_price",
+    ].includes(tool.function.name));
+  }
+
+  if (pageContext?.route === "comparator" && hasComparisonRemoveIntent(latestUserMessage)) {
+    return AI_TOOL_DEFINITIONS.filter((tool) => [
+      "get_current_comparison",
+      "propose_remove_from_comparison",
+    ].includes(tool.function.name));
+  }
+
+  if (pageContext?.route === "comparator" && hasComparisonAddIntent(latestUserMessage)) {
+    return AI_TOOL_DEFINITIONS.filter((tool) => [
+      "search_components",
+      "get_component",
+      "get_current_comparison",
+      "propose_add_to_comparison",
+    ].includes(tool.function.name));
+  }
+
+  if (pageContext?.route === "comparator" && hasComparisonReadIntent(latestUserMessage)) {
+    return AI_TOOL_DEFINITIONS.filter((tool) => [
+      "search_components",
+      "get_component",
+      "get_current_comparison",
+      "compare_components",
+    ].includes(tool.function.name));
+  }
 
   if (hasExternalPriceIntent(latestUserMessage)) {
     return AI_TOOL_DEFINITIONS.filter((tool) => tool.function.name === "find_external_price");
@@ -567,6 +619,24 @@ async function runProviderConversation({
           pendingAction: result.pendingAction,
           ...(result.buildDraft ? { buildDraft: result.buildDraft } : {}),
           ...(result.comboDraft ? { comboDraft: result.comboDraft } : {}),
+        };
+      }
+
+      if (result.ok && result.comparisonAction) {
+        const action = result.comparisonAction;
+        const message = getToolDataMessage(result.data)
+          || (action.type === "add"
+            ? `He preparado ${action.itemName} para añadirlo a la comparación.`
+            : action.type === "remove"
+              ? `He preparado la eliminación de ${action.itemName} de la comparación.`
+              : `He preparado ${action.itemName} a ${action.price} ${action.currency}.`);
+        return {
+          message: { role: "assistant", content: message },
+          provider,
+          model: payload.model || model,
+          ...(usageReported ? { usage } : {}),
+          toolCalls: toolCallCount,
+          comparisonAction: action,
         };
       }
 

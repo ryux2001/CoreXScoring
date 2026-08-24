@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ArrowUp, X } from "lucide-react";
 import Link from "next/link";
 import { useCompareStore } from "@/store/useCompareStore";
@@ -109,16 +109,9 @@ export default function CompareProductCard({
   const collectionParts: Array<{ key: PricePartKey; label: string }> = isBuild ? buildParts : comboParts;
   const isEUR = globalCurrency === "EUR";
   const symbol = isEUR ? "€" : "$";
-  const priceColumn = isEUR ? "price_base_eur" : "price_base_usd";
-  const basePrice = isCollection ? displayedPrice : product[priceColumn] || product.price || 0;
 
-  const [customPrice, setCustomPrice] = useState(basePrice);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [draftPrices, setDraftPrices] = useState<PriceDraft>({});
-
-  useEffect(() => {
-    if (!isCollection) setCustomPrice(basePrice);
-  }, [basePrice, isCollection]);
 
   const format = (value: number) =>
     `${isEUR ? "" : symbol}${Number(value).toFixed(0)}${isEUR ? symbol : ""}`;
@@ -314,30 +307,12 @@ export default function CompareProductCard({
             </div>
 
             <div className="flex w-full flex-col items-stretch gap-3 md:flex-row md:items-end">
-              <div className="flex w-full max-w-[320px] flex-1 flex-col gap-3">
-                <div className="space-y-1">
-                  <label className="ml-0.5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                    Escriba un precio...
-                  </label>
-                  <div className="flex h-[36px] items-center gap-1">
-                    <div className="relative flex-1">
-                      <span className="absolute top-1/2 left-2 -translate-y-1/2 text-[10px] font-bold text-zinc-600">{symbol}</span>
-                      <input
-                        type="number"
-                        value={customPrice === 0 ? "" : customPrice}
-                        onChange={(event) => setCustomPrice(Number(event.target.value))}
-                        className="h-[38px] w-full rounded-xl border border-zinc-900 bg-black/40 p-2 pr-6 pl-6 text-[10px] font-bold text-white outline-none transition-all focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                    <button
-                      onClick={() => setDisplayedPrice(customPrice)}
-                      className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
-                    >
-                      aplicar
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <ProductPriceEditor
+                key={`${product.id}-${displayedPrice}`}
+                initialPrice={displayedPrice}
+                symbol={symbol}
+                onApply={setDisplayedPrice}
+              />
 
               <Link
                 href={`/catalog/${product.slug}?currency=${globalCurrency}`}
@@ -444,6 +419,45 @@ export default function CompareProductCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ProductPriceEditor({
+  initialPrice,
+  symbol,
+  onApply,
+}: {
+  initialPrice: number;
+  symbol: string;
+  onApply: (price: number) => void;
+}) {
+  const [customPrice, setCustomPrice] = useState(initialPrice);
+
+  return (
+    <div className="flex w-full max-w-[320px] flex-1 flex-col gap-3">
+      <div className="space-y-1">
+        <label className="ml-0.5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+          Escriba un precio...
+        </label>
+        <div className="flex h-[36px] items-center gap-1">
+          <div className="relative flex-1">
+            <span className="absolute top-1/2 left-2 -translate-y-1/2 text-[10px] font-bold text-zinc-600">{symbol}</span>
+            <input
+              type="number"
+              value={customPrice === 0 ? "" : customPrice}
+              onChange={(event) => setCustomPrice(Number(event.target.value))}
+              className="h-[38px] w-full rounded-xl border border-zinc-900 bg-black/40 p-2 pr-6 pl-6 text-[10px] font-bold text-white outline-none transition-all focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          <button
+            onClick={() => onApply(customPrice)}
+            className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
+          >
+            aplicar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

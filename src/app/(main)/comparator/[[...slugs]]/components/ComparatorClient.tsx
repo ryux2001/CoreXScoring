@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { useCompareStore } from '@/store/useCompareStore';
+import { useCompareStore, type CompareProduct } from '@/store/useCompareStore';
 import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
 import { getComponentNotes } from '@/lib/scoring/index';
@@ -29,12 +29,12 @@ import type {
 } from './comparisonUtils';
 
 interface ComparatorClientProps {
-  initialItems: any[];
+  initialItems: CompareProduct[];
   globalCurrency: string;
 }
 
 function getCurrentPrice(
-  item: any,
+  item: CompareProduct,
   currency: string,
   evaluatedPrices: Record<string | number, number>,
   comboPriceOverrides: Record<string | number, ComboPriceOverrides>,
@@ -54,7 +54,7 @@ function getCurrentPrice(
 }
 
 function getItemNotes(
-  item: any,
+  item: CompareProduct,
   currency: string,
   currentPrice: number,
   comboOverrides: ComboPriceOverrides,
@@ -69,7 +69,7 @@ function getItemNotes(
   }
 
   const priceUSD = convertPrice(currentPrice, currency, 'USD');
-  return getComponentNotes(item, priceUSD) || {};
+  return getComponentNotes(item as unknown as Record<string, unknown>, priceUSD) || {};
 }
 
 export default function ComparatorClient({ initialItems, globalCurrency }: ComparatorClientProps) {
@@ -77,6 +77,8 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
 
   const items = useCompareStore((state) => state.items);
   const clearCompare = useCompareStore((state) => state.clearCompare);
+  const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
+  const setEvaluatedPrice = useCompareStore((state) => state.setEvaluatedPrice);
   const addItem = useCompareStore((state) => state.addItem);
   const replaceItems = useCompareStore((state) => state.replaceItems);
 
@@ -88,7 +90,6 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
         ? 'combos'
         : 'components'
   ));
-  const [evaluatedPrices, setEvaluatedPrices] = useState<Record<string | number, number>>({});
   const [comboPriceOverrides, setComboPriceOverrides] = useState<
     Record<string | number, ComboPriceOverrides>
   >({});
@@ -136,12 +137,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
         return;
       }
 
-      const fullProducts = completeProducts as Array<{
-        id: string | number;
-        slug: string;
-        price?: number;
-        [key: string]: any;
-      }>;
+      const fullProducts = completeProducts as Array<CompareProduct & Record<string, unknown>>;
 
       const productsById = new Map(
         fullProducts.map((product) => [String(product.id), product]),
@@ -292,7 +288,7 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
                 displayedPrice={currentPrice}
                 setDisplayedPrice={(newPrice) => {
                   if (!isComboItem(item) && !isBuildItem(item)) {
-                    setEvaluatedPrices((previous) => ({ ...previous, [item.id]: newPrice }));
+                    setEvaluatedPrice(item.id, newPrice);
                   }
                 }}
                 comboPriceOverrides={itemComboOverrides}
@@ -330,7 +326,6 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
       <div className="mt-12 flex justify-center">
         <button
           onClick={() => {
-            setEvaluatedPrices({});
             setComboPriceOverrides({});
             setBuildPriceOverrides({});
             clearCompare();

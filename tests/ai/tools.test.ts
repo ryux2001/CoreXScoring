@@ -1,10 +1,18 @@
-import { describe, expect, it } from "vitest";
-import { getComponent, searchComponents, setCurrentCatalogPrice } from "@/lib/ai/tools/read";
+import { describe, expect, it, vi } from "vitest";
+import { getComponent, getCurrentComparison, proposeAddToComparison, proposeRemoveFromComparison, proposeSetComparisonPrice, searchComponents, setCurrentCatalogPrice } from "@/lib/ai/tools/read";
 import { executeAiTool } from "@/lib/ai/tools";
-import { createSupabaseStub } from "./helpers/query-builder";
-import { cpuFixture } from "./helpers/fixtures";
+import { createQueryBuilder, createSupabaseStub } from "./helpers/query-builder";
+import { cpuFixture, gpuFixture } from "./helpers/fixtures";
 
 const actor = { id: "user-1", isAnonymous: false };
+
+function comparatorContext(itemIds: string[]) {
+  return {
+    pathname: "/comparator",
+    route: "comparator" as const,
+    comparison: { itemIds },
+  };
+}
 
 describe("CoreX AI tools", () => {
   it("searches only the bounded catalog result set", async () => {
@@ -43,5 +51,62 @@ describe("CoreX AI tools", () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data).toMatchObject({ component: { id: cpuFixture.id, type: "CPU" } });
+  });
+
+  it("reads the current comparison by verified product IDs", async () => {
+    const supabase = createSupabaseStub({ data: [cpuFixture, gpuFixture], error: null });
+    const result = await getCurrentComparison({}, {
+      supabase: supabase as never,
+      actor,
+      pageContext: comparatorContext([cpuFixture.id, gpuFixture.id]),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toMatchObject({ count: 2 });
+    expect(supabase.builder.in).toHaveBeenCalledWith("id", [cpuFixture.id, gpuFixture.id]);
+  });
+
+  it("prepares an add action only after validating the comparator and product", async () => {
+    const currentBuilder = createQueryBuilder({ data: [cpuFixture], error: null });
+    const secondCpu = { ...cpuFixture, id: "cpu-7700x3d", name: "AMD Ryzen 7 7700X3D" };
+    const productBuilder = createQueryBuilder({ data: secondCpu, error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "products" ? currentBuilder : productBuilder),
+    };
+    const result = await proposeAddToComparison({ id: secondCpu.id }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: comparatorContext([cpuFixture.id]),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.comparisonAction).toMatchObject({ type: "add", itemId: secondCpu.id });
+    expect(productBuilder.eq).toHaveBeenCalledWith("id", secondCpu.id);
+  });
+
+  it("prepares a remove action only for a component in the current comparison", async () => {
+    const productBuilder = createQueryBuilder({ data: cpuFixture, error: null });
+    const supabase = { from: vi.fn(() => productBuilder) };
+    const result = await proposeRemoveFromComparison({ id: cpuFixture.id }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: comparatorContext([cpuFixture.id]),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.comparisonAction).toMatchObject({ type: "remove", itemId: cpuFixture.id });
+  });
+
+  it("prepares a temporary comparison price only for a current component", async () => {
+    const productBuilder = createQueryBuilder({ data: cpuFixture, error: null });
+    const supabase = { from: vi.fn(() => productBuilder) };
+    const result = await proposeSetComparisonPrice({ id: cpuFixture.id, price: 200, currency: "USD" }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: { ...comparatorContext([cpuFixture.id]), search: "?currency=USD" },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.comparisonAction).toMatchObject({ type: "set_price", itemId: cpuFixture.id, price: 200, currency: "USD" });
   });
 });

@@ -26,4 +26,24 @@ describe("AI request contracts", () => {
     });
     expect(context?.search).toBe("?currency=EUR&page=2");
   });
+
+  it("accepts and bounds the local comparison context", () => {
+    const validRequest = {
+      messages: [{ role: "user", content: "Compara estos componentes" }],
+      context: {
+        pathname: "/comparator",
+        route: "comparator" as const,
+        comparison: {
+          itemIds: ["cpu-1", "cpu-2", "cpu-3"],
+        },
+      },
+    };
+
+    expect(isChatRequest(validRequest)).toBe(true);
+    const normalized = normalizePageContext({
+      ...validRequest.context,
+      comparison: { itemIds: ["cpu-1", "cpu-1", "cpu-2", "cpu-3", "cpu-4"] },
+    });
+    expect(normalized?.comparison?.itemIds).toEqual(["cpu-1", "cpu-2", "cpu-3"]);
+  });
 });
