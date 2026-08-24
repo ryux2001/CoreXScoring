@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AiGatewayError, runChat } from "@/lib/ai/gateway";
+import { AiGatewayError, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
 import { AiActionExecutionError, confirmPendingAction } from "@/lib/ai/actions";
 import { resolveDirectVaultLookup } from "@/lib/ai/vault-direct";
+import { getAiChatCredential } from "@/lib/ai/chat-settings";
+import { appendAiConversationTurn, getAiConversation, getConversationPromptMessages } from "@/lib/ai/conversations";
 import {
   AiQuotaUnavailableError,
   consumeAiQuota,
@@ -11,7 +13,7 @@ import {
   recordAiRequest,
   settleAiQuota,
 } from "@/lib/ai/limits";
-import { isChatRequest, normalizeMessages, normalizePageContext, type ChatProvider } from "@/lib/ai/types";
+import { isChatRequest, normalizeMessages, normalizePageContext, type ChatMessage, type ChatProvider, type ChatResponse } from "@/lib/ai/types";
 import { resolvePageContext } from "@/lib/ai/page-context";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
@@ -54,6 +56,34 @@ function getGatewayErrorResponse(error: AiGatewayError) {
     code: error.code || "provider_error",
     retryable: error.retryable,
   };
+}
+
+async function persistSavedResponse({
+  response,
+  userId,
+  conversationId,
+  latestUserMessage,
+  buildDraft,
+  comboDraft,
+}: {
+  response: ChatResponse;
+  userId: string;
+  conversationId?: string;
+  latestUserMessage: { role: "user"; content: string };
+  buildDraft?: ChatResponse["buildDraft"];
+  comboDraft?: ChatResponse["comboDraft"];
+}): Promise<ChatResponse> {
+  const savedId = await appendAiConversationTurn({
+    userId,
+    conversationId,
+    userMessage: latestUserMessage,
+    assistantMessage: response.message,
+    webSearch: response.webSearch,
+    buildDraft,
+    comboDraft,
+    title: conversationId ? undefined : latestUserMessage.content,
+  });
+  return { ...response, conversationId: savedId };
 }
 
 export async function POST(request: NextRequest) {
@@ -205,6 +235,10 @@ export async function POST(request: NextRequest) {
 
   const normalizedMessages = normalizeMessages(body.messages);
   const isAnonymous = user.is_anonymous === true;
+  const conversationMode = body.conversationMode === "saved" ? "saved" : "temporary";
+  if (conversationMode === "saved" && isAnonymous) {
+    return NextResponse.json({ error: "Los chats guardados requieren una cuenta registrada." }, { status: 403 });
+  }
   const ipHash = getClientIpHash(request);
   const startedAt = Date.now();
   const reservedTokens = estimateTokenBudget(normalizedMessages);
@@ -213,6 +247,7 @@ export async function POST(request: NextRequest) {
   let completionModel = localProviderEnabled
     ? process.env.AI_LOCAL_MODEL?.trim() || "Qwen3.5-9B-UD-Q4_K_XL"
     : process.env.AI_GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
+  let userCredential: AiGatewayUserCredential | undefined;
 
   try {
     const quota = await consumeAiQuota({
@@ -249,6 +284,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const latestUserMessage = [...normalizedMessages].reverse().find((message): message is ChatMessage & { role: "user" } => message.role === "user");
+    if (!latestUserMessage) {
+      return NextResponse.json({ error: "Falta un mensaje del usuario." }, { status: 400 });
+    }
+
+    const savedConversation = conversationMode === "saved" && body.conversationId
+      ? await getAiConversation(user.id, body.conversationId)
+      : null;
+    if (conversationMode === "saved" && body.conversationId && !savedConversation) {
+      return NextResponse.json({ error: "La conversación no existe o no pertenece a tu cuenta." }, { status: 404 });
+    }
+    const storedMessages = savedConversation ? getConversationPromptMessages(savedConversation) : [];
+    const lastStoredMessage = storedMessages[storedMessages.length - 1];
+    const isAlreadyStored = lastStoredMessage?.role === latestUserMessage.role
+      && lastStoredMessage.content === latestUserMessage.content;
+    const effectiveMessages = (conversationMode === "saved"
+      ? [...storedMessages, ...(isAlreadyStored ? [] : [latestUserMessage])]
+      : normalizedMessages).slice(-12);
+    const effectiveBuildDraft = body.buildDraft || savedConversation?.state.buildDraft;
+    const effectiveComboDraft = body.comboDraft || savedConversation?.state.comboDraft;
+
     const normalizedPageContext = normalizePageContext(body.context);
     const resolvedPageContext = await resolvePageContext(supabase, normalizedPageContext, user.id, isAnonymous);
     const requestedCatalogPriceEvaluation = body.catalogPriceEvaluation
@@ -283,11 +339,17 @@ export async function POST(request: NextRequest) {
       },
       pageContext: resolvedPageContext,
       ipHash,
-      buildDraft: body.buildDraft,
-      comboDraft: body.comboDraft,
+      buildDraft: effectiveBuildDraft,
+      comboDraft: effectiveComboDraft,
       catalogPriceEvaluation,
     };
-    const directVaultResponse = await resolveDirectVaultLookup(normalizedMessages, toolContext);
+    userCredential = (await getAiChatCredential(user.id)) || undefined;
+    if (userCredential) {
+      completionProvider = userCredential.provider;
+      completionModel = userCredential.model;
+    }
+
+    const directVaultResponse = await resolveDirectVaultLookup(effectiveMessages, toolContext);
     if (directVaultResponse) {
       completionProvider = directVaultResponse.provider;
       completionModel = directVaultResponse.model;
@@ -298,6 +360,16 @@ export async function POST(request: NextRequest) {
         reservedTokens,
         actualTokens: 0,
       });
+      const savedResponse = conversationMode === "saved" && latestUserMessage
+        ? await persistSavedResponse({
+          response: directVaultResponse,
+          userId: user.id,
+          conversationId: body.conversationId,
+          latestUserMessage,
+          buildDraft: directVaultResponse.buildDraft || effectiveBuildDraft,
+          comboDraft: directVaultResponse.comboDraft || effectiveComboDraft,
+        })
+        : directVaultResponse;
       await recordAiRequest(supabase, {
         userId: user.id,
         isAnonymous,
@@ -310,12 +382,12 @@ export async function POST(request: NextRequest) {
         toolCalls: directVaultResponse.toolCalls || 0,
         status: "guardrail",
       });
-      return NextResponse.json(directVaultResponse, {
+      return NextResponse.json(savedResponse, {
         headers: { "Cache-Control": "no-store" },
       });
     }
 
-    const completion = await runChat(normalizedMessages, toolContext, requestId);
+    const completion = await runChat(effectiveMessages, toolContext, requestId, userCredential);
 
     completionProvider = completion.provider;
     completionModel = completion.model;
@@ -336,6 +408,17 @@ export async function POST(request: NextRequest) {
         actualTokens: completion.usage.inputTokens + completion.usage.outputTokens,
       });
     }
+    const savedCompletion = conversationMode === "saved"
+      ? await persistSavedResponse({
+        response: completion,
+        userId: user.id,
+        conversationId: body.conversationId,
+        latestUserMessage,
+        buildDraft: completion.buildDraft || effectiveBuildDraft,
+        comboDraft: completion.comboDraft || effectiveComboDraft,
+      })
+      : completion;
+
     await recordAiRequest(supabase, {
       userId: user.id,
       isAnonymous,
@@ -349,7 +432,7 @@ export async function POST(request: NextRequest) {
       status: completion.provider === "guardrail" ? "guardrail" : "success",
     });
 
-    return NextResponse.json(completion, {
+    return NextResponse.json(savedCompletion, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

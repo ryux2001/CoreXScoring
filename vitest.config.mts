@@ -14,9 +14,9 @@ export default defineConfig({
     isolate: true,
     restoreMocks: true,
     clearMocks: true,
-  },
-  coverage: {
-    include: ["src/lib/ai/**/*.ts"],
-    reporter: ["text", "json-summary"],
+    coverage: {
+      include: ["src/lib/ai/**/*.ts"],
+      reporter: ["text", "json-summary"],
+    },
   },
 });

@@ -4,6 +4,7 @@ import DeleteAccountForm from '@/app/auth/components/DeleteAccountForm';
 import NameChangeForm from '@/app/auth/components/NameChangeForm';
 import PasswordChangeForm from '@/app/auth/components/PasswordChangeForm';
 import AiSearchProvidersCard from '@/app/auth/components/AiSearchProvidersCard';
+import AiChatProvidersCard from '@/app/auth/components/AiChatProvidersCard';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 export default async function VaultAccountPage() {
@@ -66,6 +67,8 @@ export default async function VaultAccountPage() {
         <div id="web-search-providers">
           <AiSearchProvidersCard />
         </div>
+
+        <AiChatProvidersCard />
 
         <section className="mt-8 border-t border-zinc-800 pt-6">
           <h2 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-red-400">

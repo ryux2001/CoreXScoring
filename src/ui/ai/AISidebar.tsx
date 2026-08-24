@@ -5,16 +5,18 @@ import { usePathname } from "next/navigation";
 import {
   Bot,
   ChevronDown,
+  History,
   Maximize2,
   Minimize2,
   SendHorizontal,
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, PageContext, PendingAction } from "@/lib/ai/types";
+import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
 import { ensureAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
 import ExternalPriceResultsCard from "./ExternalPriceResultsCard";
+import ChatHistoryPanel from "./ChatHistoryPanel";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
@@ -152,6 +154,9 @@ interface ChatPanelProps {
   onMinimize?: () => void;
   onExpand?: () => void;
   onReduce?: () => void;
+  onOpenHistory: () => void;
+  conversationMode: AiConversationMode;
+  conversationTitle?: string;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   expandButtonRef?: RefObject<HTMLButtonElement | null>;
 }
@@ -180,10 +185,13 @@ function ChatPanel({
   onMinimize,
   onExpand,
   onReduce,
+  onOpenHistory,
+  conversationMode,
+  conversationTitle,
   inputRef,
   expandButtonRef,
 }: ChatPanelProps) {
-  const hasActions = Boolean(onMinimize || onExpand || onReduce);
+  const hasActions = Boolean(onMinimize || onExpand || onReduce || onOpenHistory);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col" aria-label="Conversación con CoreX AI">
@@ -193,9 +201,11 @@ function ChatPanel({
             <Bot aria-hidden="true" size={18} strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
-            <h2 className="font-display truncate text-base font-bold tracking-tight text-white">CoreX AI</h2>
+            <h2 className="font-display truncate text-base font-bold tracking-tight text-white">{conversationTitle || "CoreX AI"}</h2>
             <p className="font-technical text-[12px] text-zinc-500 font-extrabold">
-              {sessionKind === "anonymous"
+              {conversationMode === "temporary"
+                ? "Chat temporal · no se guarda"
+                : sessionKind === "anonymous"
                 ? "Modo invitado · hardware"
                 : provider === "local"
                 ? "Modelo local · llama.cpp"
@@ -219,6 +229,9 @@ function ChatPanel({
 
         {hasActions && (
           <div className="flex shrink-0 items-center gap-1">
+            <button type="button" onClick={onOpenHistory} aria-label="Abrir historial de chats" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
+              <History aria-hidden="true" size={16} />
+            </button>
             {onExpand && (
               <button
                 type="button"
@@ -407,6 +420,14 @@ export default function AISidebar() {
   const [webSearch, setWebSearch] = useState<ChatResponse["webSearch"]>(undefined);
   const [buildDraft, setBuildDraft] = useState<BuildDraft | null>(null);
   const [comboDraft, setComboDraft] = useState<ComboDraft | null>(null);
+  const [conversationMode, setConversationMode] = useState<AiConversationMode>("temporary");
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationTitle, setConversationTitle] = useState<string | undefined>(undefined);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [canSaveChats, setCanSaveChats] = useState(true);
   const catalogPriceEvaluation = useCatalogPriceEvaluationStore((state) => state.current);
   const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
@@ -427,6 +448,98 @@ export default function AISidebar() {
   const pageStatus = pathname.startsWith("/catalog/") && catalogPriceEvaluation
     ? `${getPageStatusLabel(pathname)} · Evaluado: ${catalogPriceEvaluation.price}${catalogPriceEvaluation.currency === "EUR" ? "€" : "$"} · C/P: ${catalogPriceEvaluation.qualityPriceScore.toFixed(2)}`
     : getPageStatusLabel(pathname);
+
+  const resetConversation = (mode: AiConversationMode) => {
+    setConversationMode(mode);
+    setConversationId(null);
+    setConversationTitle(undefined);
+    setMessages([INITIAL_MESSAGE]);
+    setDraft("");
+    setError(null);
+    setPendingAction(null);
+    setWebSearch(undefined);
+    setBuildDraft(null);
+    setComboDraft(null);
+    setCanContinue(false);
+  };
+
+  const loadConversations = async () => {
+    setIsHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const response = await fetch("/api/ai/conversations", { cache: "no-store" });
+      const payload = await response.json() as { conversations?: ConversationSummary[]; canSave?: boolean; error?: string };
+      if (!response.ok) throw new Error(payload.error || "No se pudo cargar el historial.");
+      setConversations(Array.isArray(payload.conversations) ? payload.conversations : []);
+      setCanSaveChats(payload.canSave === true);
+    } catch (requestError) {
+      setHistoryError(requestError instanceof Error ? requestError.message : "No se pudo cargar el historial.");
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const openHistory = () => {
+    setIsHistoryOpen(true);
+    void loadConversations();
+  };
+
+  const selectConversation = async (selectedId: string) => {
+    setIsHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const response = await fetch(`/api/ai/conversations/${encodeURIComponent(selectedId)}`, { cache: "no-store" });
+      const payload = await response.json() as { conversation?: ConversationRecord; error?: string };
+      if (!response.ok || !payload.conversation) throw new Error(payload.error || "No se pudo cargar la conversación.");
+      const selected = payload.conversation;
+      setConversationMode("saved");
+      setConversationId(selected.id);
+      setConversationTitle(selected.title);
+      setMessages(selected.messages.length > 0 ? selected.messages.map(({ role, content }) => ({ role, content })) : [INITIAL_MESSAGE]);
+      setBuildDraft(selected.state.buildDraft || null);
+      setComboDraft(selected.state.comboDraft || null);
+      const lastMetadata = [...selected.messages].reverse().find((message) => message.metadata?.webSearch)?.metadata;
+      setWebSearch(lastMetadata?.webSearch);
+      setPendingAction(null);
+      setCanContinue(false);
+      setSessionKind("authenticated");
+      setIsHistoryOpen(false);
+    } catch (requestError) {
+      setHistoryError(requestError instanceof Error ? requestError.message : "No se pudo cargar la conversación.");
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const startConversation = (mode: AiConversationMode) => {
+    if (mode === "saved" && !canSaveChats) {
+      setHistoryError("Inicia sesión para guardar conversaciones. El chat temporal sigue disponible.");
+      return;
+    }
+    resetConversation(mode);
+    setIsHistoryOpen(false);
+  };
+
+  const renameConversation = async (selectedId: string, title: string) => {
+    const response = await fetch(`/api/ai/conversations/${encodeURIComponent(selectedId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    const payload = await response.json() as { error?: string };
+    if (!response.ok) throw new Error(payload.error || "No se pudo renombrar el chat.");
+    const normalizedTitle = title.trim().slice(0, 80);
+    setConversations((current) => current.map((conversation) => conversation.id === selectedId ? { ...conversation, title: normalizedTitle } : conversation));
+    if (conversationId === selectedId) setConversationTitle(normalizedTitle);
+  };
+
+  const deleteConversation = async (conversation: ConversationSummary) => {
+    const response = await fetch(`/api/ai/conversations/${encodeURIComponent(conversation.id)}`, { method: "DELETE" });
+    const payload = await response.json() as { error?: string };
+    if (!response.ok) throw new Error(payload.error || "No se pudo eliminar el chat.");
+    setConversations((current) => current.filter((item) => item.id !== conversation.id));
+    if (conversationId === conversation.id) resetConversation("temporary");
+  };
 
   useEffect(() => {
     const retryAfterSeconds = error?.retryAfterSeconds;
@@ -464,12 +577,15 @@ export default function AISidebar() {
     try {
       const session = await ensureAiSession();
       setSessionKind(session.user.is_anonymous === true ? "anonymous" : "authenticated");
+      if (session.user.is_anonymous !== true) setCanSaveChats(true);
 
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextMessages.slice(-12),
+          conversationMode,
+          ...(conversationId ? { conversationId } : {}),
           context: getCurrentClientPageContext(),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
@@ -512,6 +628,12 @@ export default function AISidebar() {
       setMessages((currentMessages) => [...currentMessages, payload.message]);
       setProvider(payload.provider);
       setModel(payload.model);
+      if (payload.conversationId) {
+        setConversationId(payload.conversationId);
+        setConversationMode("saved");
+        if (!conversationTitle) setConversationTitle(content.slice(0, 80));
+        void loadConversations();
+      }
       // Cada respuesta exitosa reemplaza el estado de confirmación anterior.
       // Si una recomendación no trae pendingAction, no debe quedar visible una
       // tarjeta antigua de otro build/combo.
@@ -731,6 +853,9 @@ export default function AISidebar() {
     isConfirmingAction,
     onConfirmAction: () => void confirmAction(),
     onCancelAction: cancelAction,
+    onOpenHistory: openHistory,
+    conversationMode,
+    conversationTitle,
   };
 
   const mobilePanelBottom = keyboardInset > 0
@@ -751,7 +876,21 @@ export default function AISidebar() {
   return (
     <>
       <aside className="fixed bottom-0 right-0 top-[81px] z-40 hidden w-80 border-l border-white/10 bg-zinc-950/95 shadow-[-20px_0_55px_rgba(0,0,0,0.28)] backdrop-blur-xl md:flex lg:w-[22.5rem]">
-        <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} inputRef={desktopInputRef} />
+        {isHistoryOpen ? (
+          <ChatHistoryPanel
+            conversations={conversations}
+            activeConversationId={conversationId}
+            mode={conversationMode}
+            isLoading={isHistoryLoading}
+            error={historyError}
+            canSave={canSaveChats}
+            onClose={() => setIsHistoryOpen(false)}
+            onSelect={(id) => void selectConversation(id)}
+            onNew={startConversation}
+            onRename={renameConversation}
+            onDelete={deleteConversation}
+          />
+        ) : <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} inputRef={desktopInputRef} />}
       </aside>
 
       <div className="md:hidden">
@@ -781,27 +920,42 @@ export default function AISidebar() {
 
         {mobileMode === "compact" && (
           <div style={compactPanelStyle} className="fixed inset-x-3 z-50 flex h-[min(23rem,calc(100dvh-5.5rem))] flex-col overflow-hidden rounded-3xl border border-white/15 bg-zinc-950 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
-            <ChatPanel
-              id="mobile-compact-ai-chat"
-              {...sharedPanelProps}
-              inputRef={mobileInputRef}
-              expandButtonRef={mobileExpandButtonRef}
-              onExpand={() => setMobileMode("expanded")}
-              onMinimize={collapseMobileChat}
-            />
+            {isHistoryOpen ? (
+              <ChatHistoryPanel
+                conversations={conversations}
+                activeConversationId={conversationId}
+                mode={conversationMode}
+                isLoading={isHistoryLoading}
+                error={historyError}
+                canSave={canSaveChats}
+                onClose={() => setIsHistoryOpen(false)}
+                onSelect={(id) => void selectConversation(id)}
+                onNew={startConversation}
+                onRename={renameConversation}
+                onDelete={deleteConversation}
+              />
+            ) : <ChatPanel id="mobile-compact-ai-chat" {...sharedPanelProps} inputRef={mobileInputRef} expandButtonRef={mobileExpandButtonRef} onExpand={() => setMobileMode("expanded")} onMinimize={collapseMobileChat} />}
           </div>
         )}
 
         {mobileMode === "expanded" && (
           <div style={expandedPanelStyle} className="fixed inset-x-3 top-[72px] z-[60] flex overflow-hidden rounded-3xl border border-white/15 bg-zinc-950 shadow-[0_28px_80px_rgba(0,0,0,0.62)]" role="dialog" aria-modal="true" aria-label="CoreX AI">
             <div ref={expandedPanelRef} tabIndex={-1} className="flex min-h-0 flex-1 outline-none">
-              <ChatPanel
-                id="mobile-expanded-ai-chat"
-                {...sharedPanelProps}
-                inputRef={mobileInputRef}
-                onReduce={reduceMobileChat}
-                onMinimize={collapseMobileChat}
-              />
+              {isHistoryOpen ? (
+                <ChatHistoryPanel
+                  conversations={conversations}
+                  activeConversationId={conversationId}
+                  mode={conversationMode}
+                  isLoading={isHistoryLoading}
+                  error={historyError}
+                  canSave={canSaveChats}
+                  onClose={() => setIsHistoryOpen(false)}
+                  onSelect={(id) => void selectConversation(id)}
+                  onNew={startConversation}
+                  onRename={renameConversation}
+                  onDelete={deleteConversation}
+                />
+              ) : <ChatPanel id="mobile-expanded-ai-chat" {...sharedPanelProps} inputRef={mobileInputRef} onReduce={reduceMobileChat} onMinimize={collapseMobileChat} />}
             </div>
           </div>
         )}

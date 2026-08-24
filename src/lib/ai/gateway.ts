@@ -24,6 +24,12 @@ const DEFAULT_OPENROUTER_MODELS = [
   "qwen/qwen3-next-80b-a3b-instruct:free",
 ];
 
+export interface AiGatewayUserCredential {
+  provider: "groq" | "openrouter";
+  model: string;
+  apiKey: string;
+}
+
 const SYSTEM_PROMPT = [
   "Eres CoreX AI, el asistente de hardware de CoreXScoring.",
   "Tu ámbito es el hardware de PC y el uso de la web CoreXScoring: componentes, compatibilidad, rendimiento, metodología de scoring y navegación de la aplicación.",
@@ -191,7 +197,7 @@ function getProviderCandidates({
   }));
 }
 
-function getChatCandidates(): ChatCandidate[] {
+function getChatCandidates(userCredential?: AiGatewayUserCredential): ChatCandidate[] {
   const candidates: ChatCandidate[] = [];
 
   if (isLocalProviderEnabled()) {
@@ -201,6 +207,15 @@ function getChatCandidates(): ChatCandidate[] {
       apiKey: getOptionalEnvironmentVariable("AI_LOCAL_API_KEY"),
       model: process.env.AI_LOCAL_MODEL?.trim() || "Qwen3.5-9B-UD-Q4_K_XL",
     });
+  }
+
+  if (userCredential && !isLocalOnlyMode()) {
+    return [{
+      provider: userCredential.provider,
+      url: userCredential.provider === "groq" ? GROQ_CHAT_URL : OPENROUTER_CHAT_URL,
+      apiKey: userCredential.apiKey,
+      model: userCredential.model,
+    }];
   }
 
   if (!isLocalOnlyMode()) {
@@ -651,6 +666,7 @@ export async function runChat(
   messages: ChatMessage[],
   toolContext: AiToolContext,
   requestId?: string,
+  userCredential?: AiGatewayUserCredential,
 ): Promise<ChatResponse> {
   const guardrailDecision = evaluateChatGuardrails(messages);
   if (guardrailDecision.response) return guardrailDecision.response;
@@ -666,7 +682,7 @@ export async function runChat(
     };
   }
 
-  const candidates = getChatCandidates();
+  const candidates = getChatCandidates(userCredential);
   let lastError: unknown;
 
   for (const [index, candidate] of candidates.entries()) {

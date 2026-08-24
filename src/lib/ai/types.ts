@@ -2,9 +2,13 @@ import type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 
 export const MAX_CHAT_MESSAGE_LENGTH = 2_000;
 export const MAX_CHAT_HISTORY_MESSAGES = 12;
+export const MAX_SAVED_CHAT_MESSAGES = 150;
 
 export type ChatRole = "user" | "assistant";
 export type ChatProvider = "local" | "groq" | "cerebras" | "openrouter" | "guardrail";
+export type AiCredentialMode = "project" | "byok";
+export type AiChatProvider = "groq" | "openrouter";
+export type AiConversationMode = "temporary" | "saved";
 
 export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | "vault" | "other";
 export type PageEntityType = "product" | "combo" | "build" | "saved_combo" | "saved_build";
@@ -37,6 +41,34 @@ export interface PageContext {
 export interface ChatMessage {
   role: ChatRole;
   content: string;
+}
+
+export interface PersistedConversationState {
+  version: 1;
+  buildDraft?: BuildDraft;
+  comboDraft?: ComboDraft;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+}
+
+export interface ConversationMessage extends ChatMessage {
+  id: number;
+  createdAt: string;
+  metadata?: {
+    webSearch?: import("./web-search/types").ExternalPriceSearchResult;
+  };
+}
+
+export interface ConversationRecord extends ConversationSummary {
+  state: PersistedConversationState;
+  messages: ConversationMessage[];
 }
 
 export interface ChatUsage {
@@ -112,6 +144,8 @@ export interface AiActionRequest {
 
 export interface ChatRequest {
   messages: ChatMessage[];
+  conversationMode?: AiConversationMode;
+  conversationId?: string;
   context?: PageContext;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
@@ -123,6 +157,7 @@ export interface ChatResponse {
   message: ChatMessage;
   provider: ChatProvider;
   model: string;
+  conversationId?: string;
   usage?: ChatUsage;
   toolCalls?: number;
   pendingAction?: PendingAction;
@@ -147,6 +182,11 @@ export function isChatRequest(value: unknown): value is ChatRequest {
 
   const context = (value as ChatRequest).context;
   if (context !== undefined && !isPageContext(context)) return false;
+
+  const conversationMode = (value as ChatRequest).conversationMode;
+  if (conversationMode !== undefined && !["temporary", "saved"].includes(conversationMode)) return false;
+  const conversationId = (value as ChatRequest).conversationId;
+  if (conversationId !== undefined && (typeof conversationId !== "string" || conversationId.length > 80)) return false;
 
   const buildDraft = (value as ChatRequest).buildDraft;
   if (buildDraft !== undefined && !isBuildDraft(buildDraft)) return false;

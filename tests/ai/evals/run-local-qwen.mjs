@@ -3,6 +3,8 @@ import { spawn } from "node:child_process";
 const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const child = spawn(command, ["exec", "vitest", "run", "tests/ai/evals/local-qwen.test.ts"], {
   stdio: "inherit",
+  // Windows no puede ejecutar de forma fiable un `.cmd` desde spawn sin shell.
+  shell: process.platform === "win32",
   env: {
     ...process.env,
     AI_EVAL_LOCAL: "true",
