@@ -14,6 +14,7 @@ import {
 import { isChatRequest, normalizeMessages, normalizePageContext, type ChatProvider } from "@/lib/ai/types";
 import { resolvePageContext } from "@/lib/ai/page-context";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 
 export const runtime = "nodejs";
 
@@ -250,6 +251,30 @@ export async function POST(request: NextRequest) {
 
     const normalizedPageContext = normalizePageContext(body.context);
     const resolvedPageContext = await resolvePageContext(supabase, normalizedPageContext, user.id, isAnonymous);
+    const requestedCatalogPriceEvaluation = body.catalogPriceEvaluation
+      && resolvedPageContext?.entityType === "product"
+      && resolvedPageContext.entityId === body.catalogPriceEvaluation.productId
+      ? body.catalogPriceEvaluation
+      : undefined;
+    let catalogPriceEvaluation = undefined as typeof requestedCatalogPriceEvaluation;
+    if (requestedCatalogPriceEvaluation && resolvedPageContext?.entityId) {
+      const { data: productForEvaluation } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", resolvedPageContext.entityId)
+        .maybeSingle();
+      const serverEvaluation = productForEvaluation
+        ? calculateCatalogPriceEvaluation({
+            product: productForEvaluation as Record<string, unknown>,
+            productId: resolvedPageContext.entityId,
+            price: requestedCatalogPriceEvaluation.price,
+            currency: requestedCatalogPriceEvaluation.currency,
+            valueProfile: requestedCatalogPriceEvaluation.valueProfile,
+            source: requestedCatalogPriceEvaluation.source || "manual",
+          })
+        : null;
+      if (serverEvaluation) catalogPriceEvaluation = serverEvaluation;
+    }
     const toolContext = {
       supabase,
       actor: {
@@ -260,6 +285,7 @@ export async function POST(request: NextRequest) {
       ipHash,
       buildDraft: body.buildDraft,
       comboDraft: body.comboDraft,
+      catalogPriceEvaluation,
     };
     const directVaultResponse = await resolveDirectVaultLookup(normalizedMessages, toolContext);
     if (directVaultResponse) {

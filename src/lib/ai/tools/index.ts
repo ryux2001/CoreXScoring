@@ -10,6 +10,7 @@ import {
   searchBuilds,
   searchCombos,
   searchComponents,
+  setCurrentCatalogPrice,
 } from "./read";
 import {
   proposeCreateBuild,
@@ -40,6 +41,7 @@ const AI_TOOL_HANDLERS: Record<string, AiToolHandler> = {
   analyze_build: analyzeBuild,
   recommend_components: recommendComponents,
   get_current_page_context: getCurrentPageContext,
+  set_current_catalog_price: setCurrentCatalogPrice,
   search_user_combos: searchUserCombos,
   search_user_builds: searchUserBuilds,
   propose_create_combo: proposeCreateCombo,

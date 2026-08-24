@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { usePathname } from "next/navigation";
 import {
   Bot,
   ChevronDown,
@@ -14,6 +15,7 @@ import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, PageContext, Pe
 import { ensureAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
 import ExternalPriceResultsCard from "./ExternalPriceResultsCard";
+import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
@@ -73,6 +75,38 @@ function getCurrentClientPageContext(): PageContext {
   };
 }
 
+function humanizePageIdentifier(value: string): string {
+  let decoded = value;
+  try { decoded = decodeURIComponent(value); } catch { /* conserva el slug original */ }
+  return decoded
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\bamd\b/gi, "AMD")
+    .replace(/\bintel\b/gi, "Intel")
+    .replace(/\bryzen\b/gi, "Ryzen")
+    .replace(/\brtx\b/gi, "RTX")
+    .replace(/\bgtx\b/gi, "GTX")
+    .replace(/\b(\w)/g, (character) => character.toUpperCase());
+}
+
+function getPageStatusLabel(pathname: string): string {
+  const segments = pathname.split("/").filter(Boolean);
+  const root = segments[0];
+  const identifier = root === "vault" ? segments[2] : segments[1];
+  if (root === "catalog" && identifier) return `Viendo: ${humanizePageIdentifier(identifier)}`;
+  if (root === "combos" && identifier) return `Viendo combo: ${humanizePageIdentifier(identifier)}`;
+  if (root === "builds" && identifier) return `Viendo build: ${humanizePageIdentifier(identifier)}`;
+  if (root === "vault" && segments[1] === "combos-created" && identifier) return `Viendo combo creado: ${humanizePageIdentifier(identifier)}`;
+  if (root === "vault" && segments[1] === "builds-created" && identifier) return `Viendo build creada: ${humanizePageIdentifier(identifier)}`;
+  if (root === "catalog") return "Viendo: Catálogo";
+  if (root === "combos") return "Viendo: Combos";
+  if (root === "builds") return "Viendo: Builds";
+  if (root === "comparator") return "Viendo: Comparador";
+  if (root === "vault") return "Viendo: Bóveda";
+  return "Viendo: Inicio";
+}
+
 function findFocusableElements(container: HTMLElement) {
   return Array.from(container.querySelectorAll<HTMLElement>(
     'button:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
@@ -104,6 +138,7 @@ interface ChatPanelProps {
   provider: ChatResponse["provider"] | null;
   model: string | null;
   sessionKind: "anonymous" | "authenticated" | null;
+  pageStatus: string;
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onStop: () => void;
@@ -131,6 +166,7 @@ function ChatPanel({
   provider,
   model,
   sessionKind,
+  pageStatus,
   onDraftChange,
   onSend,
   onStop,
@@ -174,6 +210,9 @@ function ChatPanel({
                   : provider === "groq"
                     ? "Groq · principal"
                     : "Hardware · asistente especializado"}
+            </p>
+            <p className="font-technical max-w-[15rem] truncate text-[10px] font-semibold text-cyan-200/75" title={pageStatus} aria-label={`Contexto actual: ${pageStatus}`}>
+              {pageStatus}
             </p>
           </div>
         </div>
@@ -351,6 +390,7 @@ function ChatPanel({
 }
 
 export default function AISidebar() {
+  const pathname = usePathname() || "/";
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<ChatError | null>(null);
@@ -367,6 +407,8 @@ export default function AISidebar() {
   const [webSearch, setWebSearch] = useState<ChatResponse["webSearch"]>(undefined);
   const [buildDraft, setBuildDraft] = useState<BuildDraft | null>(null);
   const [comboDraft, setComboDraft] = useState<ComboDraft | null>(null);
+  const catalogPriceEvaluation = useCatalogPriceEvaluationStore((state) => state.current);
+  const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef("");
@@ -382,6 +424,9 @@ export default function AISidebar() {
   const mobileToastPreview = lastAssistantContent
     ? getMobileToastPreview(lastAssistantContent)
     : null;
+  const pageStatus = pathname.startsWith("/catalog/") && catalogPriceEvaluation
+    ? `${getPageStatusLabel(pathname)} · Evaluado: ${catalogPriceEvaluation.price}${catalogPriceEvaluation.currency === "EUR" ? "€" : "$"} · C/P: ${catalogPriceEvaluation.qualityPriceScore.toFixed(2)}`
+    : getPageStatusLabel(pathname);
 
   useEffect(() => {
     const retryAfterSeconds = error?.retryAfterSeconds;
@@ -428,6 +473,16 @@ export default function AISidebar() {
           context: getCurrentClientPageContext(),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
+          ...(catalogPriceEvaluation ? {
+            catalogPriceEvaluation: {
+              productId: catalogPriceEvaluation.productId,
+              price: catalogPriceEvaluation.price,
+              currency: catalogPriceEvaluation.currency,
+              valueProfile: catalogPriceEvaluation.valueProfile,
+              qualityPriceScore: catalogPriceEvaluation.qualityPriceScore,
+              source: catalogPriceEvaluation.source,
+            },
+          } : {}),
         }),
         signal: controller.signal,
       });
@@ -462,6 +517,9 @@ export default function AISidebar() {
       // tarjeta antigua de otro build/combo.
       setPendingAction(payload.pendingAction ?? null);
       setWebSearch(payload.webSearch);
+      if (payload.catalogPriceUpdate) {
+        applyCatalogPriceUpdate(payload.catalogPriceUpdate);
+      }
       if (payload.buildDraft) {
         setBuildDraft(payload.buildDraft);
         setComboDraft(null);
@@ -662,6 +720,7 @@ export default function AISidebar() {
     provider,
     model,
     sessionKind,
+    pageStatus,
     onDraftChange: setDraft,
     onSend: () => void sendMessage(),
     onStop: stopResponse,

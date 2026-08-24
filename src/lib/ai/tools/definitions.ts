@@ -202,6 +202,24 @@ const GET_CURRENT_PAGE_CONTEXT_TOOL: AiToolDefinition = {
   },
 };
 
+const SET_CURRENT_CATALOG_PRICE_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "set_current_catalog_price",
+    description: "Aplica un precio únicamente a la evaluación local del componente que el usuario está viendo. Úsala solo cuando el usuario ordene explícitamente cambiar, evaluar o aplicar un precio; no modifica el catálogo ni la base de datos.",
+    parameters: {
+      type: "object",
+      properties: {
+        price: { type: "number", minimum: 0.01, maximum: 1_000_000, description: "Nuevo precio a evaluar." },
+        currency: { type: "string", enum: ["USD", "EUR"], description: "Moneda del nuevo precio." },
+        valueProfile: { type: "string", enum: ["balanced", "gaming", "creation", "productivity"], description: "Perfil opcional para CPU o GPU." },
+      },
+      required: ["price"],
+      additionalProperties: false,
+    },
+  },
+};
+
 /** Tools de lectura de la bóveda: solo disponibles para cuentas permanentes. */
 const SEARCH_USER_COMBOS_TOOL: AiToolDefinition = {
   type: "function",
@@ -510,6 +528,7 @@ export const AI_TOOL_DEFINITIONS: AiToolDefinition[] = [
   ANALYZE_BUILD_TOOL,
   RECOMMEND_COMPONENTS_TOOL,
   GET_CURRENT_PAGE_CONTEXT_TOOL,
+  SET_CURRENT_CATALOG_PRICE_TOOL,
   SEARCH_USER_COMBOS_TOOL,
   SEARCH_USER_BUILDS_TOOL,
   PROPOSE_CREATE_COMBO_TOOL,

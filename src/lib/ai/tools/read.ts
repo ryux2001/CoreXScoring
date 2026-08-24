@@ -2,6 +2,8 @@ import { getComboNotes, getComboPartPrice } from "@/lib/scoring/combos";
 import { getComponentNotes } from "@/lib/scoring/components";
 import { getBuildNotes, getBuildPartPrice } from "@/lib/scoring/builds";
 import { getProductMetrics } from "@/lib/metricsProducts";
+import { calculateCatalogPriceEvaluation, isCatalogValueProfile } from "@/lib/catalog/price-evaluation";
+import { isCurrency } from "@/lib/currency";
 import type { PageContext } from "../types";
 import type { AiToolContext, AiToolResult } from "./types";
 
@@ -621,4 +623,58 @@ export async function getCurrentPageContext(args: unknown, context: AiToolContex
     route: pageContext.route || normalizePageRoute(pageContext.pathname).route,
     identifier: pageContext.identifier || normalizePageRoute(pageContext.pathname).identifier || null,
   });
+}
+
+/** Tool de escritura local: recalcula el precio de la ficha actual sin tocar el catálogo. */
+export async function setCurrentCatalogPrice(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const input = asRow(args);
+  const pageContext = context.pageContext;
+  if (!pageContext || pageContext.entityType !== "product" || !pageContext.entityId) {
+    return { ok: false, error: "Esta acción solo está disponible dentro de la ficha de un componente." };
+  }
+
+  const price = Number(input.price);
+  const pageCurrency = new URLSearchParams(pageContext.search ?? "").get("currency");
+  const requestedCurrency = input.currency === undefined
+    ? null
+    : isCurrency(input.currency) ? input.currency.toUpperCase() as Currency : null;
+  const currency = requestedCurrency || (pageCurrency && isCurrency(pageCurrency) ? pageCurrency.toUpperCase() as Currency : "USD");
+  const valueProfile = input.valueProfile === undefined || isCatalogValueProfile(input.valueProfile)
+    ? input.valueProfile as "balanced" | "gaming" | "creation" | "productivity" | undefined
+    : null;
+  if ((input.currency !== undefined && !requestedCurrency) || valueProfile === null || !Number.isFinite(price) || price <= 0 || price > 1_000_000) {
+    return { ok: false, error: "Indica un precio positivo, una moneda válida y, si corresponde, un perfil de valoración válido." };
+  }
+  if (requestedCurrency && pageCurrency && isCurrency(pageCurrency) && pageCurrency.toUpperCase() !== currency) {
+    return { ok: false, error: `La ficha está mostrando precios en ${pageCurrency.toUpperCase()}. Usa esa moneda para actualizar la evaluación visible.` };
+  }
+
+  const { data, error } = await context.supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("id", pageContext.entityId)
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: "No pude validar el componente que estás viendo." };
+
+  const evaluation = calculateCatalogPriceEvaluation({
+    product: asRow(data),
+    productId: pageContext.entityId,
+    price: Number(price.toFixed(2)),
+    currency,
+    valueProfile,
+    source: "chat",
+  });
+  if (!evaluation) return { ok: false, error: "No pude calcular la evaluación para ese precio." };
+
+  const name = asText(asRow(data).name, "este componente");
+  return {
+    ok: true,
+    data: {
+      status: "applied",
+      message: `He evaluado ${name} a ${evaluation.price} ${evaluation.currency}. Calidad/precio: ${evaluation.qualityPriceScore.toFixed(2)}/10.`,
+      instruction: "La interfaz aplicará este precio solo en la evaluación local de la ficha; el precio del catálogo no cambia.",
+    },
+    catalogPriceEvaluation: evaluation,
+    catalogPriceUpdate: evaluation,
+  };
 }

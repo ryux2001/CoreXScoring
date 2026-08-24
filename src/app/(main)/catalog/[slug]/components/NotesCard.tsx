@@ -5,15 +5,12 @@ import { Info } from 'lucide-react';
 import { convertPrice } from '@/lib/currency';
 import { getComponentNotes } from '@/lib/scoring/index';
 import {
-  GPU_VALUE_PROFILE_EVENT,
-  isGpuValueProfile,
   type GpuValueProfile,
 } from '@/lib/scoring/components/calculations/gpu/profiles';
 import {
-  CPU_VALUE_PROFILE_EVENT,
-  isCpuValueProfile,
   type CpuValueProfile,
 } from '@/lib/scoring/components/calculations/cpu/profiles';
+import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
 
@@ -28,52 +25,24 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
   const isEUR = currency === 'EUR';
   const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
   const isCpu = String(product?.type ?? '').toUpperCase() === 'CPU';
-  const valueProfileEvent = isGpu
-    ? GPU_VALUE_PROFILE_EVENT
-    : isCpu
-      ? CPU_VALUE_PROFILE_EVENT
-      : null;
   const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const initialPrice = product[priceColumn] || 0;
   const initialPriceUSD = convertPrice(initialPrice, currency, 'USD');
   const symbol = isEUR ? '€' : '$';
 
-  const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
+  const evaluation = useCatalogPriceEvaluationStore((state) => state.current);
+  const isCurrentEvaluation = evaluation?.productId === String(product?.id ?? '') && evaluation.currency === (isEUR ? 'EUR' : 'USD');
+  const evaluatedPrice = isCurrentEvaluation ? evaluation.price : initialPrice;
+  const precioUSD = isCurrentEvaluation ? evaluation.priceUsd : initialPriceUSD;
   const [isMounted, setIsMounted] = useState(false);
-  const [precioUSD, setPrecioUSD] = useState(initialPriceUSD);
-  const [valueProfile, setValueProfile] = useState<ValueProfile>('balanced');
+  const valueProfile: ValueProfile = isCurrentEvaluation && evaluation?.valueProfile
+    ? evaluation.valueProfile as ValueProfile
+    : 'balanced';
 
   // 1. Calcular nota de calidad/precio al montar (antes del render)
   useEffect(() => {
     setIsMounted(true);
-    setEvaluatedPrice(initialPrice);
-    setPrecioUSD(initialPriceUSD);
-
-    const handlePriceUpdate = (e: any) => {
-      setEvaluatedPrice(e.detail);
-      setPrecioUSD(convertPrice(e.detail, currency, 'USD'));
-    };
-
-    window.addEventListener('updateProductPrice', handlePriceUpdate);
-    return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
-  }, [initialPrice, initialPriceUSD, currency, product]);
-
-  useEffect(() => {
-    setValueProfile('balanced');
-  }, [product?.id]);
-
-  useEffect(() => {
-    if (!valueProfileEvent) return;
-
-    const handleValueProfileUpdate = (event: Event) => {
-      const value = (event as CustomEvent<unknown>).detail;
-      if (isGpu && isGpuValueProfile(value)) setValueProfile(value);
-      if (isCpu && isCpuValueProfile(value)) setValueProfile(value);
-    };
-
-    window.addEventListener(valueProfileEvent, handleValueProfileUpdate);
-    return () => window.removeEventListener(valueProfileEvent, handleValueProfileUpdate);
-  }, [isCpu, isGpu, valueProfileEvent]);
+  }, []);
 
   // Obtenemos las 5 notas principales (el precio ya está en USD)
   const baseNotes = getComponentNotes(

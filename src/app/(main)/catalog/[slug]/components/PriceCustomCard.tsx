@@ -3,17 +3,16 @@
 import React, { useState, useEffect } from "react";
 import { Info, ChevronDown, X, Settings2 } from "lucide-react";
 import {
-  GPU_VALUE_PROFILE_EVENT,
   GPU_VALUE_PROFILE_OPTIONS,
   isGpuValueProfile,
   type GpuValueProfile,
 } from "@/lib/scoring/components/calculations/gpu/profiles";
 import {
-  CPU_VALUE_PROFILE_EVENT,
   CPU_VALUE_PROFILE_OPTIONS,
   isCpuValueProfile,
   type CpuValueProfile,
 } from "@/lib/scoring/components/calculations/cpu/profiles";
+import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
 
@@ -59,15 +58,27 @@ export default function PriceCustomCard({
   const [selectedMarket, setSelectedMarket] = useState(basePrice);
   const [customPrice, setCustomPrice] = useState(basePrice);
   const [valueProfile, setValueProfile] = useState<ValueProfile>("balanced");
+  const evaluation = useCatalogPriceEvaluationStore((state) => state.current);
+  const initializeEvaluation = useCatalogPriceEvaluationStore((state) => state.initialize);
+  const applyEvaluation = useCatalogPriceEvaluationStore((state) => state.apply);
 
   useEffect(() => {
     setValueProfile("balanced");
-  }, [product?.id]);
+    initializeEvaluation({
+      product,
+      productId: String(product?.id ?? ""),
+      price: basePrice,
+      currency: isEUR ? "EUR" : "USD",
+      source: "base",
+    });
+  }, [basePrice, initializeEvaluation, isEUR, product]);
 
   // Sincronización y bloqueo de scroll
   useEffect(() => {
     setSelectedMarket(basePrice);
-    setCustomPrice(basePrice);
+    if (!evaluation || evaluation.productId !== String(product?.id ?? "") || evaluation.currency !== (isEUR ? "EUR" : "USD")) {
+      setCustomPrice(basePrice);
+    }
 
     if (isModalOpen) {
       document.body.style.overflow = "hidden";
@@ -77,7 +88,14 @@ export default function PriceCustomCard({
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [basePrice, isModalOpen]);
+  }, [basePrice, evaluation, isEUR, isModalOpen, product?.id]);
+
+  useEffect(() => {
+    if (!evaluation || evaluation.productId !== String(product?.id ?? "") || evaluation.currency !== (isEUR ? "EUR" : "USD")) return;
+    setCustomPrice(evaluation.price);
+    setSelectedMarket(evaluation.price);
+    if (evaluation.valueProfile) setValueProfile(evaluation.valueProfile as ValueProfile);
+  }, [evaluation, isEUR, product?.id]);
 
   const format = (val: number) =>
     `${isEUR ? "" : symbol}${val.toFixed(0)}${isEUR ? symbol : ""}`;
@@ -91,27 +109,41 @@ export default function PriceCustomCard({
   };
 
   const handleApply = () => {
-    const event = new CustomEvent("updateProductPrice", {
-      detail: customPrice,
+    applyEvaluation({
+      product,
+      productId: String(product?.id ?? ""),
+      price: customPrice,
+      currency: isEUR ? "EUR" : "USD",
+      valueProfile: isValueProfileComponent ? valueProfile : undefined,
+      source: selectedMarket === customPrice && selectedMarket !== basePrice ? "market" : "manual",
     });
-    window.dispatchEvent(event);
     if (isModalOpen) handleCloseModal();
   };
 
   const handleValueProfileChange = (value: string) => {
     if (isGpu && isGpuValueProfile(value)) {
       setValueProfile(value);
-      window.dispatchEvent(
-        new CustomEvent<GpuValueProfile>(GPU_VALUE_PROFILE_EVENT, { detail: value }),
-      );
+      applyEvaluation({
+        product,
+        productId: String(product?.id ?? ""),
+        price: customPrice,
+        currency: isEUR ? "EUR" : "USD",
+        valueProfile: value,
+        source: "manual",
+      });
       return;
     }
 
     if (isCpu && isCpuValueProfile(value)) {
       setValueProfile(value);
-      window.dispatchEvent(
-        new CustomEvent<CpuValueProfile>(CPU_VALUE_PROFILE_EVENT, { detail: value }),
-      );
+      applyEvaluation({
+        product,
+        productId: String(product?.id ?? ""),
+        price: customPrice,
+        currency: isEUR ? "EUR" : "USD",
+        valueProfile: value,
+        source: "manual",
+      });
     }
   };
 
@@ -262,9 +294,6 @@ const PriceForm = ({
             const val = Number(e.target.value);
             setSelectedMarket(val);
             setCustomPrice(val);
-            window.dispatchEvent(
-              new CustomEvent("updateProductPrice", { detail: val }),
-            );
           }}
           className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700"
         >

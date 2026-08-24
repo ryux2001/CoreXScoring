@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatReleaseDate } from '@/lib/formatReleaseDate';
 import { getProductImage } from '@/lib/catalog/product-images';
+import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 
 interface MainInfoProps {
   product: any;
@@ -23,30 +24,22 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
   const initialPrice = product[priceColumn] || 0;
 
   // NUEVO: Estado para el precio evaluado dinámico
-  const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
+  const evaluation = useCatalogPriceEvaluationStore((state) => state.current);
+  const evaluatedPrice = evaluation?.productId === String(product?.id ?? '') && evaluation.currency === (isEUR ? 'EUR' : 'USD')
+    ? evaluation.price
+    : initialPrice;
 
   useEffect(() => {
     setIsMounted(true);
-    // Resetear el precio si cambia la moneda en la URL
-    setEvaluatedPrice(initialPrice);
-
-    // Escuchar el evento de actualización de precio
-    const handlePriceUpdate = (e: any) => {
-      setEvaluatedPrice(e.detail);
-    };
-
-    window.addEventListener('updateProductPrice', handlePriceUpdate);
-    
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => {
-      window.removeEventListener('updateProductPrice', handlePriceUpdate);
       document.body.style.overflow = 'unset';
     };
-  }, [isModalOpen, initialPrice]);
+  }, [isModalOpen]);
 
   const handleCloseModal = () => {
     setIsClosing(true);

@@ -11,15 +11,12 @@ import {
 import { getComponentNotes } from '@/lib/scoring/index';
 import { convertPrice } from '@/lib/currency';
 import {
-  GPU_VALUE_PROFILE_EVENT,
-  isGpuValueProfile,
   type GpuValueProfile,
 } from '@/lib/scoring/components/calculations/gpu/profiles';
 import {
-  CPU_VALUE_PROFILE_EVENT,
-  isCpuValueProfile,
   type CpuValueProfile,
 } from '@/lib/scoring/components/calculations/cpu/profiles';
+import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
 
@@ -121,43 +118,21 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
   const isEUR = currency === 'EUR';
   const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
   const isCpu = String(product?.type ?? '').toUpperCase() === 'CPU';
-  const valueProfileEvent = isGpu
-    ? GPU_VALUE_PROFILE_EVENT
-    : isCpu
-      ? CPU_VALUE_PROFILE_EVENT
-      : null;
   const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const initialPrice = product[priceColumn] || 0;
 
-  const [evaluatedPrice, setEvaluatedPrice] = useState(initialPrice);
+  const evaluation = useCatalogPriceEvaluationStore((state) => state.current);
+  const isCurrentEvaluation = evaluation?.productId === String(product?.id ?? '') && evaluation.currency === (isEUR ? 'EUR' : 'USD');
+  const evaluatedPrice = isCurrentEvaluation ? evaluation.price : initialPrice;
   const [activeTooltip, setActiveTooltip] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [valueProfile, setValueProfile] = useState<ValueProfile>('balanced');
+  const valueProfile: ValueProfile = isCurrentEvaluation && evaluation?.valueProfile
+    ? evaluation.valueProfile as ValueProfile
+    : 'balanced';
 
   useEffect(() => {
     setIsMounted(true);
-    setEvaluatedPrice(initialPrice);
-    const handlePriceUpdate = (e: any) => setEvaluatedPrice(e.detail);
-    window.addEventListener('updateProductPrice', handlePriceUpdate);
-    return () => window.removeEventListener('updateProductPrice', handlePriceUpdate);
-  }, [initialPrice]);
-
-  useEffect(() => {
-    setValueProfile('balanced');
-  }, [product?.id]);
-
-  useEffect(() => {
-    if (!valueProfileEvent) return;
-
-    const handleValueProfileUpdate = (event: Event) => {
-      const value = (event as CustomEvent<unknown>).detail;
-      if (isGpu && isGpuValueProfile(value)) setValueProfile(value);
-      if (isCpu && isCpuValueProfile(value)) setValueProfile(value);
-    };
-
-    window.addEventListener(valueProfileEvent, handleValueProfileUpdate);
-    return () => window.removeEventListener(valueProfileEvent, handleValueProfileUpdate);
-  }, [isCpu, isGpu, valueProfileEvent]);
+  }, []);
 
   const evaluatedPriceUSD = convertPrice(evaluatedPrice, currency, 'USD');
   const notesData = getComponentNotes(

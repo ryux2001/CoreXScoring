@@ -1,3 +1,5 @@
+import type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
+
 export const MAX_CHAT_MESSAGE_LENGTH = 2_000;
 export const MAX_CHAT_HISTORY_MESSAGES = 12;
 
@@ -8,6 +10,16 @@ export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | 
 export type PageEntityType = "product" | "combo" | "build" | "saved_combo" | "saved_build";
 export type BuildSlot = "cpu" | "gpu" | "ram" | "motherboard" | "storage" | "psu";
 export type ComboSlot = "cpu" | "gpu" | "ram";
+export type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
+
+export interface CatalogPriceEvaluationRequest {
+  productId: string;
+  price: number;
+  currency: "USD" | "EUR";
+  valueProfile?: "balanced" | "gaming" | "creation" | "productivity";
+  qualityPriceScore?: number;
+  source?: "base" | "manual" | "market" | "chat";
+}
 
 export interface PageContext {
   pathname: string;
@@ -103,6 +115,7 @@ export interface ChatRequest {
   context?: PageContext;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
   action?: AiActionRequest;
 }
 
@@ -115,6 +128,8 @@ export interface ChatResponse {
   pendingAction?: PendingAction;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  catalogPriceEvaluation?: CatalogPriceEvaluation;
+  catalogPriceUpdate?: CatalogPriceEvaluation;
   webSearch?: import("./web-search/types").ExternalPriceSearchResult;
   /** El proveedor terminó por límite de salida; la interfaz puede pedir continuación. */
   truncated?: boolean;
@@ -137,6 +152,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (buildDraft !== undefined && !isBuildDraft(buildDraft)) return false;
   const comboDraft = (value as ChatRequest).comboDraft;
   if (comboDraft !== undefined && !isComboDraft(comboDraft)) return false;
+  const catalogPriceEvaluation = (value as ChatRequest).catalogPriceEvaluation;
+  if (catalogPriceEvaluation !== undefined && !isCatalogPriceEvaluationRequest(catalogPriceEvaluation)) return false;
 
   const action = (value as ChatRequest).action;
   if (action !== undefined && (
@@ -154,6 +171,19 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     && message.content.trim().length > 0
     && message.content.length <= MAX_CHAT_MESSAGE_LENGTH
   ));
+}
+
+function isCatalogPriceEvaluationRequest(value: unknown): value is CatalogPriceEvaluationRequest {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const evaluation = value as CatalogPriceEvaluationRequest;
+  return typeof evaluation.productId === "string"
+    && evaluation.productId.length > 0 && evaluation.productId.length <= 120
+    && typeof evaluation.price === "number" && Number.isFinite(evaluation.price)
+    && evaluation.price > 0 && evaluation.price <= 1_000_000
+    && (evaluation.currency === "USD" || evaluation.currency === "EUR")
+    && (evaluation.valueProfile === undefined || ["balanced", "gaming", "creation", "productivity"].includes(evaluation.valueProfile))
+    && (evaluation.qualityPriceScore === undefined || (typeof evaluation.qualityPriceScore === "number" && Number.isFinite(evaluation.qualityPriceScore)))
+    && (evaluation.source === undefined || ["base", "manual", "market", "chat"].includes(evaluation.source));
 }
 
 function isPageContext(value: unknown): value is PageContext {

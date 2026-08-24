@@ -1,5 +1,6 @@
 import type { createSupabaseServerClient } from "@/lib/supabaseServer";
-import type { BuildDraft, ComboDraft, PageContext, PendingAction } from "../types";
+import type { BuildDraft, CatalogPriceEvaluationRequest, ComboDraft, PageContext, PendingAction } from "../types";
+import type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 import type { ExternalPriceSearchResult } from "../web-search/types";
 
 export type AiSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -16,6 +17,7 @@ export interface AiToolContext {
   ipHash?: string | null;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
 }
 
 export interface AiToolSuccess {
@@ -24,6 +26,8 @@ export interface AiToolSuccess {
   pendingAction?: PendingAction;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  catalogPriceEvaluation?: CatalogPriceEvaluation;
+  catalogPriceUpdate?: CatalogPriceEvaluation;
   webSearch?: ExternalPriceSearchResult;
 }
 
