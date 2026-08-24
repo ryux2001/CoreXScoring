@@ -14,7 +14,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:ai": "vitest run tests/ai",
+    "test:ai:watch": "vitest tests/ai",
+    "test:ai:coverage": "vitest run --coverage tests/ai",
+    "test:ai:local-qwen": "node tests/ai/evals/run-local-qwen.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -32,10 +36,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.11",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }
