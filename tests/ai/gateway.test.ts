@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runChat } from "@/lib/ai/gateway";
+import { AI_TOOL_DEFINITIONS } from "@/lib/ai/tools";
 import { createQueryBuilder, createSupabaseStub } from "./helpers/query-builder";
 import { cpuFixture } from "./helpers/fixtures";
 
@@ -22,6 +23,11 @@ describe("AI gateway conversational protocol", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+  });
+
+  it("does not expose removed external price-search tools", () => {
+    expect(AI_TOOL_DEFINITIONS.some((tool) => /price|search/i.test(tool.function.name) && tool.function.name.includes("external"))).toBe(false);
+    expect(AI_TOOL_DEFINITIONS.some((tool) => tool.function.name === "find_external_price")).toBe(false);
   });
 
   it("returns a normal response from the local provider", async () => {

@@ -5,6 +5,7 @@ import { AlertCircle, Check, CircleHelp, Search, Settings2, X } from 'lucide-rea
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
+import { useAiVisiblePriceStore } from '@/store/useAiVisiblePriceStore';
 import BuildNotesCard from '@/app/(main)/builds/[slug]/components/BuildNotesCard';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
 import Metrics from '@/app/(main)/combos/[slug]/components/Metrics';
@@ -137,6 +138,19 @@ function getProductPrice(product: Product | null, slot: SlotKey, draft: DraftSta
   return Number(currency === 'EUR' ? product.price_base_eur : product.price_base_usd) || 0;
 }
 
+function getAiPriceContext(draft: DraftState, currency: string) {
+  return {
+    scope: 'draft_build' as const,
+    currency: currency === 'EUR' ? 'EUR' as const : 'USD' as const,
+    items: slots.flatMap((slot) => {
+      const product = draft[slot];
+      if (!product) return [];
+      const isCustom = draft.priceModes[slot] === 'custom';
+      return [{ productId: product.id, price: getProductPrice(product, slot, draft, currency), isCustom, slot }];
+    }),
+  };
+}
+
 function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: DraftState) {
   const build = { ...draft, [nextSlot]: nextProduct };
   const cpu = build.cpu;
@@ -211,6 +225,11 @@ export default function CreatedBuildWorkspace({
     () => slots.reduce((total, slot) => total + getProductPrice(draft[slot], slot, draft, currency), 0),
     [draft, currency],
   );
+
+  useEffect(() => {
+    useAiVisiblePriceStore.getState().setContext(getAiPriceContext(draft, currency));
+    return () => useAiVisiblePriceStore.getState().clear();
+  }, [draft, currency]);
 
   useEffect(() => {
     if (!notification) return;

@@ -15,6 +15,11 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
 
+function asPrice(value: unknown): number | undefined {
+  const price = Number(value);
+  return Number.isFinite(price) && price > 0 ? price : undefined;
+}
+
 function asRow(value: unknown): Row {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Row : {};
 }
@@ -44,6 +49,22 @@ function getComponentNames(row: Row, slots: string[]): string[] {
 function getEntitySummary(row: Row, slots: string[]): string | undefined {
   const parts = getComponentNames(row, slots);
   return parts.length > 0 ? parts.join(" · ").slice(0, 500) : undefined;
+}
+
+function getEntityComponents(row: Row, slots: string[]) {
+  return slots.flatMap((slot) => {
+    const component = asRow(row[slot]);
+    const id = asText(component.id);
+    if (!id) return [];
+    const customPriceUsd = asPrice(row[`custom_price_${slot}_usd`]);
+    const customPriceEur = asPrice(row[`custom_price_${slot}_eur`]);
+    return [{
+      id,
+      slot,
+      ...(customPriceUsd !== undefined ? { customPriceUsd } : {}),
+      ...(customPriceEur !== undefined ? { customPriceEur } : {}),
+    }];
+  });
 }
 
 async function resolveComparisonContext(
@@ -97,14 +118,14 @@ export async function resolvePageContext(
   } else if (location.entityType === "combo" || location.entityType === "build") {
     const table = location.entityType === "combo" ? "combos" : "builds";
     const select = location.entityType === "combo"
-      ? "id,title,slug,category,cpu:products!cpu_id(name),gpu:products!gpu_id(name),ram:products!ram_id(name)"
-      : "id,title,slug,category,cpu:products!cpu_id(name),gpu:products!gpu_id(name),ram:products!ram_id(name),motherboard:products!motherboard_id(name),storage:products!storage_id(name),psu:products!psu_id(name)";
+      ? "id,title,slug,category,custom_price_cpu_usd,custom_price_cpu_eur,custom_price_gpu_usd,custom_price_gpu_eur,custom_price_ram_usd,custom_price_ram_eur,cpu:products!cpu_id(id,name),gpu:products!gpu_id(id,name),ram:products!ram_id(id,name)"
+      : "id,title,slug,category,custom_price_cpu_usd,custom_price_cpu_eur,custom_price_gpu_usd,custom_price_gpu_eur,custom_price_ram_usd,custom_price_ram_eur,custom_price_motherboard_usd,custom_price_motherboard_eur,custom_price_storage_usd,custom_price_storage_eur,custom_price_psu_usd,custom_price_psu_eur,cpu:products!cpu_id(id,name),gpu:products!gpu_id(id,name),ram:products!ram_id(id,name),motherboard:products!motherboard_id(id,name),storage:products!storage_id(id,name),psu:products!psu_id(id,name)";
     const { data } = await supabase.from(table).select(select).eq("slug", location.slug).eq("is_active", true).maybeSingle();
     row = data ? asRow(data) : null;
   } else if (!isAnonymous && location.savedTable) {
     const select = location.savedTable === "created_combos"
-      ? "id,title,slug,category,cpu:products!cpu_id(name),gpu:products!gpu_id(name),ram:products!ram_id(name)"
-      : "id,title,slug,category,cpu:products!cpu_id(name),gpu:products!gpu_id(name),ram:products!ram_id(name),motherboard:products!motherboard_id(name),storage:products!storage_id(name),psu:products!psu_id(name)";
+      ? "id,title,slug,category,custom_price_cpu_usd,custom_price_cpu_eur,custom_price_gpu_usd,custom_price_gpu_eur,custom_price_ram_usd,custom_price_ram_eur,cpu:products!cpu_id(id,name),gpu:products!gpu_id(id,name),ram:products!ram_id(id,name)"
+      : "id,title,slug,category,custom_price_cpu_usd,custom_price_cpu_eur,custom_price_gpu_usd,custom_price_gpu_eur,custom_price_ram_usd,custom_price_ram_eur,custom_price_motherboard_usd,custom_price_motherboard_eur,custom_price_storage_usd,custom_price_storage_eur,custom_price_psu_usd,custom_price_psu_eur,cpu:products!cpu_id(id,name),gpu:products!gpu_id(id,name),ram:products!ram_id(id,name),motherboard:products!motherboard_id(id,name),storage:products!storage_id(id,name),psu:products!psu_id(id,name)";
     const { data } = await supabase.from(location.savedTable).select(select).eq("slug", location.slug).eq("user_id", userId).maybeSingle();
     row = data ? asRow(data) : null;
   }
@@ -119,6 +140,7 @@ export async function resolvePageContext(
     entityId: asText(row.id) || undefined,
     entityTitle: title || context.entityTitle || context.title,
     entitySummary: getEntitySummary(row, slots),
+    entityComponents: getEntityComponents(row, slots),
   };
 }
 

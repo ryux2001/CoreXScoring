@@ -13,16 +13,33 @@ import {
   recordAiRequest,
   settleAiQuota,
 } from "@/lib/ai/limits";
-import { isChatRequest, normalizeMessages, normalizePageContext, type ChatMessage, type ChatProvider, type ChatResponse } from "@/lib/ai/types";
+import { isChatRequest, normalizeMessages, normalizePageContext, type AiFrontendPriceContext, type BuildDraft, type ChatMessage, type ChatProvider, type ChatResponse, type ComboDraft } from "@/lib/ai/types";
 import { resolvePageContext } from "@/lib/ai/page-context";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
+import { resolveAiFrontendPriceContext, resolveAiPagePriceContext } from "@/lib/ai/price-context";
 
 export const runtime = "nodejs";
 
 function withRequestId(response: NextResponse, requestId: string): NextResponse {
   response.headers.set("X-CoreX-AI-Request-Id", requestId);
   return response;
+}
+
+function getDraftPriceContext(buildDraft?: BuildDraft, comboDraft?: ComboDraft): AiFrontendPriceContext | undefined {
+  const draft = buildDraft || comboDraft;
+  if (!draft) return undefined;
+  const items = Object.entries(draft.components).flatMap(([slot, component]) => (
+    component.priceMode === "custom" && component.customPrice !== undefined
+      ? [{ productId: component.id, price: component.customPrice, isCustom: true, slot }]
+      : []
+  ));
+  if (items.length === 0) return undefined;
+  return {
+    scope: buildDraft ? "draft_build" : "draft_combo",
+    currency: draft.currency,
+    items,
+  };
 }
 
 function getGatewayErrorResponse(error: AiGatewayError) {
@@ -78,7 +95,6 @@ async function persistSavedResponse({
     conversationId,
     userMessage: latestUserMessage,
     assistantMessage: response.message,
-    webSearch: response.webSearch,
     buildDraft,
     comboDraft,
     title: conversationId ? undefined : latestUserMessage.content,
@@ -331,6 +347,12 @@ export async function POST(request: NextRequest) {
         : null;
       if (serverEvaluation) catalogPriceEvaluation = serverEvaluation;
     }
+    const frontendPriceContext = await resolveAiFrontendPriceContext(
+      supabase,
+      body.frontendPriceContext || getDraftPriceContext(effectiveBuildDraft, effectiveComboDraft),
+      resolvedPageContext,
+    );
+    const pagePriceContext = await resolveAiPagePriceContext(supabase, resolvedPageContext);
     const toolContext = {
       supabase,
       actor: {
@@ -342,6 +364,7 @@ export async function POST(request: NextRequest) {
       buildDraft: effectiveBuildDraft,
       comboDraft: effectiveComboDraft,
       catalogPriceEvaluation,
+      priceContext: frontendPriceContext || pagePriceContext,
     };
     userCredential = (await getAiChatCredential(user.id)) || undefined;
     if (userCredential) {

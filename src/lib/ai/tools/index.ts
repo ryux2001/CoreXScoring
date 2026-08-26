@@ -28,7 +28,6 @@ import {
   searchUserCombos,
   updateBuildPlan,
   updateComboPlan,
-  findExternalPrice,
 } from "../actions";
 import type { AiToolContext, AiToolResult } from "./types";
 
@@ -60,7 +59,6 @@ const AI_TOOL_HANDLERS: Record<string, AiToolHandler> = {
   plan_combo: planCombo,
   update_combo_plan: updateComboPlan,
   save_combo_draft: saveComboDraft,
-  find_external_price: findExternalPrice,
   propose_set_custom_price: proposeSetCustomPrice,
 };
 

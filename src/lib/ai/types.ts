@@ -1,6 +1,6 @@
 import type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 
-export const MAX_CHAT_MESSAGE_LENGTH = 2_000;
+export const MAX_CHAT_MESSAGE_LENGTH = 4_000;
 export const MAX_CHAT_HISTORY_MESSAGES = 12;
 export const MAX_SAVED_CHAT_MESSAGES = 150;
 
@@ -36,12 +36,43 @@ export interface PageContext {
   entitySlug?: string;
   entityTitle?: string;
   entitySummary?: string;
+  /** Campos añadidos únicamente por el servidor después de resolver la ruta. */
+  entityComponents?: Array<{ id: string; slot: string; customPriceUsd?: number; customPriceEur?: number }>;
   comparison?: ComparisonContext;
 }
 
 export interface ComparisonContext {
   itemIds: string[];
   componentType?: string;
+}
+
+export type AiPriceScope = "catalog" | "comparison" | "build" | "combo" | "draft_build" | "draft_combo";
+
+export interface AiFrontendPriceItem {
+  productId: string;
+  price: number;
+  isCustom: boolean;
+  slot?: string;
+}
+
+/** Precios visibles en el cliente; el servidor vuelve a validar componentes y cálculos. */
+export interface AiFrontendPriceContext {
+  scope: AiPriceScope;
+  currency: "USD" | "EUR";
+  items: AiFrontendPriceItem[];
+}
+
+export interface AiResolvedPriceItem extends AiFrontendPriceItem {
+  name: string;
+  type: string;
+  qualityPriceScore: number;
+}
+
+export interface AiResolvedPriceContext {
+  scope: AiPriceScope;
+  currency: "USD" | "EUR";
+  items: AiResolvedPriceItem[];
+  totalPrice: number;
 }
 
 export type ComparisonUiAction =
@@ -87,9 +118,6 @@ export interface ConversationSummary {
 export interface ConversationMessage extends ChatMessage {
   id: number;
   createdAt: string;
-  metadata?: {
-    webSearch?: import("./web-search/types").ExternalPriceSearchResult;
-  };
 }
 
 export interface ConversationRecord extends ConversationSummary {
@@ -176,6 +204,7 @@ export interface ChatRequest {
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
   catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
+  frontendPriceContext?: AiFrontendPriceContext;
   action?: AiActionRequest;
 }
 
@@ -191,7 +220,6 @@ export interface ChatResponse {
   comboDraft?: ComboDraft;
   catalogPriceEvaluation?: CatalogPriceEvaluation;
   catalogPriceUpdate?: CatalogPriceEvaluation;
-  webSearch?: import("./web-search/types").ExternalPriceSearchResult;
   comparisonAction?: ComparisonUiAction;
   /** El proveedor terminó por límite de salida; la interfaz puede pedir continuación. */
   truncated?: boolean;
@@ -221,6 +249,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (comboDraft !== undefined && !isComboDraft(comboDraft)) return false;
   const catalogPriceEvaluation = (value as ChatRequest).catalogPriceEvaluation;
   if (catalogPriceEvaluation !== undefined && !isCatalogPriceEvaluationRequest(catalogPriceEvaluation)) return false;
+  const frontendPriceContext = (value as ChatRequest).frontendPriceContext;
+  if (frontendPriceContext !== undefined && !isFrontendPriceContext(frontendPriceContext)) return false;
 
   const action = (value as ChatRequest).action;
   if (action !== undefined && (
@@ -238,6 +268,29 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     && message.content.trim().length > 0
     && message.content.length <= MAX_CHAT_MESSAGE_LENGTH
   ));
+}
+
+function isFrontendPriceContext(value: unknown): value is AiFrontendPriceContext {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const context = value as AiFrontendPriceContext;
+  const allowedScopes: AiPriceScope[] = ["catalog", "comparison", "build", "combo", "draft_build", "draft_combo"];
+  return allowedScopes.includes(context.scope)
+    && (context.currency === "USD" || context.currency === "EUR")
+    && Array.isArray(context.items)
+    && context.items.length > 0
+    && context.items.length <= 6
+    && context.items.every((item) => (
+      item
+      && typeof item.productId === "string"
+      && item.productId.length > 0
+      && item.productId.length <= 120
+      && typeof item.price === "number"
+      && Number.isFinite(item.price)
+      && item.price > 0
+      && item.price <= 1_000_000
+      && typeof item.isCustom === "boolean"
+      && (item.slot === undefined || (typeof item.slot === "string" && item.slot.length <= 30))
+    ));
 }
 
 function isCatalogPriceEvaluationRequest(value: unknown): value is CatalogPriceEvaluationRequest {

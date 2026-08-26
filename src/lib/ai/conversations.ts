@@ -8,10 +8,8 @@ import type {
   ConversationSummary,
   PersistedConversationState,
 } from "./types";
-import type { ExternalPriceSearchResult } from "./web-search/types";
 
 const MAX_TITLE_LENGTH = 80;
-const MAX_METADATA_LENGTH = 48_000;
 
 interface ConversationRow {
   id: string;
@@ -45,14 +43,6 @@ function asState(value: unknown): PersistedConversationState {
   return state;
 }
 
-function asMetadata(value: unknown): ConversationMessage["metadata"] {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  const row = value as Record<string, unknown>;
-  return row.webSearch && typeof row.webSearch === "object"
-    ? { webSearch: row.webSearch as ExternalPriceSearchResult }
-    : undefined;
-}
-
 function toSummary(row: ConversationRow): ConversationSummary {
   return {
     id: row.id,
@@ -70,7 +60,6 @@ function toMessage(row: MessageRow): ConversationMessage {
     role: row.role,
     content: row.content,
     createdAt: row.created_at,
-    ...(asMetadata(row.metadata) ? { metadata: asMetadata(row.metadata) } : {}),
   };
 }
 
@@ -83,12 +72,6 @@ function compactState(value: {
     ...(value.buildDraft ? { buildDraft: value.buildDraft } : {}),
     ...(value.comboDraft ? { comboDraft: value.comboDraft } : {}),
   };
-}
-
-function compactMetadata(webSearch?: ExternalPriceSearchResult): Record<string, unknown> {
-  if (!webSearch) return {};
-  const metadata = JSON.stringify({ webSearch });
-  return metadata.length <= MAX_METADATA_LENGTH ? { webSearch } : {};
 }
 
 export async function listAiConversations(userId: string): Promise<ConversationSummary[]> {
@@ -145,7 +128,6 @@ export async function appendAiConversationTurn({
   conversationId,
   userMessage,
   assistantMessage,
-  webSearch,
   buildDraft,
   comboDraft,
   title,
@@ -154,7 +136,6 @@ export async function appendAiConversationTurn({
   conversationId?: string;
   userMessage: ChatMessage;
   assistantMessage: ChatMessage;
-  webSearch?: ExternalPriceSearchResult;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
   title?: string;
@@ -164,7 +145,7 @@ export async function appendAiConversationTurn({
     p_conversation_id: conversationId || null,
     p_user_content: userMessage.content,
     p_assistant_content: assistantMessage.content,
-    p_metadata: compactMetadata(webSearch),
+    p_metadata: {},
     p_state: compactState({ buildDraft, comboDraft }),
     p_title: title ? normalizeTitle(title) : null,
   });

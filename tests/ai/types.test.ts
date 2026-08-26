@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isChatRequest, normalizePageContext } from "@/lib/ai/types";
+import { isChatRequest, MAX_CHAT_MESSAGE_LENGTH, normalizePageContext } from "@/lib/ai/types";
 
 describe("AI request contracts", () => {
   it("accepts a bounded chat request", () => {
@@ -8,7 +8,8 @@ describe("AI request contracts", () => {
 
   it("rejects oversized history and messages", () => {
     expect(isChatRequest({ messages: Array.from({ length: 13 }, () => ({ role: "user", content: "hola" })) })).toBe(false);
-    expect(isChatRequest({ messages: [{ role: "user", content: "x".repeat(2_001) }] })).toBe(false);
+    expect(isChatRequest({ messages: [{ role: "user", content: "x".repeat(MAX_CHAT_MESSAGE_LENGTH) }] })).toBe(true);
+    expect(isChatRequest({ messages: [{ role: "user", content: "x".repeat(MAX_CHAT_MESSAGE_LENGTH + 1) }] })).toBe(false);
   });
 
   it("rejects untrusted roles and malformed actions", () => {

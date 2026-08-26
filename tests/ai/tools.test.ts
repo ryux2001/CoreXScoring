@@ -66,6 +66,40 @@ describe("CoreX AI tools", () => {
     expect(supabase.builder.in).toHaveBeenCalledWith("id", [cpuFixture.id, gpuFixture.id]);
   });
 
+  it("uses the verified custom comparison price instead of the catalog base price", async () => {
+    const supabase = createSupabaseStub({ data: [cpuFixture, gpuFixture], error: null });
+    const result = await getCurrentComparison({}, {
+      supabase: supabase as never,
+      actor,
+      pageContext: comparatorContext([cpuFixture.id, gpuFixture.id]),
+      priceContext: {
+        scope: "comparison",
+        currency: "USD",
+        totalPrice: 899,
+        items: [{
+          productId: cpuFixture.id,
+          name: cpuFixture.name,
+          type: "cpu",
+          price: 150,
+          isCustom: true,
+          qualityPriceScore: 9,
+        }],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const components = (result.data as { components: Array<{ id: string; selectedPrice: { value: number }; priceSource: string }> }).components;
+    expect(components.find((component) => component.id === cpuFixture.id)).toMatchObject({
+      selectedPrice: { value: 150 },
+      priceSource: "frontend_custom_verified",
+    });
+    expect(components.find((component) => component.id === gpuFixture.id)).toMatchObject({
+      selectedPrice: { value: gpuFixture.price_base_usd },
+      priceSource: "base",
+    });
+  });
+
   it("prepares an add action only after validating the comparator and product", async () => {
     const currentBuilder = createQueryBuilder({ data: [cpuFixture], error: null });
     const secondCpu = { ...cpuFixture, id: "cpu-7700x3d", name: "AMD Ryzen 7 7700X3D" };

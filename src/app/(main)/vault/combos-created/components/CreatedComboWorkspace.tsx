@@ -5,6 +5,7 @@ import { AlertCircle, Check, CircleHelp, Search, Settings2, X } from 'lucide-rea
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
+import { useAiVisiblePriceStore } from '@/store/useAiVisiblePriceStore';
 import ComboEvaluationSection from '@/app/(main)/combos/[slug]/components/ComboEvaluationSection';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
 import Metrics from '@/app/(main)/combos/[slug]/components/Metrics';
@@ -115,6 +116,20 @@ function getProductPrice(product: Product | null, slot: SlotKey, combo: DraftSta
   return Number(currency === 'EUR' ? product.price_base_eur : product.price_base_usd) || 0;
 }
 
+function getAiPriceContext(draft: DraftState, currency: string) {
+  const slots: SlotKey[] = ['cpu', 'gpu', 'ram'];
+  return {
+    scope: 'draft_combo' as const,
+    currency: currency === 'EUR' ? 'EUR' as const : 'USD' as const,
+    items: slots.flatMap((slot) => {
+      const product = draft[slot];
+      if (!product) return [];
+      const isCustom = draft.priceModes[slot] === 'custom';
+      return [{ productId: product.id, price: getProductPrice(product, slot, draft, currency), isCustom, slot }];
+    }),
+  };
+}
+
 function normalizeRamType(value: any) {
   return String(value || '').toLowerCase().replace(/\s+/g, '');
 }
@@ -168,6 +183,11 @@ export default function CreatedComboWorkspace({
     ),
     [draft, currency],
   );
+
+  useEffect(() => {
+    useAiVisiblePriceStore.getState().setContext(getAiPriceContext(draft, currency));
+    return () => useAiVisiblePriceStore.getState().clear();
+  }, [draft, currency]);
 
   useEffect(() => {
     if (!notification) return;

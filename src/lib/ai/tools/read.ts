@@ -3,7 +3,7 @@ import { getComponentNotes } from "@/lib/scoring/components";
 import { getBuildNotes, getBuildPartPrice } from "@/lib/scoring/builds";
 import { getProductMetrics } from "@/lib/metricsProducts";
 import { calculateCatalogPriceEvaluation, isCatalogValueProfile } from "@/lib/catalog/price-evaluation";
-import { isCurrency } from "@/lib/currency";
+import { convertPrice, isCurrency } from "@/lib/currency";
 import type { ComparisonUiAction, PageContext } from "../types";
 import type { AiToolContext, AiToolResult } from "./types";
 
@@ -152,13 +152,26 @@ function pickObjectValues(value: unknown, keys: string[]): Row {
   );
 }
 
-function getProductSummary(product: Row, currency: Currency = "USD"): Row {
+function getVerifiedPriceOverride(product: Row, currency: Currency, priceContext?: AiToolContext["priceContext"]): number | null {
+  const productId = asText(product.id);
+  const item = priceContext?.items.find((candidate) => candidate.productId === productId);
+  if (!item || !item.isCustom) return null;
+  return roundNumber(priceContext!.currency === currency
+    ? item.price
+    : convertPrice(item.price, priceContext!.currency, currency));
+}
+
+function getProductSummary(product: Row, currency: Currency = "USD", priceContext?: AiToolContext["priceContext"]): Row {
   const type = asText(product.type).toUpperCase();
   const priceUsd = asNumber(product.price_base_usd);
   const priceEur = asNumber(product.price_base_eur);
-  // Component quality/price notes use the same USD base as the existing UI.
-  const evaluatedPrice = priceUsd ?? priceEur ?? 0;
-  const selectedPrice = currency === "EUR" ? priceEur ?? priceUsd ?? 0 : priceUsd ?? priceEur ?? 0;
+  const customPrice = getVerifiedPriceOverride(product, currency, priceContext);
+  const selectedPrice = customPrice ?? (currency === "EUR" ? priceEur ?? priceUsd ?? 0 : priceUsd ?? priceEur ?? 0);
+  // Component quality/price notes always use USD. Un precio personalizado se
+  // convierte desde la moneda visible antes de recalcular la valoración.
+  const evaluatedPrice = customPrice === null
+    ? priceUsd ?? priceEur ?? 0
+    : convertPrice(customPrice, currency, "USD");
   let notes: Record<string, number> = {};
 
   try {
@@ -210,6 +223,7 @@ function getProductSummary(product: Row, currency: Currency = "USD"): Row {
     description: asText(product.description).slice(0, 600),
     prices: { USD: priceUsd, EUR: priceEur },
     selectedPrice: { currency, value: selectedPrice },
+    priceSource: customPrice === null ? "base" : "frontend_custom_verified",
     releaseDate: product.release_date ?? null,
     specs,
     compatibility: pickObjectValues(product.compatibility, [
@@ -463,7 +477,7 @@ export async function compareComponents(args: unknown, context: AiToolContext): 
   const { data, error } = await getProductQuery(context.supabase).in("id", ids);
   if (error) return getToolFailure("No se pudieron consultar los componentes para la comparación.");
 
-  const components = asRows(data).map((product) => getProductSummary(product, currency));
+  const components = asRows(data).map((product) => getProductSummary(product, currency, context.priceContext));
   if (components.length < 2) return getToolFailure("No encontré suficientes componentes válidos para comparar.");
 
   const ranked = [...components].sort((left, right) => {
@@ -640,7 +654,7 @@ export async function getCurrentComparison(args: unknown, context: AiToolContext
   const components = itemIds
     .map((id) => productsById.get(id))
     .filter((product): product is Row => Boolean(product))
-    .map((product) => getProductSummary(product, currency));
+    .map((product) => getProductSummary(product, currency, context.priceContext));
 
   if (components.length < itemIds.length) return getToolFailure("Uno de los componentes de la comparación ya no está disponible.");
 

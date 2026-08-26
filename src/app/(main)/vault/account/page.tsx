@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 import DeleteAccountForm from '@/app/auth/components/DeleteAccountForm';
 import NameChangeForm from '@/app/auth/components/NameChangeForm';
 import PasswordChangeForm from '@/app/auth/components/PasswordChangeForm';
-import AiSearchProvidersCard from '@/app/auth/components/AiSearchProvidersCard';
 import AiChatProvidersCard from '@/app/auth/components/AiChatProvidersCard';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
@@ -63,10 +62,6 @@ export default async function VaultAccountPage() {
           </p>
           <PasswordChangeForm requireCurrentPassword />
         </section>
-
-        <div id="web-search-providers">
-          <AiSearchProvidersCard />
-        </div>
 
         <AiChatProvidersCard />
 

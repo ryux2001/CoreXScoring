@@ -541,25 +541,6 @@ const SAVE_COMBO_DRAFT_TOOL: AiToolDefinition = {
   },
 };
 
-const FIND_EXTERNAL_PRICE_TOOL: AiToolDefinition = {
-  type: "function",
-  function: {
-    name: "find_external_price",
-    description: "Busca precios actuales de un componente en PcComponentes, Amazon, eBay o AliExpress. Es de solo lectura: devuelve candidatos, fuentes y confianza; nunca inserta ni modifica precios.",
-    parameters: {
-      type: "object",
-      properties: {
-        productQuery: { type: "string", description: "Nombre o modelo exacto del componente, por ejemplo Ryzen 5 5600." },
-        componentId: { type: "string", description: "ID exacto del catálogo si ya está disponible; tiene prioridad sobre productQuery." },
-        country: { type: "string", enum: ["ES"], description: "País de búsqueda. Actualmente solo se admite ES." },
-        retailer: { type: "string", description: "Tienda opcional: PcComponentes, Amazon, eBay o AliExpress." },
-        mode: { type: "string", enum: ["best_price", "specific_retailer"], description: "Busca entre todas las fuentes permitidas o en una tienda concreta." },
-      },
-      additionalProperties: false,
-    },
-  },
-};
-
 const PROPOSE_SET_CUSTOM_PRICE_TOOL: AiToolDefinition = {
   type: "function",
   function: {
@@ -606,6 +587,5 @@ export const AI_TOOL_DEFINITIONS: AiToolDefinition[] = [
   PLAN_COMBO_TOOL,
   UPDATE_COMBO_PLAN_TOOL,
   SAVE_COMBO_DRAFT_TOOL,
-  FIND_EXTERNAL_PRICE_TOOL,
   PROPOSE_SET_CUSTOM_PRICE_TOOL,
 ];

@@ -10,13 +10,6 @@ const MAX_ESTIMATED_TOKEN_BUDGET = 20_000;
 
 export type AiQuotaReason = "user_messages" | "ip_messages" | "user_tokens" | "ip_tokens";
 
-export interface AiWebSearchQuotaDecision {
-  allowed: boolean;
-  retryAfterSeconds?: number;
-  userRemainingSearches?: number;
-  ipRemainingSearches?: number;
-}
-
 export interface AiQuotaDecision {
   allowed: boolean;
   reason?: AiQuotaReason;
@@ -121,47 +114,6 @@ export async function consumeAiQuota({
     retryAfterSeconds: toOptionalNumber(result.retry_after_seconds),
     userRemainingMessages: toOptionalNumber(result.user_remaining_messages),
     ipRemainingMessages: toOptionalNumber(result.ip_remaining_messages),
-  };
-}
-
-export class AiWebSearchQuotaUnavailableError extends Error {
-  constructor() {
-    super("No se pudo consultar la cuota de búsqueda web.");
-  }
-}
-
-/** Reserva una unidad de búsqueda Tavily sin mezclarla con la cuota de tokens del chat. */
-export async function consumeAiWebSearchQuota({
-  supabase,
-  userId,
-  ipHash,
-  isAnonymous,
-  units,
-}: {
-  supabase: AiSupabaseClient;
-  userId: string;
-  ipHash: string | null;
-  isAnonymous: boolean;
-  units: number;
-}): Promise<AiWebSearchQuotaDecision> {
-  const { data, error } = await supabase.rpc("consume_ai_web_search_quota", {
-    p_user_id: userId,
-    p_ip_hash: ipHash,
-    p_is_anonymous: isAnonymous,
-    p_units: Math.min(Math.max(Math.round(units), 1), 2),
-  });
-
-  if (error) {
-    console.error("AI web search quota check failed", { code: error.code || "unknown" });
-    throw new AiWebSearchQuotaUnavailableError();
-  }
-
-  const result = toRecord(data);
-  return {
-    allowed: result.allowed === true,
-    retryAfterSeconds: toOptionalNumber(result.retry_after_seconds),
-    userRemainingSearches: toOptionalNumber(result.user_remaining_searches),
-    ipRemainingSearches: toOptionalNumber(result.ip_remaining_searches),
   };
 }
 

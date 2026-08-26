@@ -1,7 +1,6 @@
 import type { createSupabaseServerClient } from "@/lib/supabaseServer";
-import type { BuildDraft, CatalogPriceEvaluationRequest, ComboDraft, ComparisonUiAction, PageContext, PendingAction } from "../types";
+import type { AiResolvedPriceContext, BuildDraft, CatalogPriceEvaluationRequest, ComboDraft, ComparisonUiAction, PageContext, PendingAction } from "../types";
 import type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
-import type { ExternalPriceSearchResult } from "../web-search/types";
 
 export type AiSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
@@ -18,6 +17,7 @@ export interface AiToolContext {
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
   catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
+  priceContext?: AiResolvedPriceContext;
 }
 
 export interface AiToolSuccess {
@@ -28,7 +28,6 @@ export interface AiToolSuccess {
   comboDraft?: ComboDraft;
   catalogPriceEvaluation?: CatalogPriceEvaluation;
   catalogPriceUpdate?: CatalogPriceEvaluation;
-  webSearch?: ExternalPriceSearchResult;
   comparisonAction?: ComparisonUiAction;
 }
 

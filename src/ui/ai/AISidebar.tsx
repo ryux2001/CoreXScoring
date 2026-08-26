@@ -12,13 +12,13 @@ import {
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
+import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
 import { ensureAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
-import ExternalPriceResultsCard from "./ExternalPriceResultsCard";
 import ChatHistoryPanel from "./ChatHistoryPanel";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
 import { useCompareStore, type CompareProduct } from "@/store/useCompareStore";
+import { useAiVisiblePriceStore } from "@/store/useAiVisiblePriceStore";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
@@ -79,6 +79,27 @@ function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageCon
       ? { comparison: { itemIds: comparisonItems.map((item) => String(item.id)).slice(0, 3) } }
       : {}),
   };
+}
+
+function getFrontendPriceContext(
+  pathname: string,
+  comparisonItems: CompareProduct[],
+  evaluatedPrices: Record<string, number>,
+  visibleEditorContext: AiFrontendPriceContext | null,
+): AiFrontendPriceContext | undefined {
+  if (pathname.startsWith("/comparator")) {
+    const visibleIds = new Set(comparisonItems.map((item) => String(item.id)));
+    const items = Object.entries(evaluatedPrices)
+      .filter(([productId]) => visibleIds.has(productId))
+      .map(([productId, price]) => ({ productId, price, isCustom: true }));
+    if (items.length > 0) {
+      return { scope: "comparison", currency: new URLSearchParams(window.location.search).get("currency") === "EUR" ? "EUR" : "USD", items };
+    }
+  }
+
+  if (visibleEditorContext && pathname.startsWith("/vault/")) return visibleEditorContext;
+
+  return undefined;
 }
 
 function humanizePageIdentifier(value: string): string {
@@ -151,7 +172,6 @@ interface ChatPanelProps {
   onRetry: () => void;
   onContinue: () => void;
   pendingAction: PendingAction | null;
-  webSearch: ChatResponse["webSearch"];
   isConfirmingAction: boolean;
   onConfirmAction: () => void;
   onCancelAction: () => void;
@@ -182,7 +202,6 @@ function ChatPanel({
   onRetry,
   onContinue,
   pendingAction,
-  webSearch,
   isConfirmingAction,
   onConfirmAction,
   onCancelAction,
@@ -336,7 +355,6 @@ function ChatPanel({
           </button>
         )}
 
-        {webSearch && <ExternalPriceResultsCard result={webSearch} />}
       </div>
 
       {pendingAction && (
@@ -376,7 +394,7 @@ function ChatPanel({
               }
             }}
             rows={1}
-            maxLength={2_000}
+            maxLength={4_000}
             placeholder="Escribe…"
             className="ai-chat-input font-technical max-h-28 min-h-9 flex-1 resize-none overflow-y-hidden bg-transparent py-1 text-sm leading-6 text-zinc-100 outline-none placeholder:text-zinc-600"
           />
@@ -409,6 +427,7 @@ function ChatPanel({
 export default function AISidebar() {
   const pathname = usePathname() || "/";
   const comparisonItems = useCompareStore((state) => state.items);
+  const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<ChatError | null>(null);
@@ -422,7 +441,6 @@ export default function AISidebar() {
   const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-  const [webSearch, setWebSearch] = useState<ChatResponse["webSearch"]>(undefined);
   const [buildDraft, setBuildDraft] = useState<BuildDraft | null>(null);
   const [comboDraft, setComboDraft] = useState<ComboDraft | null>(null);
   const [conversationMode, setConversationMode] = useState<AiConversationMode>("temporary");
@@ -434,6 +452,7 @@ export default function AISidebar() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [canSaveChats, setCanSaveChats] = useState(true);
   const catalogPriceEvaluation = useCatalogPriceEvaluationStore((state) => state.current);
+  const visibleEditorPriceContext = useAiVisiblePriceStore((state) => state.context);
   const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -479,7 +498,6 @@ export default function AISidebar() {
     setDraft("");
     setError(null);
     setPendingAction(null);
-    setWebSearch(undefined);
     setBuildDraft(null);
     setComboDraft(null);
     setCanContinue(false);
@@ -520,8 +538,6 @@ export default function AISidebar() {
       setMessages(selected.messages.length > 0 ? selected.messages.map(({ role, content }) => ({ role, content })) : [INITIAL_MESSAGE]);
       setBuildDraft(selected.state.buildDraft || null);
       setComboDraft(selected.state.comboDraft || null);
-      const lastMetadata = [...selected.messages].reverse().find((message) => message.metadata?.webSearch)?.metadata;
-      setWebSearch(lastMetadata?.webSearch);
       setPendingAction(null);
       setCanContinue(false);
       setSessionKind("authenticated");
@@ -601,6 +617,12 @@ export default function AISidebar() {
       setSessionKind(session.user.is_anonymous === true ? "anonymous" : "authenticated");
       if (session.user.is_anonymous !== true) setCanSaveChats(true);
 
+      const frontendPriceContext = getFrontendPriceContext(
+        pathname,
+        comparisonItems,
+        evaluatedPrices,
+        visibleEditorPriceContext,
+      );
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -609,6 +631,7 @@ export default function AISidebar() {
           conversationMode,
           ...(conversationId ? { conversationId } : {}),
           context: getCurrentClientPageContext(comparisonItems),
+          ...(frontendPriceContext ? { frontendPriceContext } : {}),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
           ...(catalogPriceEvaluation ? {
@@ -669,7 +692,6 @@ export default function AISidebar() {
       // Si una recomendación no trae pendingAction, no debe quedar visible una
       // tarjeta antigua de otro build/combo.
       setPendingAction(payload.pendingAction ?? null);
-      setWebSearch(payload.webSearch);
       if (payload.catalogPriceUpdate) {
         applyCatalogPriceUpdate(payload.catalogPriceUpdate);
       }
@@ -736,7 +758,6 @@ export default function AISidebar() {
       setProvider(payload.provider);
       setModel(payload.model);
       setPendingAction(null);
-      setWebSearch(undefined);
       setBuildDraft(null);
       setComboDraft(null);
     } catch (requestError) {
@@ -757,7 +778,6 @@ export default function AISidebar() {
   const cancelAction = () => {
     if (isConfirmingAction) return;
     setPendingAction(null);
-    setWebSearch(undefined);
     setMessages((currentMessages) => [...currentMessages, {
       role: "assistant",
       content: "No se realizó ningún cambio en tu bóveda.",
@@ -883,7 +903,6 @@ export default function AISidebar() {
     onRetry: () => void sendMessage(lastMessageRef.current, true),
     onContinue: continueResponse,
     pendingAction,
-    webSearch,
     isConfirmingAction,
     onConfirmAction: () => void confirmAction(),
     onCancelAction: cancelAction,
