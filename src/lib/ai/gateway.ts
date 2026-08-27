@@ -39,6 +39,7 @@ const SYSTEM_PROMPT = [
   "Diferencia hechos conocidos, estimaciones y recomendaciones. No presentes una estimación como un dato verificado.",
   "Puedes usar tools de lectura para consultar componentes, combos, builds, scoring, contexto de página y datos propios de la bóveda cuando el usuario tenga una cuenta permanente.",
   "El sistema incluye el contexto validado de la página actual. Si el usuario dice ‘este componente’, ‘esta build’ o ‘este combo’, usa ese contexto antes de pedir aclaraciones; consulta la tool de lectura correspondiente para los detalles.",
+  "Para cualquier FPS asociado a un juego concreto usa get_game_fps: sus datos verificados proceden de games.gpu_fps_base y están desglosados por GPU, juego, resolución y preset. En una ficha, comparación, combo o build usa los componentes visibles como contexto. Nunca presentes los benchmarks de products (1080p_gaming_avg_fps, 1440p_gaming_avg_fps o 4k_gaming_avg_fps) como FPS de un juego ni los uses para sustituir un dato ausente; si falta cobertura, dilo claramente.",
   "En la página del comparador, usa get_current_comparison para leer los componentes actuales. Si el usuario pide explícitamente añadir, quitar o cambiar el precio temporal de un componente, resuélvelo primero con la tool adecuada y después usa la acción local de comparación correspondiente. Nunca inventes un ID ni alteres una comparación sin una orden clara.",
   "Para recomendar una build usa plan_build: debe responder en texto y nunca crear una confirmación. Solo usa save_build_draft cuando el usuario pida explícitamente guardar la build.",
   "Para recomendar un combo usa plan_combo; solo tiene CPU, GPU y RAM. Usa update_combo_plan para cambios parciales y save_combo_draft únicamente cuando el usuario pida guardarlo.",
@@ -371,6 +372,10 @@ function hasComparisonReadIntent(value: string): boolean {
   return /\b(?:compara|comparar|comparacion|comparación|diferencia|diferencias|mejor|peor|estos|estas)\b/.test(normalizeIntentText(value));
 }
 
+function hasGameFpsIntent(value: string): boolean {
+  return /\b(?:fps|fotogramas|frames|cuadros(?:\s+por\s+segundo)?)\b/.test(normalizeIntentText(value));
+}
+
 /**
  * Reduce el espacio de decisión del modelo para operaciones compuestas. En
  * particular, una build explícita no debe exponerse simultáneamente a las
@@ -385,6 +390,22 @@ function getToolDefinitionsForMessages(messages: ChatMessage[], buildDraft?: Bui
   const hasBuildComponents = /\b(?:ryzen|intel|rtx|gtx|radeon|cpu|gpu|ram|placa|b[3-5]50|ssd|nvme|fuente|psu|procesador|grafica)\b/.test(text);
   const hasSaveIntent = hasBuildSaveIntent(latestUserMessage);
   const hasChangeIntent = /\b(?:cambiar|cambia|modifica|modificar|sustituye|sustituir|reemplaza|reemplazar)\b/.test(text);
+  const asksGameFps = hasGameFpsIntent(latestUserMessage);
+
+  if (asksGameFps && !hasComparisonPriceIntent(latestUserMessage) && !hasCatalogPriceChangeIntent(latestUserMessage)) {
+    return AI_TOOL_DEFINITIONS.filter((tool) => [
+      "search_components",
+      "get_component",
+      "get_game_fps",
+      "get_current_page_context",
+      "get_current_comparison",
+      "compare_components",
+      "get_combo",
+      "get_build",
+      "analyze_build",
+      "recommend_components",
+    ].includes(tool.function.name));
+  }
 
   if (pageContext?.route === "comparator" && hasComparisonPriceIntent(latestUserMessage)) {
     return AI_TOOL_DEFINITIONS.filter((tool) => [
@@ -413,6 +434,7 @@ function getToolDefinitionsForMessages(messages: ChatMessage[], buildDraft?: Bui
     return AI_TOOL_DEFINITIONS.filter((tool) => [
       "search_components",
       "get_component",
+      "get_game_fps",
       "get_current_comparison",
       "compare_components",
     ].includes(tool.function.name));
@@ -466,7 +488,7 @@ function parseToolArguments(rawArguments: string | undefined): unknown {
  * una acción válida.
  */
 function isLeakedToolPlan(content: string): boolean {
-  const referencesInternalTool = /\b(?:search_components|search_user_combos|search_user_builds|search_scoring_explanation|propose_create_combo|propose_create_build|propose_set_custom_price|tool_calls?|tool_choice)\b/i.test(content);
+  const referencesInternalTool = /\b(?:search_components|search_user_combos|search_user_builds|search_scoring_explanation|get_game_fps|propose_create_combo|propose_create_build|propose_set_custom_price|tool_calls?|tool_choice)\b/i.test(content);
   const describesExecution = /\b(?:we need to|i need to|we should|let'?s call|need to call|the user wants|function call|parameters?)\b/i.test(content);
   return referencesInternalTool && describesExecution;
 }

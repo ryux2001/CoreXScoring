@@ -2,6 +2,7 @@ import { getComboNotes, getComboPartPrice } from "@/lib/scoring/combos";
 import { getComponentNotes } from "@/lib/scoring/components";
 import { getBuildNotes, getBuildPartPrice } from "@/lib/scoring/builds";
 import { getProductMetrics } from "@/lib/metricsProducts";
+import { calculateComboFps, type GameData } from "@/lib/fpsCombos";
 import { calculateCatalogPriceEvaluation, isCatalogValueProfile } from "@/lib/catalog/price-evaluation";
 import { convertPrice, isCurrency } from "@/lib/currency";
 import type { ComparisonUiAction, PageContext } from "../types";
@@ -9,6 +10,11 @@ import type { AiToolContext, AiToolResult } from "./types";
 
 type Row = Record<string, unknown>;
 type Currency = "USD" | "EUR";
+type GameResolution = "1080p" | "1440p" | "4k";
+
+const GAME_RESOLUTIONS: GameResolution[] = ["1080p", "1440p", "4k"];
+const GAME_PRESETS = new Set(["bajo", "medio", "alto", "ultra"]);
+const FPS_CONTEXT_ENTITY_TYPES = new Set(["combo", "build", "saved_combo", "saved_build"]);
 
 const PRODUCT_SELECT = [
   "id",
@@ -85,6 +91,17 @@ const BUILD_SELECT = [
 const COMPONENT_TYPES = new Set(["cpu", "gpu", "ram", "storage", "motherboard", "psu"]);
 const USE_CASES = new Set(["gaming", "productivity", "balanced"]);
 
+const GAME_SELECT = [
+  "id",
+  "slug",
+  "name",
+  "limite_motor_fps",
+  "cpu_score_ideal",
+  "ram_minima_gb",
+  "vram_minima_gb",
+  "gpu_fps_base",
+].join(", ");
+
 function asRow(value: unknown): Row {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? value as Row
@@ -140,6 +157,18 @@ function sanitizeIdentifier(value: unknown): string {
 }
 
 function getObject(value: unknown): Row {
+  return asRow(value);
+}
+
+function parseJsonObject(value: unknown): Row {
+  if (typeof value === "string") {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return asRow(parsed);
+    } catch {
+      return {};
+    }
+  }
   return asRow(value);
 }
 
@@ -244,9 +273,6 @@ function getProductSummary(product: Row, currency: Currency = "USD", priceContex
     benchmarks: pickObjectValues(product.benchmarks, [
       "3dmark_time_spy",
       "3dmark_port_royal",
-      "1080p_gaming_avg_fps",
-      "1440p_gaming_avg_fps",
-      "4k_gaming_avg_fps",
       "cinebench_multi",
       "geekbench_single",
       "passmark_score",
@@ -399,6 +425,67 @@ function getProductQuery(client: AiToolContext["supabase"]) {
   return client.from("products").select(PRODUCT_SELECT);
 }
 
+function getGameQuery(client: AiToolContext["supabase"]) {
+  return client.from("games").select(GAME_SELECT);
+}
+
+function getVisibleFpsGpuIds(context: AiToolContext): string[] {
+  const pageContext = context.pageContext;
+  if (!pageContext) return [];
+  if (pageContext.route === "comparator") {
+    return pageContext.comparison?.itemIds || [];
+  }
+  if (pageContext.entityType === "product" && pageContext.entityId) {
+    return [pageContext.entityId];
+  }
+  return (pageContext.entityComponents || [])
+    .filter((component) => component.slot === "gpu")
+    .map((component) => component.id);
+}
+
+function getGameData(row: Row): GameData {
+  return {
+    id: asText(row.id),
+    slug: asText(row.slug),
+    name: asText(row.name),
+    limite_motor_fps: asNumber(row.limite_motor_fps) ?? 0,
+    cpu_score_ideal: asNumber(row.cpu_score_ideal) ?? 0,
+    ram_minima_gb: asNumber(row.ram_minima_gb) ?? 0,
+    vram_minima_gb: asNumber(row.vram_minima_gb) ?? 0,
+    gpu_fps_base: parseJsonObject(row.gpu_fps_base) as GameData["gpu_fps_base"],
+  };
+}
+
+function getBaseGameFps(
+  game: GameData,
+  gpuId: string,
+  resolution: GameResolution,
+  preset: string,
+): number | null {
+  const gpuData = getObject(game.gpu_fps_base[gpuId]);
+  const resolutionData = getObject(gpuData[resolution]);
+  const fps = asNumber(resolutionData[preset]);
+  return fps !== null && fps > 0 ? roundNumber(fps) : null;
+}
+
+function getFpsProductSummary(
+  product: Row,
+  currency: Currency,
+  priceContext: AiToolContext["priceContext"],
+): Row {
+  const summary = getProductSummary(product, currency, priceContext);
+  const scoring = getObject(summary.scoring);
+  return {
+    id: summary.id,
+    name: summary.name,
+    brand: summary.brand,
+    type: summary.type,
+    selectedPrice: summary.selectedPrice,
+    priceSource: summary.priceSource,
+    gamingScore: asNumber(scoring.Gaming) ?? null,
+  };
+}
+
 function getActiveComboQuery(client: AiToolContext["supabase"]) {
   return client.from("combos").select(COMBO_SELECT).eq("is_active", true);
 }
@@ -462,6 +549,147 @@ export async function getComponent(args: unknown, context: AiToolContext): Promi
   if (!data) return getToolFailure("No encontré un componente con ese identificador.");
 
   return getToolSuccess({ component: getProductSummary(asRow(data)) });
+}
+
+/** Tool: consulta FPS por juego desde games.gpu_fps_base y nunca desde products.benchmarks. */
+export async function getGameFps(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const input = asRow(args);
+  const gameId = sanitizeIdentifier(input.gameId);
+  const gameSlug = sanitizeSearch(input.gameSlug).toLowerCase();
+  const gameName = sanitizeSearch(input.gameName);
+
+  let gameRow: Row | null = null;
+  if (gameId || gameSlug || gameName) {
+    let query = getGameQuery(context.supabase).limit(1);
+    if (gameId) query = query.eq("id", gameId);
+    else if (gameSlug) query = query.eq("slug", gameSlug);
+    else query = query.ilike("name", `%${gameName}%`);
+
+    const { data, error } = await query.maybeSingle();
+    if (error) return getToolFailure("No se pudo consultar el juego solicitado.");
+    gameRow = data ? asRow(data) : null;
+    if (!gameRow) return getToolFailure("No encontré ese juego en la base de datos de rendimiento.");
+  } else {
+    const { data, error } = await context.supabase
+      .from("games")
+      .select("id,slug,name")
+      .order("name", { ascending: true })
+      .limit(20);
+    if (error) return getToolFailure("No se pudo consultar el catálogo de juegos.");
+    return getToolSuccess({
+      games: asRows(data).map((game) => ({
+        id: asText(game.id),
+        slug: asText(game.slug),
+        name: asText(game.name),
+      })),
+      message: "Indica el juego para consultar sus FPS verificados. No se debe usar el FPS genérico del producto como sustituto.",
+    });
+  }
+
+  const requestedGpuIds = Array.isArray(input.gpuIds)
+    ? input.gpuIds.map(sanitizeIdentifier).filter(Boolean).slice(0, 4)
+    : [];
+  const visibleIds = getVisibleFpsGpuIds(context);
+  const selectedIds = Array.from(new Set((requestedGpuIds.length > 0 ? requestedGpuIds : visibleIds).filter(Boolean))).slice(0, 4);
+  if (selectedIds.length === 0) {
+    return getToolFailure("Indica los IDs de las GPUs o abre una ficha, comparación, combo o build con una GPU visible.");
+  }
+
+  const pageContext = context.pageContext;
+  const pageComponentIds = pageContext?.entityComponents?.map((component) => component.id) || [];
+  const shouldEstimateSystem = Boolean(
+    pageContext?.entityType
+    && FPS_CONTEXT_ENTITY_TYPES.has(pageContext.entityType)
+    && pageComponentIds.length > 0
+    && selectedIds.some((id) => getVisibleFpsGpuIds(context).includes(id)),
+  );
+  const idsToFetch = Array.from(new Set([
+    ...selectedIds,
+    ...(shouldEstimateSystem ? pageComponentIds : []),
+  ]));
+  const { data: products, error: productsError } = await getProductQuery(context.supabase).in("id", idsToFetch);
+  if (productsError) return getToolFailure("No se pudieron consultar las GPUs para obtener sus FPS.");
+
+  const productsById = new Map(asRows(products).map((product) => [asText(product.id), product]));
+  const selectedProducts = selectedIds
+    .map((id) => productsById.get(id))
+    .filter((product): product is Row => Boolean(product));
+  if (selectedProducts.length !== selectedIds.length) {
+    return getToolFailure("Una de las GPUs solicitadas ya no está disponible en el catálogo.");
+  }
+  if (selectedProducts.some((product) => asText(product.type).toLowerCase() !== "gpu")) {
+    return getToolFailure("Esta consulta de FPS solo admite tarjetas gráficas.");
+  }
+
+  const game = getGameData(gameRow);
+  const preset = GAME_PRESETS.has(sanitizeSearch(input.preset).toLowerCase())
+    ? sanitizeSearch(input.preset).toLowerCase()
+    : "medio";
+  const requestedResolution = sanitizeSearch(input.resolution).toLowerCase() as GameResolution;
+  const resolutions = GAME_RESOLUTIONS.includes(requestedResolution) ? [requestedResolution] : GAME_RESOLUTIONS;
+  const currency = getCurrency(new URLSearchParams(pageContext?.search || "").get("currency"));
+
+  let systemScores: { cpuGamingScore?: number; ramGamingScore?: number } | undefined;
+  if (shouldEstimateSystem) {
+    const cpuId = pageContext?.entityComponents?.find((component) => component.slot === "cpu")?.id;
+    const ramId = pageContext?.entityComponents?.find((component) => component.slot === "ram")?.id;
+    const cpu = cpuId ? productsById.get(cpuId) : undefined;
+    const ram = ramId ? productsById.get(ramId) : undefined;
+    const cpuSummary = cpu ? getProductSummary(cpu, currency, context.priceContext) : null;
+    const ramSummary = ram ? getProductSummary(ram, currency, context.priceContext) : null;
+    systemScores = {
+      ...(cpuSummary ? { cpuGamingScore: asNumber(getObject(cpuSummary.scoring).Gaming) ?? undefined } : {}),
+      ...(ramSummary ? { ramGamingScore: asNumber(getObject(ramSummary.scoring).Gaming) ?? undefined } : {}),
+    };
+  }
+
+  const components = selectedProducts.map((product) => {
+    const gpuId = asText(product.id);
+    const fps = shouldEstimateSystem
+      ? (() => {
+          const estimated = calculateComboFps({ gpu: product }, game, preset, systemScores);
+          const values: Record<string, number | null> = {
+            "1080p": estimated.fhd,
+            "1440p": estimated.qhd,
+            "4k": estimated.uhd,
+          };
+          return Object.fromEntries(resolutions.map((resolution) => [resolution, values[resolution]]));
+        })()
+      : Object.fromEntries(resolutions.map((resolution) => [
+          resolution,
+          getBaseGameFps(game, gpuId, resolution, preset),
+        ]));
+
+    return {
+      component: getFpsProductSummary(product, currency, context.priceContext),
+      fps,
+      dataAvailable: Object.values(fps).some((value) => typeof value === "number" && value > 0),
+    };
+  });
+
+  return getToolSuccess({
+    source: "CoreXScoring · games.gpu_fps_base",
+    mode: shouldEstimateSystem ? "combo_or_build_estimate" : "gpu_direct",
+    game: {
+      id: game.id,
+      slug: game.slug,
+      name: game.name,
+      requirements: {
+        cpuScoreIdeal: game.cpu_score_ideal,
+        ramMinimumGb: game.ram_minima_gb,
+        vramMinimumGb: game.vram_minima_gb,
+        engineFpsLimit: game.limite_motor_fps,
+      },
+    },
+    configuration: {
+      preset,
+      resolution: requestedResolution && GAME_RESOLUTIONS.includes(requestedResolution) ? requestedResolution : "all",
+    },
+    components,
+    note: shouldEstimateSystem
+      ? "FPS estimados con el FPS base del juego y el límite de CPU/RAM de la build o combo visible."
+      : "FPS directos por GPU registrados en games.gpu_fps_base. Los benchmarks de products no se usan como FPS de este juego.",
+  });
 }
 
 /** Tool: compara componentes existentes y calcula un ranking explicable con sus notas internas. */

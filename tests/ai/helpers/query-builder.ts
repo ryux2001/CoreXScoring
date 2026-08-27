@@ -17,6 +17,7 @@ export function createQueryBuilder<T>(result: QueryResult<T>, onIn?: (values: un
     limit: vi.fn(() => builder),
     or: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    ilike: vi.fn(() => builder),
     gte: vi.fn(() => builder),
     lte: vi.fn(() => builder),
     in: vi.fn((_column: string, values: unknown[]) => {

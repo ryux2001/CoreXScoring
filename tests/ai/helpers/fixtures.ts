@@ -30,6 +30,23 @@ export const gpuFixture = {
   tags: ["gaming", "ray tracing"],
 };
 
+export const gameFixture = {
+  id: "game-cyberpunk-2077",
+  slug: "cyberpunk-2077",
+  name: "Cyberpunk 2077",
+  limite_motor_fps: 180,
+  cpu_score_ideal: 8_000,
+  ram_minima_gb: 16,
+  vram_minima_gb: 8,
+  gpu_fps_base: {
+    [gpuFixture.id]: {
+      "1080p": { bajo: 150, medio: 130, alto: 110, ultra: 95 },
+      "1440p": { bajo: 115, medio: 100, alto: 85, ultra: 72 },
+      "4k": { bajo: 75, medio: 62, alto: 52, ultra: 44 },
+    },
+  },
+};
+
 export const ownBuildFixture = {
   id: "build-owned-1",
   title: "Mi build 1440p",

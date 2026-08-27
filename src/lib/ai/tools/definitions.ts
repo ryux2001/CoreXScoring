@@ -49,6 +49,41 @@ const GET_COMPONENT_TOOL: AiToolDefinition = {
   },
 };
 
+/** Tool de lectura: obtiene FPS por juego desde la tabla games, nunca desde los benchmarks agregados de products. */
+const GET_GAME_FPS_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "get_game_fps",
+    description: "Consulta los FPS verificados de una o varias GPUs para un juego concreto. Usa la tabla games y su gpu_fps_base, con resolución 1080p/1440p/4K y preset bajo/medio/alto/ultra. Si la pregunta se refiere a la página, comparación, combo o build actual, puedes omitir gpuIds y se usarán los componentes visibles. Nunca sustituyas este dato por los FPS agregados de products.",
+    parameters: {
+      type: "object",
+      properties: {
+        gameId: { type: "string", description: "ID exacto del juego, si se conoce." },
+        gameSlug: { type: "string", description: "Slug exacto del juego, si se conoce." },
+        gameName: { type: "string", description: "Nombre del juego si no se conoce el ID o slug." },
+        gpuIds: {
+          type: "array",
+          minItems: 1,
+          maxItems: 4,
+          items: { type: "string" },
+          description: "IDs exactos de las GPUs obtenidos del catálogo o de otra tool. Omitible cuando la página actual aporta el componente.",
+        },
+        resolution: {
+          type: "string",
+          enum: ["1080p", "1440p", "4k"],
+          description: "Resolución solicitada. Si se omite, devuelve 1080p, 1440p y 4K.",
+        },
+        preset: {
+          type: "string",
+          enum: ["bajo", "medio", "alto", "ultra"],
+          description: "Calidad gráfica solicitada. Si se omite, usa medio.",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+};
+
 /** Tool de lectura: compara hasta cuatro componentes mediante datos y scoring internos. */
 const COMPARE_COMPONENTS_TOOL: AiToolDefinition = {
   type: "function",
@@ -564,6 +599,7 @@ const PROPOSE_SET_CUSTOM_PRICE_TOOL: AiToolDefinition = {
 export const AI_TOOL_DEFINITIONS: AiToolDefinition[] = [
   SEARCH_COMPONENTS_TOOL,
   GET_COMPONENT_TOOL,
+  GET_GAME_FPS_TOOL,
   COMPARE_COMPONENTS_TOOL,
   SEARCH_COMBOS_TOOL,
   GET_COMBO_TOOL,

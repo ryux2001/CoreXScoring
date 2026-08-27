@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { getComponent, getCurrentComparison, proposeAddToComparison, proposeRemoveFromComparison, proposeSetComparisonPrice, searchComponents, setCurrentCatalogPrice } from "@/lib/ai/tools/read";
+import { getComponent, getCurrentComparison, getGameFps, proposeAddToComparison, proposeRemoveFromComparison, proposeSetComparisonPrice, searchComponents, setCurrentCatalogPrice } from "@/lib/ai/tools/read";
 import { executeAiTool } from "@/lib/ai/tools";
 import { createQueryBuilder, createSupabaseStub } from "./helpers/query-builder";
-import { cpuFixture, gpuFixture } from "./helpers/fixtures";
+import { cpuFixture, gameFixture, gpuFixture } from "./helpers/fixtures";
 
 const actor = { id: "user-1", isAnonymous: false };
 
@@ -51,6 +51,45 @@ describe("CoreX AI tools", () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data).toMatchObject({ component: { id: cpuFixture.id, type: "CPU" } });
+  });
+
+  it("reads game FPS from games.gpu_fps_base instead of product benchmarks", async () => {
+    const gameBuilder = createQueryBuilder({ data: gameFixture, error: null });
+    const productBuilder = createQueryBuilder({ data: [gpuFixture], error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "games" ? gameBuilder : productBuilder),
+    };
+
+    const result = await getGameFps({
+      gameSlug: gameFixture.slug,
+      gpuIds: [gpuFixture.id],
+      resolution: "1440p",
+      preset: "ultra",
+    }, {
+      supabase: supabase as never,
+      actor,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data).toMatchObject({
+      source: "CoreXScoring · games.gpu_fps_base",
+      mode: "gpu_direct",
+      configuration: { preset: "ultra", resolution: "1440p" },
+      components: [{ fps: { "1440p": 72 } }],
+    });
+    expect(JSON.stringify(result.data)).not.toContain("1440p_gaming_avg_fps");
+    expect(productBuilder.in).toHaveBeenCalledWith("id", [gpuFixture.id]);
+  });
+
+  it("returns the available games when a FPS question lacks a game", async () => {
+    const gameBuilder = createQueryBuilder({ data: [gameFixture], error: null });
+    const supabase = { from: vi.fn(() => gameBuilder) };
+
+    const result = await getGameFps({}, { supabase: supabase as never, actor });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toMatchObject({ games: [{ id: gameFixture.id, name: gameFixture.name }] });
   });
 
   it("reads the current comparison by verified product IDs", async () => {
