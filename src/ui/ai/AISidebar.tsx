@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import {
   Bot,
@@ -24,13 +24,18 @@ type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
 type ChatErrorPayload = { error?: string; code?: string; retryable?: boolean; requestId?: string; retryAfterSeconds?: number };
 
-const INITIAL_MESSAGE: ChatMessage = {
-  role: "assistant",
-  content: "Hola, soy CoreX AI, tu asistente de hardware. Puedo ayudarte con componentes, compatibilidad, rendimiento y el uso de CoreXScoring.",
-};
+const QUICK_PROMPTS = [
+  "¿Qué puedes hacer por mí?",
+  "Quiero información de un componente",
+  "Quiero recomendación de una build",
+  "Quiero una recomendación de un combo",
+] as const;
 const MOBILE_TOAST_MAX_LENGTH = 120;
 const INPUT_MIN_HEIGHT = 36;
 const INPUT_MAX_HEIGHT = 112;
+const DESKTOP_CHAT_MIN_WIDTH = 320;
+const DESKTOP_CHAT_MAX_WIDTH = 560;
+const DESKTOP_CHAT_INITIAL_WIDTH = 400;
 
 const markdownComponents: Components = {
   a: ({ children, href, title }) => (
@@ -168,6 +173,7 @@ interface ChatPanelProps {
   pageStatus: string;
   onDraftChange: (value: string) => void;
   onSend: () => void;
+  onQuickPrompt: (prompt: string) => void;
   onStop: () => void;
   onRetry: () => void;
   onContinue: () => void;
@@ -198,6 +204,7 @@ function ChatPanel({
   pageStatus,
   onDraftChange,
   onSend,
+  onQuickPrompt,
   onStop,
   onRetry,
   onContinue,
@@ -290,21 +297,39 @@ function ChatPanel({
         )}
       </header>
 
-      <div id={id} className="ai-chat-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto bg-black px-4 py-5" aria-live="polite">
+      <div id={id} className="ai-chat-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto bg-black px-4 py-5" aria-live="polite">
+        {messages.length === 0 && !isSending && !error && (
+          <div className="mx-auto flex w-full max-w-xl flex-col justify-center gap-3 py-4">
+            <p className="font-display text-center text-lg font-bold tracking-tight text-white">¿En qué puedo ayudarte?</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {QUICK_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => onQuickPrompt(prompt)}
+                  className="min-h-14 rounded-xl border border-zinc-800 bg-zinc-950/80 px-3.5 py-3 text-left font-technical text-xs leading-5 text-cyan-100/90 transition-colors hover:border-cyan-300/40 hover:bg-cyan-300/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
             className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`font-technical max-w-[90%] whitespace-pre-wrap rounded-2xl border px-4 py-3.5 text-sm leading-6 ${
+              className={`font-technical max-w-[90%] whitespace-pre-wrap rounded-2xl border px-4 py-3.5 text-sm leading-5 ${
                 message.role === "user"
                   ? "border-cyan-500/60 bg-cyan-950/35 text-cyan-100 shadow-[0_8px_20px_rgba(8,145,178,0.12)]"
                   : "rounded-tl-md border-white/[0.08] bg-zinc-950/95 text-zinc-200 shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
               }`}
             >
               {message.role === "assistant" ? (
-                <div className="[&_p]:m-0 [&_p+p]:mt-3 [&_h1]:mb-3 [&_h1]:font-technical [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-white [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:font-technical [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-white [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:font-technical [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-cyan-100 [&_strong]:font-bold [&_strong]:text-white [&_em]:italic [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-cyan-300/15 [&_blockquote]:bg-cyan-300/5 [&_blockquote]:px-3 [&_blockquote]:py-2 [&_blockquote]:text-cyan-100 [&_pre]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-white/[0.06] [&_pre]:bg-black/70 [&_pre]:p-3 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-technical [&_code]:text-cyan-100 [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+                <div className="[&_p]:m-0 [&_p+p]:mt-2 [&_h1]:mb-2 [&_h1]:font-technical [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-white [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:font-technical [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-white [&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:font-technical [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-cyan-100 [&_strong]:font-bold [&_strong]:text-white [&_em]:italic [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_blockquote]:my-2 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-cyan-300/15 [&_blockquote]:bg-cyan-300/5 [&_blockquote]:px-3 [&_blockquote]:py-2 [&_blockquote]:text-cyan-100 [&_pre]:my-2 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-white/[0.06] [&_pre]:bg-black/70 [&_pre]:p-3 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-technical [&_code]:text-cyan-100 [&_pre_code]:bg-transparent [&_pre_code]:p-0">
                   <ReactMarkdown skipHtml components={markdownComponents}>
                     {message.content}
                   </ReactMarkdown>
@@ -318,7 +343,7 @@ function ChatPanel({
 
         {isSending && (
           <div className="flex justify-start" aria-label="CoreX AI está escribiendo">
-            <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-cyan-300/10 bg-zinc-900/75 px-4 py-3.5 text-xs text-zinc-400 shadow-[0_10px_28px_rgba(0,0,0,0.12)]">
+            <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-cyan-300/10 bg-zinc-900/75 px-4 py-3 text-xs text-zinc-400 shadow-[0_10px_28px_rgba(0,0,0,0.12)]">
               <ThinkingWave />
             </div>
           </div>
@@ -396,7 +421,7 @@ function ChatPanel({
             rows={1}
             maxLength={4_000}
             placeholder="Escribe…"
-            className="ai-chat-input font-technical max-h-28 min-h-9 flex-1 resize-none overflow-y-hidden bg-transparent py-1 text-sm leading-6 text-zinc-100 outline-none placeholder:text-zinc-600"
+            className="ai-chat-input font-technical max-h-28 min-h-9 flex-1 resize-none overflow-y-hidden bg-transparent py-1 text-sm leading-5 text-zinc-100 outline-none placeholder:text-zinc-600"
           />
           {isSending ? (
             <button
@@ -428,7 +453,7 @@ export default function AISidebar() {
   const pathname = usePathname() || "/";
   const comparisonItems = useCompareStore((state) => state.items);
   const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
-  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<ChatError | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -455,7 +480,10 @@ export default function AISidebar() {
   const visibleEditorPriceContext = useAiVisiblePriceStore((state) => state.context);
   const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+  const [desktopPanelWidth, setDesktopPanelWidth] = useState(DESKTOP_CHAT_INITIAL_WIDTH);
+  const [isDesktopResizing, setIsDesktopResizing] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const desktopResizeStartRef = useRef<{ pointerId: number; clientX: number; width: number } | null>(null);
   const lastMessageRef = useRef("");
   const mobileInputRef = useRef<HTMLTextAreaElement>(null);
   const desktopInputRef = useRef<HTMLTextAreaElement>(null);
@@ -463,9 +491,31 @@ export default function AISidebar() {
   const mobileExpandButtonRef = useRef<HTMLButtonElement>(null);
   const expandedPanelRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty("--ai-sidebar-width", `${desktopPanelWidth}px`);
+  }, [desktopPanelWidth]);
+
+  useEffect(() => () => {
+    document.documentElement.style.removeProperty("--ai-sidebar-width");
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktopResizing) return;
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [isDesktopResizing]);
+
   const lastAssistantMessage = [...messages].reverse().find((message) => message.role === "assistant");
   const lastAssistantContent = lastAssistantMessage?.content;
-  const hasAssistantResponse = messages.slice(1).some((message) => message.role === "assistant");
+  const hasAssistantResponse = messages.some((message) => message.role === "assistant");
   const mobileToastPreview = lastAssistantContent
     ? getMobileToastPreview(lastAssistantContent)
     : null;
@@ -494,7 +544,7 @@ export default function AISidebar() {
     setConversationMode(mode);
     setConversationId(null);
     setConversationTitle(undefined);
-    setMessages([INITIAL_MESSAGE]);
+    setMessages([]);
     setDraft("");
     setError(null);
     setPendingAction(null);
@@ -535,7 +585,7 @@ export default function AISidebar() {
       setConversationMode("saved");
       setConversationId(selected.id);
       setConversationTitle(selected.title);
-      setMessages(selected.messages.length > 0 ? selected.messages.map(({ role, content }) => ({ role, content })) : [INITIAL_MESSAGE]);
+      setMessages(selected.messages.map(({ role, content }) => ({ role, content })));
       setBuildDraft(selected.state.buildDraft || null);
       setComboDraft(selected.state.comboDraft || null);
       setPendingAction(null);
@@ -899,6 +949,7 @@ export default function AISidebar() {
     pageStatus,
     onDraftChange: setDraft,
     onSend: () => void sendMessage(),
+    onQuickPrompt: (prompt: string) => void sendMessage(prompt),
     onStop: stopResponse,
     onRetry: () => void sendMessage(lastMessageRef.current, true),
     onContinue: continueResponse,
@@ -926,9 +977,76 @@ export default function AISidebar() {
     window.requestAnimationFrame(() => mobileExpandButtonRef.current?.focus());
   };
 
+  const beginDesktopResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    desktopResizeStartRef.current = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      width: desktopPanelWidth,
+    };
+    setIsDesktopResizing(true);
+  };
+
+  const updateDesktopResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = desktopResizeStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+
+    const nextWidth = start.width - (event.clientX - start.clientX);
+    setDesktopPanelWidth(Math.min(DESKTOP_CHAT_MAX_WIDTH, Math.max(DESKTOP_CHAT_MIN_WIDTH, nextWidth)));
+  };
+
+  const endDesktopResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = desktopResizeStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    desktopResizeStartRef.current = null;
+    setIsDesktopResizing(false);
+  };
+
+  const resizeDesktopWithKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 32 : 16;
+    let nextWidth: number | null = null;
+    if (event.key === "ArrowLeft") nextWidth = desktopPanelWidth + step;
+    if (event.key === "ArrowRight") nextWidth = desktopPanelWidth - step;
+    if (event.key === "Home") nextWidth = DESKTOP_CHAT_MIN_WIDTH;
+    if (event.key === "End") nextWidth = DESKTOP_CHAT_MAX_WIDTH;
+    if (nextWidth === null) return;
+
+    event.preventDefault();
+    setDesktopPanelWidth(Math.min(DESKTOP_CHAT_MAX_WIDTH, Math.max(DESKTOP_CHAT_MIN_WIDTH, nextWidth)));
+  };
+
   return (
     <>
-      <aside className="fixed bottom-0 right-0 top-[81px] z-40 hidden w-80 border-l border-white/10 bg-zinc-950/95 shadow-[-20px_0_55px_rgba(0,0,0,0.28)] backdrop-blur-xl md:flex lg:w-[22.5rem]">
+      <aside
+        className={`fixed bottom-0 right-0 top-[81px] z-40 hidden border-l border-white/10 bg-zinc-950/95 shadow-[-20px_0_55px_rgba(0,0,0,0.28)] backdrop-blur-xl md:flex ${isDesktopResizing ? "select-none" : ""}`}
+        style={{ width: `${desktopPanelWidth}px` }}
+      >
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ajustar el ancho del chat"
+          aria-valuemin={DESKTOP_CHAT_MIN_WIDTH}
+          aria-valuemax={DESKTOP_CHAT_MAX_WIDTH}
+          aria-valuenow={desktopPanelWidth}
+          tabIndex={0}
+          onPointerDown={beginDesktopResize}
+          onPointerMove={updateDesktopResize}
+          onPointerUp={endDesktopResize}
+          onPointerCancel={endDesktopResize}
+          onKeyDown={resizeDesktopWithKeyboard}
+          className="group absolute inset-y-0 left-0 z-20 hidden w-3 -translate-x-1/2 cursor-ew-resize touch-none md:block"
+        >
+          <span
+            aria-hidden="true"
+            className={`absolute inset-y-0 left-1/2 w-px transition-colors ${isDesktopResizing ? "bg-cyan-300/70" : "bg-transparent group-hover:bg-cyan-300/50 group-focus-visible:bg-cyan-300/70"}`}
+          />
+        </div>
         {isHistoryOpen ? (
           <ChatHistoryPanel
             conversations={conversations}

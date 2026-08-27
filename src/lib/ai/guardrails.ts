@@ -11,6 +11,8 @@ interface GuardrailDecision {
 
 const HARDWARE_TERMS = [
   "hardware",
+  "componente",
+  "componentes",
   "pc",
   "ordenador",
   "computadora",
@@ -124,6 +126,7 @@ function normalizeForClassification(content: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/\s+/g, " ")
+    .replace(/^[¿¡\s]+/, "")
     .trim();
 }
 

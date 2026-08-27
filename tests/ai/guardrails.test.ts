@@ -30,4 +30,17 @@ describe("CoreX AI guardrails", () => {
     ];
     expect(classifyChatIntent(messages)).toBe("hardware");
   });
+
+  it("permite los accesos rápidos iniciales del chat", () => {
+    const quickPrompts = [
+      "¿Qué puedes hacer por mí?",
+      "Quiero información de un componente",
+      "Quiero recomendación de una build",
+      "Quiero una recomendación de un combo",
+    ];
+
+    for (const content of quickPrompts) {
+      expect(evaluateChatGuardrails([{ role: "user", content }]).response).toBeUndefined();
+    }
+  });
 });

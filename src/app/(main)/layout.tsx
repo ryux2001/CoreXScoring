@@ -13,8 +13,8 @@ export default function MainLayout({
     <div className="flex min-h-screen flex-col">
       <CurrencyPreferenceSync />
       <Navbar />
-      <div className="min-w-0 flex-1 md:pr-80 lg:pr-[22.5rem]">{children}</div>
-      <div className="md:pr-80 lg:pr-[22.5rem]">
+      <div className="ai-sidebar-offset min-w-0 flex-1">{children}</div>
+      <div className="ai-sidebar-offset">
         <Footer />
       </div>
       <AISidebar />
