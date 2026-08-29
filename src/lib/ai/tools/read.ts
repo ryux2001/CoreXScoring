@@ -1021,6 +1021,118 @@ export async function proposeSetComparisonPrice(args: unknown, context: AiToolCo
   };
 }
 
+/** Aplica una intención compuesta sobre una instantánea validada del comparador. */
+export async function proposeUpdateComparison(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const input = asRow(args);
+  const pageContext = context.pageContext;
+  if (!pageContext || pageContext.route !== "comparator") {
+    return getToolFailure("Abre el comparador para poder actualizar varios componentes.");
+  }
+
+  const mode = input.mode === "replace" ? "replace" : input.mode === "patch" ? "patch" : null;
+  if (!mode) return getToolFailure("La actualización de la comparación no es válida.");
+  const currentIds = getComparisonIds(context);
+  const removeIds = Array.isArray(input.removeIds) ? input.removeIds.map(sanitizeIdentifier).filter(Boolean) : [];
+  const rawAdditions = Array.isArray(input.additions) ? input.additions : [];
+  const rawPriceOverrides = Array.isArray(input.priceOverrides) ? input.priceOverrides : [];
+  if (removeIds.length > 3 || rawAdditions.length > 3 || rawPriceOverrides.length > 3) {
+    return getToolFailure("La comparación admite como máximo tres componentes por operación.");
+  }
+  if (new Set(removeIds).size !== removeIds.length) return getToolFailure("No repitas un componente al quitarlo.");
+  if (mode === "replace" && removeIds.length > 0) return getToolFailure("Usa replace sin removeIds: replace ya limpia la comparación.");
+  if (mode === "patch" && removeIds.some((id) => !currentIds.includes(id))) {
+    return getToolFailure("Uno de los componentes que quieres quitar ya no está en la comparación.");
+  }
+
+  const additions = rawAdditions.map(asRow).map((addition) => ({
+    id: sanitizeIdentifier(addition.id),
+    price: addition.price === undefined ? undefined : asNumber(addition.price),
+  }));
+  if (additions.some((addition) => !addition.id) || new Set(additions.map((addition) => addition.id)).size !== additions.length) {
+    return getToolFailure("Cada componente a añadir debe tener un ID único.");
+  }
+  if (mode === "patch" && additions.some((addition) => currentIds.includes(addition.id))) {
+    return getToolFailure("No puedes añadir un componente que ya está en la comparación.");
+  }
+
+  const pageCurrency = getCurrency(new URLSearchParams(pageContext.search || "").get("currency"));
+  const requestedCurrency = input.currency === undefined ? pageCurrency : isCurrency(input.currency) ? input.currency.toUpperCase() as Currency : null;
+  if (!requestedCurrency || requestedCurrency !== pageCurrency) {
+    return getToolFailure(`El comparador está mostrando precios en ${pageCurrency}. Usa esa moneda para personalizar precios.`);
+  }
+
+  const requestedPrices = new Map<string, number>();
+  const registerPrice = (id: string, value: unknown): string | null => {
+    const price = asNumber(value);
+    if (!id || price === null || price <= 0 || price > 1_000_000) return "Indica precios positivos y válidos.";
+    if (requestedPrices.has(id)) return "No indiques dos precios para el mismo componente.";
+    requestedPrices.set(id, Number(price.toFixed(2)));
+    return null;
+  };
+  for (const addition of additions) {
+    if (addition.price !== undefined) {
+      const error = registerPrice(addition.id, addition.price);
+      if (error) return getToolFailure(error);
+    }
+  }
+  for (const override of rawPriceOverrides.map(asRow)) {
+    const error = registerPrice(sanitizeIdentifier(override.id), override.price);
+    if (error) return getToolFailure(error);
+  }
+
+  const finalIds = mode === "replace"
+    ? additions.map((addition) => addition.id)
+    : [...currentIds.filter((id) => !removeIds.includes(id)), ...additions.map((addition) => addition.id)];
+  if (finalIds.length > 3) return getToolFailure("El resultado supera el límite de tres componentes en la comparación.");
+  if (new Set(finalIds).size !== finalIds.length) return getToolFailure("La comparación resultante contiene productos duplicados.");
+  if ([...requestedPrices.keys()].some((id) => !finalIds.includes(id))) {
+    return getToolFailure("Solo puedes asignar precio a componentes que permanezcan en la comparación.");
+  }
+
+  const idsToResolve = Array.from(new Set([...currentIds, ...additions.map((addition) => addition.id)]));
+  let productsById = new Map<string, Row>();
+  if (idsToResolve.length > 0) {
+    const { data, error } = await getProductQuery(context.supabase).in("id", idsToResolve);
+    if (error) return getToolFailure("No se pudieron validar los componentes de la comparación.");
+    productsById = new Map(asRows(data).map((product) => [asText(product.id), product]));
+  }
+  const finalProducts = finalIds.map((id) => productsById.get(id));
+  if (finalProducts.some((product) => !product)) return getToolFailure("No encontré uno de los componentes indicados en el catálogo.");
+
+  const productTypes = new Set(finalProducts.map((product) => asText(product!.type).toLowerCase()).filter(Boolean));
+  if (productTypes.size > 1 || [...productTypes].some((type) => !COMPONENT_TYPES.has(type))) {
+    return getToolFailure("Todos los componentes de la comparación deben ser del mismo tipo.");
+  }
+
+  const evaluatedPrices: Record<string, number> = {};
+  for (const item of context.priceContext?.items || []) {
+    if (item.isCustom && finalIds.includes(item.productId)) {
+      evaluatedPrices[item.productId] = Number((context.priceContext?.currency === pageCurrency
+        ? item.price
+        : convertPrice(item.price, context.priceContext!.currency, pageCurrency)).toFixed(2));
+    }
+  }
+  for (const [id, price] of requestedPrices) evaluatedPrices[id] = price;
+
+  const items = finalProducts.map((product) => {
+    const row = product!;
+    const selectedPrice = pageCurrency === "EUR"
+      ? asNumber(row.price_base_eur) ?? asNumber(row.price_base_usd) ?? 0
+      : asNumber(row.price_base_usd) ?? asNumber(row.price_base_eur) ?? 0;
+    return { ...row, comparisonType: "product", price: selectedPrice, currency: pageCurrency };
+  });
+  const names = finalProducts.map((product) => asText(product!.name, "Componente"));
+  const summary = finalProducts.length === 0
+    ? "He limpiado la comparación."
+    : `Comparación actualizada con ${names.join(", ")}.`;
+
+  return {
+    ok: true,
+    data: { status: "ready", message: summary },
+    comparisonAction: { type: "replace", items, evaluatedPrices, summary },
+  };
+}
+
 /** Tool de escritura local: recalcula el precio de la ficha actual sin tocar el catálogo. */
 export async function setCurrentCatalogPrice(args: unknown, context: AiToolContext): Promise<AiToolResult> {
   const input = asRow(args);

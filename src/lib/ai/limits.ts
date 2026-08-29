@@ -4,8 +4,8 @@ import type { ChatMessage, ChatProvider } from "./types";
 import type { AiFailureStage } from "./gateway";
 import type { AiSupabaseClient } from "./tools/types";
 
-/** La reserva cubre la cadena externa; llama.cpp puede usar más rondas locales sin proveedor externo. */
-export const AI_RESERVED_OUTPUT_TOKENS = 6_000;
+/** Reserva para hasta seis rondas externas breves, sin infravalorar las tool calls. */
+export const AI_RESERVED_OUTPUT_TOKENS = 3_000;
 const MAX_ESTIMATED_TOKEN_BUDGET = 20_000;
 
 export type AiQuotaReason = "user_messages" | "ip_messages" | "user_tokens" | "ip_tokens";
@@ -16,6 +16,17 @@ export interface AiQuotaDecision {
   retryAfterSeconds?: number;
   userRemainingMessages?: number;
   ipRemainingMessages?: number;
+}
+
+export interface AiQuotaStatus {
+  isAnonymous: boolean;
+  messagesUsed: number;
+  messagesLimit: number;
+  messagesRemaining: number;
+  tokensUsed: number;
+  tokensLimit: number;
+  tokensRemaining: number;
+  resetAt: string;
 }
 
 export class AiQuotaUnavailableError extends Error {
@@ -80,6 +91,34 @@ function toRecord(value: unknown): Record<string, unknown> {
 
 function toOptionalNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function toNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+/** Consulta la cuota personal sin reservar mensajes ni crear filas de uso. */
+export async function getAiQuotaStatus(supabase: AiSupabaseClient): Promise<AiQuotaStatus> {
+  const { data, error } = await supabase.rpc("get_my_ai_quota_status");
+  if (error) {
+    console.error("AI quota status failed", { code: error.code || "unknown" });
+    throw new AiQuotaUnavailableError();
+  }
+
+  const result = toRecord(data);
+  const resetAt = typeof result.reset_at === "string" ? result.reset_at : "";
+  if (!resetAt) throw new AiQuotaUnavailableError();
+
+  return {
+    isAnonymous: result.is_anonymous === true,
+    messagesUsed: toNumber(result.messages_used),
+    messagesLimit: toNumber(result.messages_limit),
+    messagesRemaining: toNumber(result.messages_remaining),
+    tokensUsed: toNumber(result.tokens_used),
+    tokensLimit: toNumber(result.tokens_limit),
+    tokensRemaining: toNumber(result.tokens_remaining),
+    resetAt,
+  };
 }
 
 export async function consumeAiQuota({

@@ -6,8 +6,10 @@ import {
   Bot,
   ChevronDown,
   History,
+  Info,
   Maximize2,
   Minimize2,
+  RefreshCw,
   SendHorizontal,
   Square,
 } from "lucide-react";
@@ -19,6 +21,7 @@ import ChatHistoryPanel from "./ChatHistoryPanel";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
 import { useCompareStore, type CompareProduct } from "@/store/useCompareStore";
 import { useAiVisiblePriceStore } from "@/store/useAiVisiblePriceStore";
+import type { AiQuotaStatus } from "@/lib/ai/limits";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
@@ -27,14 +30,14 @@ type ChatErrorPayload = { error?: string; code?: string; retryable?: boolean; re
 const QUICK_PROMPTS = [
   "¿Qué puedes hacer por mí?",
   "Quiero información de un componente",
-  "Quiero recomendación de una build",
-  "Quiero una recomendación de un combo",
+  "Recomiéndame una build",
+  "¿Qué es CoreXScoring?",
 ] as const;
 const MOBILE_TOAST_MAX_LENGTH = 120;
 const INPUT_MIN_HEIGHT = 36;
 const INPUT_MAX_HEIGHT = 112;
-const DESKTOP_CHAT_MIN_WIDTH = 320;
-const DESKTOP_CHAT_MAX_WIDTH = 560;
+const DESKTOP_CHAT_MIN_WIDTH = 360;
+const DESKTOP_CHAT_MAX_WIDTH = 580;
 const DESKTOP_CHAT_INITIAL_WIDTH = 400;
 
 const markdownComponents: Components = {
@@ -56,6 +59,16 @@ function getMobileToastPreview(content: string): string {
   if (normalizedContent.length <= MOBILE_TOAST_MAX_LENGTH) return normalizedContent;
 
   return `${normalizedContent.slice(0, MOBILE_TOAST_MAX_LENGTH).trimEnd()}...`;
+}
+
+function formatQuotaNumber(value: number): string {
+  return new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatQuotaReset(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "al finalizar el día";
+  return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
 function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageContext {
@@ -187,6 +200,11 @@ interface ChatPanelProps {
   onOpenHistory: () => void;
   conversationMode: AiConversationMode;
   conversationTitle?: string;
+  quota: AiQuotaStatus | null;
+  quotaState: "idle" | "loading" | "ready" | "error";
+  isQuotaOpen: boolean;
+  onToggleQuota: () => void;
+  onRefreshQuota: () => void;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   expandButtonRef?: RefObject<HTMLButtonElement | null>;
 }
@@ -218,6 +236,11 @@ function ChatPanel({
   onOpenHistory,
   conversationMode,
   conversationTitle,
+  quota,
+  quotaState,
+  isQuotaOpen,
+  onToggleQuota,
+  onRefreshQuota,
   inputRef,
   expandButtonRef,
 }: ChatPanelProps) {
@@ -259,6 +282,51 @@ function ChatPanel({
 
         {hasActions && (
           <div className="flex shrink-0 items-center gap-1">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={onToggleQuota}
+                aria-label="Ver límites de uso de CoreX AI"
+                aria-expanded={isQuotaOpen}
+                aria-controls={`${id}-quota`}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+              >
+                <Info aria-hidden="true" size={16} />
+              </button>
+              {isQuotaOpen && (
+                <div id={`${id}-quota`} role="dialog" aria-label="Límites de uso" className="absolute right-0 top-11 z-30 w-64 rounded-xl border border-white/10 bg-zinc-900 p-3.5 text-left shadow-[0_16px_36px_rgba(0,0,0,0.42)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-white">Uso de CoreX AI</p>
+                      <p className="mt-0.5 text-[10px] leading-relaxed text-zinc-400">Tu cuota diaria personal.</p>
+                    </div>
+                    <button type="button" onClick={onRefreshQuota} disabled={quotaState === "loading"} aria-label="Actualizar cuota" className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">
+                      <RefreshCw aria-hidden="true" size={13} className={quotaState === "loading" ? "animate-spin" : ""} />
+                    </button>
+                  </div>
+                  {quotaState === "loading" && !quota ? (
+                    <div className="mt-3 space-y-2" aria-label="Cargando cuota">
+                      <div className="h-9 animate-pulse rounded-lg bg-white/5" />
+                      <div className="h-9 animate-pulse rounded-lg bg-white/5" />
+                    </div>
+                  ) : quota ? (
+                    <div className="mt-3 space-y-2">
+                      <div className="rounded-lg bg-black/30 px-3 py-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Mensajes</p>
+                        <p className="mt-0.5 text-sm font-bold text-cyan-100">{formatQuotaNumber(quota.messagesRemaining)} <span className="font-normal text-zinc-400">de {formatQuotaNumber(quota.messagesLimit)} restantes</span></p>
+                      </div>
+                      <div className="rounded-lg bg-black/30 px-3 py-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Tokens</p>
+                        <p className="mt-0.5 text-sm font-bold text-cyan-100">{formatQuotaNumber(quota.tokensRemaining)} <span className="font-normal text-zinc-400">de {formatQuotaNumber(quota.tokensLimit)} restantes</span></p>
+                      </div>
+                      <p className="px-0.5 text-[10px] leading-relaxed text-zinc-500">Se reinicia {formatQuotaReset(quota.resetAt)}. Los límites compartidos de red pueden aplicarse antes.</p>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs leading-relaxed text-zinc-400">No se pudo cargar tu cuota. Puedes seguir usando el chat e intentarlo de nuevo.</p>
+                  )}
+                </div>
+              )}
+            </div>
             <button type="button" onClick={onOpenHistory} aria-label="Abrir historial de chats" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
               <History aria-hidden="true" size={16} />
             </button>
@@ -476,6 +544,9 @@ export default function AISidebar() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [canSaveChats, setCanSaveChats] = useState(true);
+  const [quota, setQuota] = useState<AiQuotaStatus | null>(null);
+  const [quotaState, setQuotaState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [isQuotaOpen, setIsQuotaOpen] = useState(false);
   const catalogPriceEvaluation = useCatalogPriceEvaluationStore((state) => state.current);
   const visibleEditorPriceContext = useAiVisiblePriceStore((state) => state.context);
   const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
@@ -525,6 +596,10 @@ export default function AISidebar() {
 
   const applyComparisonAction = (action: ComparisonUiAction): string | null => {
     const comparisonStore = useCompareStore.getState();
+    if (action.type === "replace") {
+      const result = comparisonStore.applyComparisonSnapshot(action.items as unknown as CompareProduct[], action.evaluatedPrices);
+      return result.success ? null : result.error || "No se pudo actualizar la comparación.";
+    }
     if (action.type === "add") {
       const result = comparisonStore.addItem(action.item as unknown as CompareProduct);
       return result.success ? null : result.error || "No se pudo actualizar la comparación.";
@@ -538,6 +613,29 @@ export default function AISidebar() {
     }
     comparisonStore.removeItem(action.itemId);
     return null;
+  };
+
+  const loadQuota = async () => {
+    setQuotaState("loading");
+    try {
+      const session = await ensureAiSession();
+      setSessionKind(session.user.is_anonymous === true ? "anonymous" : "authenticated");
+      const response = await fetch("/api/ai/quota", { cache: "no-store" });
+      const payload = await response.json() as AiQuotaStatus | { error?: string };
+      if (!response.ok || !("messagesRemaining" in payload)) throw new Error("quota_unavailable");
+      setQuota(payload);
+      setQuotaState("ready");
+    } catch {
+      setQuotaState("error");
+    }
+  };
+
+  const toggleQuota = () => {
+    setIsQuotaOpen((current) => {
+      const next = !current;
+      if (next) void loadQuota();
+      return next;
+    });
   };
 
   const resetConversation = (mode: AiConversationMode) => {
@@ -772,6 +870,7 @@ export default function AISidebar() {
         abortControllerRef.current = null;
         setIsSending(false);
       }
+      void loadQuota();
     }
   };
 
@@ -822,6 +921,7 @@ export default function AISidebar() {
     } finally {
       setIsConfirmingAction(false);
       setIsSending(false);
+      void loadQuota();
     }
   };
 
@@ -960,6 +1060,11 @@ export default function AISidebar() {
     onOpenHistory: openHistory,
     conversationMode,
     conversationTitle,
+    quota,
+    quotaState,
+    isQuotaOpen,
+    onToggleQuota: toggleQuota,
+    onRefreshQuota: () => void loadQuota(),
   };
 
   const mobilePanelBottom = keyboardInset > 0

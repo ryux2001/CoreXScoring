@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getComponent, getCurrentComparison, getGameFps, proposeAddToComparison, proposeRemoveFromComparison, proposeSetComparisonPrice, searchComponents, setCurrentCatalogPrice } from "@/lib/ai/tools/read";
+import { getComponent, getCurrentComparison, getGameFps, proposeAddToComparison, proposeRemoveFromComparison, proposeSetComparisonPrice, proposeUpdateComparison, searchComponents, setCurrentCatalogPrice } from "@/lib/ai/tools/read";
 import { executeAiTool } from "@/lib/ai/tools";
 import { createQueryBuilder, createSupabaseStub } from "./helpers/query-builder";
 import { cpuFixture, gameFixture, gpuFixture } from "./helpers/fixtures";
@@ -181,5 +181,61 @@ describe("CoreX AI tools", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.comparisonAction).toMatchObject({ type: "set_price", itemId: cpuFixture.id, price: 200, currency: "USD" });
+  });
+
+  it("removes several comparison components in one atomic snapshot", async () => {
+    const secondCpu = { ...cpuFixture, id: "cpu-9600", name: "AMD Ryzen 5 9600" };
+    const supabase = createSupabaseStub({ data: [cpuFixture, secondCpu], error: null });
+    const result = await proposeUpdateComparison({
+      mode: "patch",
+      removeIds: [cpuFixture.id, secondCpu.id],
+    }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: comparatorContext([cpuFixture.id, secondCpu.id]),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.comparisonAction).toMatchObject({ type: "replace", items: [], evaluatedPrices: {} });
+  });
+
+  it("adds several components with their temporary prices in one snapshot", async () => {
+    const secondGpu = { ...gpuFixture, id: "gpu-9070", name: "AMD Radeon RX 9070" };
+    const supabase = createSupabaseStub({ data: [gpuFixture, secondGpu], error: null });
+    const result = await proposeUpdateComparison({
+      mode: "patch",
+      additions: [{ id: gpuFixture.id, price: 700 }, { id: secondGpu.id, price: 650 }],
+      currency: "USD",
+    }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: comparatorContext([]),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.comparisonAction).toMatchObject({
+      type: "replace",
+      items: [{ id: gpuFixture.id }, { id: secondGpu.id }],
+      evaluatedPrices: { [gpuFixture.id]: 700, [secondGpu.id]: 650 },
+    });
+  });
+
+  it("replaces the whole comparison before adding the requested components", async () => {
+    const secondCpu = { ...cpuFixture, id: "cpu-5600", name: "AMD Ryzen 5 5600" };
+    const supabase = createSupabaseStub({ data: [cpuFixture, secondCpu, gpuFixture], error: null });
+    const result = await proposeUpdateComparison({
+      mode: "replace",
+      additions: [{ id: cpuFixture.id }, { id: secondCpu.id }],
+    }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: comparatorContext([gpuFixture.id]),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.comparisonAction).toMatchObject({
+      type: "replace",
+      items: [{ id: cpuFixture.id }, { id: secondCpu.id }],
+    });
   });
 });

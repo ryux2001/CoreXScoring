@@ -127,6 +127,50 @@ describe("AI gateway conversational protocol", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("returns one atomic comparison snapshot for several additions with prices", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    const secondCpu = { ...cpuFixture, id: "cpu-5600", name: "AMD Ryzen 5 5600" };
+    const productBuilder = createQueryBuilder({ data: [cpuFixture, secondCpu], error: null });
+    const supabase = { from: vi.fn(() => productBuilder) };
+    const fetchMock = vi.fn(async () => providerResponse({
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: "call-comparison-batch-1",
+            type: "function",
+            function: {
+              name: "propose_update_comparison",
+              arguments: JSON.stringify({
+                mode: "patch",
+                additions: [{ id: cpuFixture.id, price: 170 }, { id: secondCpu.id, price: 95 }],
+                currency: "USD",
+              }),
+            },
+          }],
+        },
+      }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "Añade el Ryzen 7 7800X3D a 170$ y el Ryzen 5 5600 a 95$." },
+    ], {
+      supabase: supabase as never,
+      actor: { id: "user-1", isAnonymous: false },
+      pageContext: { pathname: "/comparator", search: "?currency=USD", route: "comparator", comparison: { itemIds: [] } },
+    }, "gateway-comparison-batch");
+
+    expect(result.comparisonAction).toMatchObject({
+      type: "replace",
+      items: [{ id: cpuFixture.id }, { id: secondCpu.id }],
+      evaluatedPrices: { [cpuFixture.id]: 170, [secondCpu.id]: 95 },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("routes an explicit comparison price request to the local price action", async () => {
     vi.stubEnv("AI_LOCAL_ENABLED", "true");
     vi.stubEnv("AI_LOCAL_ONLY", "true");

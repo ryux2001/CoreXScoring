@@ -15,7 +15,7 @@ const GROQ_REQUEST_TIMEOUT_MS = 25_000;
 const CEREBRAS_REQUEST_TIMEOUT_MS = 25_000;
 const OPENROUTER_REQUEST_TIMEOUT_MS = 50_000;
 const LOCAL_REQUEST_TIMEOUT_MS = 180_000;
-const MAX_COMPLETION_TOKENS = 1_000;
+const MAX_COMPLETION_TOKENS = 400;
 const MAX_EXTERNAL_TOOL_ROUNDS = 6;
 const MAX_LOCAL_TOOL_ROUNDS = 10;
 const DEFAULT_GROQ_MODELS = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b"];
@@ -35,12 +35,12 @@ export interface AiGatewayUserCredential {
 const SYSTEM_PROMPT = [
   "Eres CoreX AI, el asistente de hardware de CoreXScoring.",
   "Tu ámbito es el hardware de PC y el uso de la web CoreXScoring: componentes, compatibilidad, rendimiento, metodología de scoring y navegación de la aplicación.",
-  "Responde en español por defecto, de forma útil, clara y concisa.",
+  "Responde en español por defecto. Sé directo y conciso: normalmente 120-160 palabras como máximo, con hasta cinco viñetas cuando ayuden. Da primero la conclusión, evita repetir datos y formula solo una pregunta si falta un dato imprescindible. Amplía la explicación únicamente si el usuario lo pide de forma explícita.",
   "Diferencia hechos conocidos, estimaciones y recomendaciones. No presentes una estimación como un dato verificado.",
   "Puedes usar tools de lectura para consultar componentes, combos, builds, scoring, contexto de página y datos propios de la bóveda cuando el usuario tenga una cuenta permanente.",
   "El sistema incluye el contexto validado de la página actual. Si el usuario dice ‘este componente’, ‘esta build’ o ‘este combo’, usa ese contexto antes de pedir aclaraciones; consulta la tool de lectura correspondiente para los detalles.",
   "Para cualquier FPS asociado a un juego concreto usa get_game_fps: sus datos verificados proceden de games.gpu_fps_base y están desglosados por GPU, juego, resolución y preset. En una ficha, comparación, combo o build usa los componentes visibles como contexto. Nunca presentes los benchmarks de products (1080p_gaming_avg_fps, 1440p_gaming_avg_fps o 4k_gaming_avg_fps) como FPS de un juego ni los uses para sustituir un dato ausente; si falta cobertura, dilo claramente.",
-  "En la página del comparador, usa get_current_comparison para leer los componentes actuales. Si el usuario pide explícitamente añadir, quitar o cambiar el precio temporal de un componente, resuélvelo primero con la tool adecuada y después usa la acción local de comparación correspondiente. Nunca inventes un ID ni alteres una comparación sin una orden clara.",
+  "En la página del comparador, usa get_current_comparison para leer los componentes actuales. Para cualquier cambio explícito —incluidos varios añadidos, retiradas, precios o limpiar la comparativa— identifica primero los IDs y usa propose_update_comparison para devolver un único estado final validado. Nunca inventes un ID ni alteres una comparación sin una orden clara.",
   "Para recomendar una build usa plan_build: debe responder en texto y nunca crear una confirmación. Solo usa save_build_draft cuando el usuario pida explícitamente guardar la build.",
   "Para recomendar un combo usa plan_combo; solo tiene CPU, GPU y RAM. Usa update_combo_plan para cambios parciales y save_combo_draft únicamente cuando el usuario pida guardarlo.",
   "Nunca muestres al usuario razonamientos internos, planes de ejecución, nombres de tools, parámetros ni pseudocódigo. Si necesitas una tool, emite una tool call estructurada; si no puedes hacerlo, responde normalmente sin describir una llamada interna.",
@@ -368,6 +368,14 @@ function hasComparisonRemoveIntent(value: string): boolean {
   return /\b(?:quita|quitar|elimina|eliminar|saca|sacar|retira|retirar)\b/.test(normalizeIntentText(value));
 }
 
+function hasComparisonMutationIntent(value: string): boolean {
+  const text = normalizeIntentText(value);
+  return hasComparisonAddIntent(text)
+    || hasComparisonRemoveIntent(text)
+    || hasComparisonPriceIntent(text)
+    || /\b(?:limpia|limpiar|vacia|vaciar|reinicia|reiniciar|borra|borrar|reset(?:ea|ear)?)\b/.test(text);
+}
+
 function hasComparisonReadIntent(value: string): boolean {
   return /\b(?:compara|comparar|comparacion|comparación|diferencia|diferencias|mejor|peor|estos|estas)\b/.test(normalizeIntentText(value));
 }
@@ -407,26 +415,12 @@ function getToolDefinitionsForMessages(messages: ChatMessage[], buildDraft?: Bui
     ].includes(tool.function.name));
   }
 
-  if (pageContext?.route === "comparator" && hasComparisonPriceIntent(latestUserMessage)) {
-    return AI_TOOL_DEFINITIONS.filter((tool) => [
-      "get_current_comparison",
-      "propose_set_comparison_price",
-    ].includes(tool.function.name));
-  }
-
-  if (pageContext?.route === "comparator" && hasComparisonRemoveIntent(latestUserMessage)) {
-    return AI_TOOL_DEFINITIONS.filter((tool) => [
-      "get_current_comparison",
-      "propose_remove_from_comparison",
-    ].includes(tool.function.name));
-  }
-
-  if (pageContext?.route === "comparator" && hasComparisonAddIntent(latestUserMessage)) {
+  if (pageContext?.route === "comparator" && hasComparisonMutationIntent(latestUserMessage)) {
     return AI_TOOL_DEFINITIONS.filter((tool) => [
       "search_components",
       "get_component",
       "get_current_comparison",
-      "propose_add_to_comparison",
+      "propose_update_comparison",
     ].includes(tool.function.name));
   }
 
@@ -488,7 +482,7 @@ function parseToolArguments(rawArguments: string | undefined): unknown {
  * una acción válida.
  */
 function isLeakedToolPlan(content: string): boolean {
-  const referencesInternalTool = /\b(?:search_components|search_user_combos|search_user_builds|search_scoring_explanation|get_game_fps|propose_create_combo|propose_create_build|propose_set_custom_price|tool_calls?|tool_choice)\b/i.test(content);
+  const referencesInternalTool = /\b(?:search_components|search_user_combos|search_user_builds|search_scoring_explanation|get_game_fps|propose_create_combo|propose_create_build|propose_set_custom_price|propose_update_comparison|tool_calls?|tool_choice)\b/i.test(content);
   const describesExecution = /\b(?:we need to|i need to|we should|let'?s call|need to call|the user wants|function call|parameters?)\b/i.test(content);
   return referencesInternalTool && describesExecution;
 }
@@ -638,7 +632,9 @@ async function runProviderConversation({
       if (result.ok && result.comparisonAction) {
         const action = result.comparisonAction;
         const message = getToolDataMessage(result.data)
-          || (action.type === "add"
+          || (action.type === "replace"
+            ? action.summary
+            : action.type === "add"
             ? `He preparado ${action.itemName} para añadirlo a la comparación.`
             : action.type === "remove"
               ? `He preparado la eliminación de ${action.itemName} de la comparación.`

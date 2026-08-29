@@ -93,6 +93,13 @@ export type ComparisonUiAction =
       itemName: string;
       price: number;
       currency: "USD" | "EUR";
+    }
+  | {
+      /** Estado final validado para aplicar varias mutaciones locales de una vez. */
+      type: "replace";
+      items: Record<string, unknown>[];
+      evaluatedPrices: Record<string, number>;
+      summary: string;
     };
 
 export interface ChatMessage {

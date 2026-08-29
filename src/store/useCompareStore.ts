@@ -25,6 +25,7 @@ interface CompareState {
   removeItem: (productId: string | number) => void;
   setEvaluatedPrice: (productId: string | number, price: number) => void;
   replaceItems: (items: CompareProduct[]) => void;
+  applyComparisonSnapshot: (items: CompareProduct[], evaluatedPrices: Record<string, number>) => { success: boolean; error?: string };
   clearCompare: () => void;
 }
 
@@ -107,6 +108,35 @@ export const useCompareStore = create<CompareState>()(
           items,
           componentType: newType,
         });
+      },
+
+      applyComparisonSnapshot: (items, evaluatedPrices) => {
+        const { maxSlots } = get();
+        if (items.length > maxSlots) {
+          return { success: false, error: `Límite alcanzado. Solo puedes comparar hasta ${maxSlots} productos simultáneamente.` };
+        }
+
+        const ids = items.map((item) => String(item.id));
+        if (new Set(ids).size !== ids.length) {
+          return { success: false, error: "La comparación incluye productos duplicados." };
+        }
+
+        const types = new Set(items.map((item) => String(item.type || "").toUpperCase()).filter(Boolean));
+        if (types.size > 1) {
+          return { success: false, error: "No puedes mezclar tipos de componentes en la misma comparación." };
+        }
+
+        const validIds = new Set(ids);
+        const validPrices = Object.fromEntries(
+          Object.entries(evaluatedPrices).filter(([id, price]) => validIds.has(id) && Number.isFinite(price) && price >= 0),
+        );
+
+        set({
+          items,
+          componentType: types.values().next().value || null,
+          evaluatedPrices: validPrices,
+        });
+        return { success: true };
       },
 
       clearCompare: () => {

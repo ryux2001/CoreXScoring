@@ -300,6 +300,49 @@ const PROPOSE_SET_COMPARISON_PRICE_TOOL: AiToolDefinition = {
   },
 };
 
+const PROPOSE_UPDATE_COMPARISON_TOOL: AiToolDefinition = {
+  type: "function",
+  function: {
+    name: "propose_update_comparison",
+    description: "Prepara una única actualización local y atómica del comparador. Úsala para quitar varios componentes, añadir varios componentes con precios temporales o limpiar y reemplazar toda la comparativa. Antes identifica cada producto por ID usando get_current_comparison y/o search_components. No ejecuta cambios persistentes.",
+    parameters: {
+      type: "object",
+      properties: {
+        mode: { type: "string", enum: ["patch", "replace"], description: "patch conserva los componentes no afectados; replace limpia primero y deja solo additions." },
+        removeIds: { type: "array", maxItems: 3, items: { type: "string" }, description: "IDs actuales que se deben quitar con mode patch." },
+        additions: {
+          type: "array",
+          maxItems: 3,
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "ID exacto de un componente encontrado." },
+              price: { type: "number", minimum: 0.01, maximum: 1000000, description: "Precio temporal opcional." },
+            },
+            required: ["id"],
+            additionalProperties: false,
+          },
+          description: "Componentes a añadir o estado final cuando mode es replace.",
+        },
+        priceOverrides: {
+          type: "array",
+          maxItems: 3,
+          items: {
+            type: "object",
+            properties: { id: { type: "string" }, price: { type: "number", minimum: 0.01, maximum: 1000000 } },
+            required: ["id", "price"],
+            additionalProperties: false,
+          },
+          description: "Precios temporales para componentes que permanecerán en el estado final.",
+        },
+        currency: { type: "string", enum: ["USD", "EUR"], description: "Moneda de los precios. Debe coincidir con la moneda visible del comparador." },
+      },
+      required: ["mode"],
+      additionalProperties: false,
+    },
+  },
+};
+
 const SET_CURRENT_CATALOG_PRICE_TOOL: AiToolDefinition = {
   type: "function",
   function: {
@@ -612,6 +655,7 @@ export const AI_TOOL_DEFINITIONS: AiToolDefinition[] = [
   PROPOSE_ADD_TO_COMPARISON_TOOL,
   PROPOSE_REMOVE_FROM_COMPARISON_TOOL,
   PROPOSE_SET_COMPARISON_PRICE_TOOL,
+  PROPOSE_UPDATE_COMPARISON_TOOL,
   SET_CURRENT_CATALOG_PRICE_TOOL,
   SEARCH_USER_COMBOS_TOOL,
   SEARCH_USER_BUILDS_TOOL,

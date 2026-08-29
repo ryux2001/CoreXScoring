@@ -35,8 +35,8 @@ describe("CoreX AI guardrails", () => {
     const quickPrompts = [
       "¿Qué puedes hacer por mí?",
       "Quiero información de un componente",
-      "Quiero recomendación de una build",
-      "Quiero una recomendación de un combo",
+      "Recomiéndame una build",
+      "¿Qué es CoreXScoring?",
     ];
 
     for (const content of quickPrompts) {
