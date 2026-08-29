@@ -1,6 +1,7 @@
 import { convertPrice } from '@/lib/currency';
 import { getComboPartPrice as getStoredComboPartPrice } from '@/lib/scoringCombos';
 import { getBuildPartPrice as getStoredBuildPartPrice } from '@/lib/scoringBuilds';
+import { getProductPrice as getCatalogProductPrice } from '@/lib/catalog/product-price';
 
 export type ComparisonMode = 'components' | 'combos' | 'builds';
 export type ComboPartKey = 'cpu' | 'gpu' | 'ram';
@@ -18,8 +19,7 @@ export function isBuildItem(item: any): boolean {
 }
 
 export function getProductPrice(product: any, currency: string): number {
-  const priceKey = currency === 'EUR' ? 'price_base_eur' : 'price_base_usd';
-  return Number(product?.[priceKey] ?? product?.price ?? 0);
+  return getCatalogProductPrice(product, currency) || Number(product?.price ?? 0);
 }
 
 export function getComboPartPrice(

@@ -11,7 +11,7 @@ const getRecord = (value: unknown): Record<string, unknown> => (
   value && typeof value === 'object' ? value as Record<string, unknown> : {}
 );
 
-/** Resolve draft, custom and base prices in the same order as the old orchestrator. */
+/** Resolve draft, custom, current and MSRP prices in a predictable order. */
 export const getComboPartPrice = (
   combo: Record<string, unknown>,
   part: ComboPartKey,
@@ -45,11 +45,19 @@ export const getComboPartPrice = (
     return convertPrice(otherCustomPrice, otherCurrency, targetCurrency);
   }
 
+  const targetCurrentPrice = getNumericPrice(product[`price_${targetSuffix}`]);
+  if (targetCurrentPrice !== null) return targetCurrentPrice;
+
   const targetBasePrice = getNumericPrice(product[`price_base_${targetSuffix}`]);
   if (targetBasePrice !== null) return targetBasePrice;
 
   const genericBasePrice = getNumericPrice(product.price_base);
   if (genericBasePrice !== null) return genericBasePrice;
+
+  const otherCurrentPrice = getNumericPrice(product[`price_${otherSuffix}`]);
+  if (otherCurrentPrice !== null) {
+    return convertPrice(otherCurrentPrice, otherCurrency, targetCurrency);
+  }
 
   const otherBasePrice = getNumericPrice(product[`price_base_${otherSuffix}`]);
   return otherBasePrice === null

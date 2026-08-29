@@ -1,5 +1,6 @@
 import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 import { convertPrice } from "@/lib/currency";
+import { getProductPrice } from "@/lib/catalog/product-price";
 import type { AiFrontendPriceContext, AiResolvedPriceContext, PageContext } from "./types";
 
 type SupabaseLike = {
@@ -120,8 +121,8 @@ export async function resolveAiPagePriceContext(
     const customPrice = currency === "EUR"
       ? component.customPriceEur ?? (component.customPriceUsd ? convertPrice(component.customPriceUsd, "USD", "EUR") : undefined)
       : component.customPriceUsd ?? (component.customPriceEur ? convertPrice(component.customPriceEur, "EUR", "USD") : undefined);
-    const basePrice = Number(currency === "EUR" ? product.price_base_eur : product.price_base_usd);
-    const price = customPrice ?? basePrice;
+    const catalogPrice = getProductPrice(product, currency);
+    const price = customPrice ?? catalogPrice;
     return Number.isFinite(price) && price > 0
       ? [{ productId: component.id, price, isCustom: customPrice !== undefined, slot: component.slot }]
       : [];

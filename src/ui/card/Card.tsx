@@ -16,6 +16,8 @@ interface ProductProps {
   brand: string;
   name: string;
   price: number;
+  priceSource?: 'current' | 'msrp' | 'unavailable';
+  showMsrpBadge?: boolean;
   currency: string;
   specs: any;
   compatibility: any;
@@ -31,6 +33,8 @@ export const Card = ({
   brand,
   name,
   price,
+  priceSource,
+  showMsrpBadge = false,
   currency,
   specs,
   compatibility,
@@ -247,11 +251,16 @@ export const Card = ({
           ))}
         </div>
 
-        <div className="mt-3 flex items-baseline gap-1 sm:mt-3">
+        <div className="mt-3 flex items-baseline gap-2 sm:mt-3">
           <span className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">
             {currencySymbol}
             {Number(price).toLocaleString("es-ES")}
           </span>
+          {showMsrpBadge && priceSource === 'msrp' ? (
+            <span className="rounded border border-zinc-800 px-1.5 py-0.5 font-technical text-[8px] font-black uppercase tracking-widest text-zinc-500">
+              MSRP
+            </span>
+          ) : null}
         </div>
 
         {/* FOOTER DE LA CARD ACTUALIZADO */}

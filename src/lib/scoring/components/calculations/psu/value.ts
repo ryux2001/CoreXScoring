@@ -9,7 +9,7 @@ export const calculateValueScore = (
   evaluatedPrice: number,
   product: Record<string, unknown>,
 ): number => {
-  const price = getPrice(evaluatedPrice, product?.price_base_usd);
+  const price = getPrice(evaluatedPrice, product?.price_usd ?? product?.price_base_usd);
   if (price === null) return 0;
 
   const fairPrice = getPsuFairPrice(notes, product);

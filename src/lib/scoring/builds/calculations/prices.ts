@@ -5,9 +5,10 @@ import { numberValue } from '../utils';
 /**
  * Resolve one build-part price.
  *
- * The priority order is deliberately unchanged:
+ * The priority order is:
  * draft custom price, active-currency custom price, other-currency custom
- * price, active-currency base price, and finally USD base price.
+ * price, active-currency current price, active-currency MSRP, and legacy
+ * cross-currency fallbacks.
  */
 export const getBuildPartPrice = (
   build: Build,
@@ -52,11 +53,19 @@ export const getBuildPartPrice = (
     }
   }
 
+  const currentPrice = numberValue(item?.[`price_${normalizedSuffix}`], -1);
+  if (currentPrice >= 0) return currentPrice;
+
   const basePrice = numberValue(item?.[`price_base_${normalizedSuffix}`], -1);
   if (basePrice >= 0) return basePrice;
 
   const genericBasePrice = numberValue(item?.price_base, -1);
   if (genericBasePrice >= 0) return genericBasePrice;
+
+  const otherCurrentPrice = numberValue(item?.[`price_${otherSuffix}`], -1);
+  if (otherCurrentPrice >= 0) {
+    return convertPrice(otherCurrentPrice, otherCurrency, normalizedCurrency);
+  }
 
   const otherBasePrice = numberValue(item?.[`price_base_${otherSuffix}`], -1);
   return otherBasePrice < 0

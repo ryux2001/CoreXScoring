@@ -5,6 +5,7 @@ import { X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatReleaseDate } from '@/lib/formatReleaseDate';
 import { getProductImage } from '@/lib/catalog/product-images';
 import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
+import { resolveProductPrice } from '@/lib/catalog/product-price';
 
 interface MainInfoProps {
   product: any;
@@ -19,9 +20,9 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
 
   // LÓGICA DE MONEDA
   const isEUR = currency === 'EUR';
-  const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
   const symbol = isEUR ? '€' : '$';
-  const initialPrice = product[priceColumn] || 0;
+  const resolvedPrice = resolveProductPrice(product, currency);
+  const initialPrice = resolvedPrice.value;
 
   // NUEVO: Estado para el precio evaluado dinámico
   const evaluation = useCatalogPriceEvaluationStore((state) => state.current);
@@ -98,7 +99,9 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
 
           <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3">
             <div className="rounded-lg border border-zinc-900 bg-black p-2 lg:p-4 lg:rounded-xl">
-              <span className="text-[10px] font-black uppercase text-zinc-600 block tracking-widest lg:mb-1">MSRP</span>
+              <span className="text-[10px] font-black uppercase text-zinc-600 block tracking-widest lg:mb-1">
+                {resolvedPrice.source === 'current' ? 'Precio actual' : 'MSRP'}
+              </span>
               <div className="text-sm font-black text-white lg:text-xl">
                 {!isEUR && symbol}{Number(initialPrice).toLocaleString('es-ES')}{isEUR && symbol}
               </div>

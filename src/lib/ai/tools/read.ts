@@ -5,6 +5,7 @@ import { getProductMetrics } from "@/lib/metricsProducts";
 import { calculateComboFps, type GameData } from "@/lib/fpsCombos";
 import { calculateCatalogPriceEvaluation, isCatalogValueProfile } from "@/lib/catalog/price-evaluation";
 import { convertPrice, isCurrency } from "@/lib/currency";
+import { resolveProductPrice } from "@/lib/catalog/product-price";
 import type { ComparisonUiAction, PageContext } from "../types";
 import type { AiToolContext, AiToolResult } from "./types";
 
@@ -27,6 +28,8 @@ const PRODUCT_SELECT = [
   "description",
   "price_base_usd",
   "price_base_eur",
+  "price_usd",
+  "price_eur",
   "release_date",
   "release_year",
   "compatibility",
@@ -192,14 +195,16 @@ function getVerifiedPriceOverride(product: Row, currency: Currency, priceContext
 
 function getProductSummary(product: Row, currency: Currency = "USD", priceContext?: AiToolContext["priceContext"]): Row {
   const type = asText(product.type).toUpperCase();
-  const priceUsd = asNumber(product.price_base_usd);
-  const priceEur = asNumber(product.price_base_eur);
+  const usdPrice = resolveProductPrice(product, "USD");
+  const eurPrice = resolveProductPrice(product, "EUR");
+  const priceUsd = usdPrice.value || null;
+  const priceEur = eurPrice.value || null;
   const customPrice = getVerifiedPriceOverride(product, currency, priceContext);
-  const selectedPrice = customPrice ?? (currency === "EUR" ? priceEur ?? priceUsd ?? 0 : priceUsd ?? priceEur ?? 0);
+  const selectedPrice = customPrice ?? (currency === "EUR" ? eurPrice.value : usdPrice.value);
   // Component quality/price notes always use USD. Un precio personalizado se
   // convierte desde la moneda visible antes de recalcular la valoración.
   const evaluatedPrice = customPrice === null
-    ? priceUsd ?? priceEur ?? 0
+    ? usdPrice.value
     : convertPrice(customPrice, currency, "USD");
   let notes: Record<string, number> = {};
 
@@ -517,8 +522,8 @@ export async function searchComponents(args: unknown, context: AiToolContext): P
 
   const minPrice = asNumber(input.minPriceUsd);
   const maxPrice = asNumber(input.maxPriceUsd);
-  if (minPrice !== null && minPrice >= 0) query = query.gte("price_base_usd", minPrice);
-  if (maxPrice !== null && maxPrice >= 0) query = query.lte("price_base_usd", maxPrice);
+  if (minPrice !== null && minPrice >= 0) query = query.or(`price_usd.gte.${minPrice},and(price_usd.is.null,price_base_usd.gte.${minPrice})`);
+  if (maxPrice !== null && maxPrice >= 0) query = query.or(`price_usd.lte.${maxPrice},and(price_usd.is.null,price_base_usd.lte.${maxPrice})`);
 
   const { data, error } = await query;
   if (error) return getToolFailure("No se pudo consultar el catálogo de componentes.");
@@ -829,7 +834,7 @@ export async function recommendComponents(args: unknown, context: AiToolContext)
     .eq("type", type)
     .order("priority", { ascending: true })
     .limit(40);
-  if (maxPriceUsd !== null && maxPriceUsd >= 0) query = query.lte("price_base_usd", maxPriceUsd);
+  if (maxPriceUsd !== null && maxPriceUsd >= 0) query = query.or(`price_usd.lte.${maxPriceUsd},and(price_usd.is.null,price_base_usd.lte.${maxPriceUsd})`);
 
   const { data, error } = await query;
   if (error) return getToolFailure("No se pudo consultar el catálogo para recomendar componentes.");
@@ -933,7 +938,7 @@ export async function proposeAddToComparison(args: unknown, context: AiToolConte
   }
 
   const currency = getCurrency(new URLSearchParams(context.pageContext.search || "").get("currency"));
-  const selectedPrice = currency === "EUR" ? asNumber(productRow.price_base_eur) ?? asNumber(productRow.price_base_usd) ?? 0 : asNumber(productRow.price_base_usd) ?? asNumber(productRow.price_base_eur) ?? 0;
+  const selectedPrice = resolveProductPrice(productRow, currency).value;
   const action: ComparisonUiAction = {
     type: "add",
     itemId,
@@ -1116,9 +1121,7 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
 
   const items = finalProducts.map((product) => {
     const row = product!;
-    const selectedPrice = pageCurrency === "EUR"
-      ? asNumber(row.price_base_eur) ?? asNumber(row.price_base_usd) ?? 0
-      : asNumber(row.price_base_usd) ?? asNumber(row.price_base_eur) ?? 0;
+    const selectedPrice = resolveProductPrice(row, pageCurrency).value;
     return { ...row, comparisonType: "product", price: selectedPrice, currency: pageCurrency };
   });
   const names = finalProducts.map((product) => asText(product!.name, "Componente"));

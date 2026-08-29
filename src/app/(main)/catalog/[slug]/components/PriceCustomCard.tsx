@@ -13,8 +13,10 @@ import {
   type CpuValueProfile,
 } from "@/lib/scoring/components/calculations/cpu/profiles";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
+import { resolveProductPrice } from "@/lib/catalog/product-price";
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
+type PricePreset = "current" | "msrp" | "high" | "low";
 
 interface PriceCustomProps {
   product: any;
@@ -22,11 +24,13 @@ interface PriceCustomProps {
 }
 
 interface PriceFormProps {
-  selectedMarket: number;
-  setSelectedMarket: (value: number) => void;
+  selectedPreset: PricePreset;
+  setSelectedPreset: (value: PricePreset) => void;
   customPrice: number;
   setCustomPrice: (value: number) => void;
-  basePrice: number;
+  currentPrice: number;
+  msrpPrice: number | null;
+  hasCurrentPrice: boolean;
   format: (value: number) => string;
   symbol: string;
   currency: string;
@@ -51,12 +55,15 @@ export default function PriceCustomCard({
   const isCpu = String(product?.type ?? "").toUpperCase() === "CPU";
   const isValueProfileComponent = isGpu || isCpu;
   const profileOptions = isGpu ? GPU_VALUE_PROFILE_OPTIONS : CPU_VALUE_PROFILE_OPTIONS;
-  const priceColumn = isEUR ? "price_base_eur" : "price_base_usd";
-  const basePrice = product[priceColumn] || 0;
+  const resolvedPrice = resolveProductPrice(product, currency);
+  const currentPrice = resolvedPrice.value;
+  const msrpPrice = resolvedPrice.msrpPrice;
   const symbol = isEUR ? "€" : "$";
 
-  const [selectedMarket, setSelectedMarket] = useState(basePrice);
-  const [customPrice, setCustomPrice] = useState(basePrice);
+  const [selectedPreset, setSelectedPreset] = useState<PricePreset>(
+    resolvedPrice.hasCurrentPrice ? "current" : "msrp",
+  );
+  const [customPrice, setCustomPrice] = useState(currentPrice);
   const [valueProfile, setValueProfile] = useState<ValueProfile>("balanced");
   const evaluation = useCatalogPriceEvaluationStore((state) => state.current);
   const initializeEvaluation = useCatalogPriceEvaluationStore((state) => state.initialize);
@@ -67,19 +74,20 @@ export default function PriceCustomCard({
     initializeEvaluation({
       product,
       productId: String(product?.id ?? ""),
-      price: basePrice,
+      price: currentPrice,
       currency: isEUR ? "EUR" : "USD",
-      source: "base",
+      source: resolvedPrice.hasCurrentPrice ? "market" : "base",
     });
-  }, [basePrice, initializeEvaluation, isEUR, product]);
+  }, [currentPrice, initializeEvaluation, isEUR, product, resolvedPrice.hasCurrentPrice]);
 
-  // Sincronización y bloqueo de scroll
+  // Restablece los presets únicamente al cambiar de producto, moneda o precio de catálogo.
   useEffect(() => {
-    setSelectedMarket(basePrice);
-    if (!evaluation || evaluation.productId !== String(product?.id ?? "") || evaluation.currency !== (isEUR ? "EUR" : "USD")) {
-      setCustomPrice(basePrice);
-    }
+    setSelectedPreset(resolvedPrice.hasCurrentPrice ? "current" : "msrp");
+    setCustomPrice(currentPrice);
+  }, [currentPrice, isEUR, product?.id, resolvedPrice.hasCurrentPrice]);
 
+  // Bloqueo de scroll mientras el modal está abierto.
+  useEffect(() => {
     if (isModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -88,12 +96,11 @@ export default function PriceCustomCard({
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [basePrice, evaluation, isEUR, isModalOpen, product?.id]);
+  }, [isModalOpen]);
 
   useEffect(() => {
     if (!evaluation || evaluation.productId !== String(product?.id ?? "") || evaluation.currency !== (isEUR ? "EUR" : "USD")) return;
     setCustomPrice(evaluation.price);
-    setSelectedMarket(evaluation.price);
     if (evaluation.valueProfile) setValueProfile(evaluation.valueProfile as ValueProfile);
   }, [evaluation, isEUR, product?.id]);
 
@@ -115,7 +122,7 @@ export default function PriceCustomCard({
       price: customPrice,
       currency: isEUR ? "EUR" : "USD",
       valueProfile: isValueProfileComponent ? valueProfile : undefined,
-      source: selectedMarket === customPrice && selectedMarket !== basePrice ? "market" : "manual",
+      source: selectedPreset === "current" && customPrice === currentPrice ? "market" : "manual",
     });
     if (isModalOpen) handleCloseModal();
   };
@@ -129,7 +136,7 @@ export default function PriceCustomCard({
         price: customPrice,
         currency: isEUR ? "EUR" : "USD",
         valueProfile: value,
-        source: "manual",
+        source: selectedPreset === "current" && customPrice === currentPrice ? "market" : "manual",
       });
       return;
     }
@@ -142,7 +149,7 @@ export default function PriceCustomCard({
         price: customPrice,
         currency: isEUR ? "EUR" : "USD",
         valueProfile: value,
-        source: "manual",
+        source: selectedPreset === "current" && customPrice === currentPrice ? "market" : "manual",
       });
     }
   };
@@ -175,11 +182,13 @@ export default function PriceCustomCard({
         </div>
 
         <PriceForm
-          selectedMarket={selectedMarket}
-          setSelectedMarket={setSelectedMarket}
+          selectedPreset={selectedPreset}
+          setSelectedPreset={setSelectedPreset}
           customPrice={customPrice}
           setCustomPrice={setCustomPrice}
-          basePrice={basePrice}
+          currentPrice={currentPrice}
+          msrpPrice={msrpPrice}
+          hasCurrentPrice={resolvedPrice.hasCurrentPrice}
           format={format}
           symbol={symbol}
           currency={currency}
@@ -236,11 +245,13 @@ export default function PriceCustomCard({
             {/* Contenido Modal */}
             <div className="p-6">
               <PriceForm
-                selectedMarket={selectedMarket}
-                setSelectedMarket={setSelectedMarket}
+                selectedPreset={selectedPreset}
+                setSelectedPreset={setSelectedPreset}
                 customPrice={customPrice}
                 setCustomPrice={setCustomPrice}
-                basePrice={basePrice}
+                currentPrice={currentPrice}
+                msrpPrice={msrpPrice}
+                hasCurrentPrice={resolvedPrice.hasCurrentPrice}
                 format={format}
                 symbol={symbol}
                 currency={currency}
@@ -265,11 +276,13 @@ export default function PriceCustomCard({
 }
 
 const PriceForm = ({
-  selectedMarket,
-  setSelectedMarket,
+  selectedPreset,
+  setSelectedPreset,
   customPrice,
   setCustomPrice,
-  basePrice,
+  currentPrice,
+  msrpPrice,
+  hasCurrentPrice,
   format,
   symbol,
   currency,
@@ -289,20 +302,28 @@ const PriceForm = ({
       </label>
       <div className="relative">
         <select
-          value={selectedMarket}
+          value={selectedPreset}
           onChange={(e) => {
-            const val = Number(e.target.value);
-            setSelectedMarket(val);
-            setCustomPrice(val);
+            const preset = e.target.value as PricePreset;
+            const price = preset === "current"
+              ? currentPrice
+              : preset === "msrp"
+                ? msrpPrice ?? currentPrice
+                : preset === "high"
+                  ? currentPrice * 1.15
+                  : currentPrice * 0.9;
+            setSelectedPreset(preset);
+            setCustomPrice(price);
           }}
           className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700"
         >
-          <option value={basePrice}>MSRP - {format(basePrice)}</option>
-          <option value={basePrice * 1.15}>
-            Estimado Alto (+15%) - {format(basePrice * 1.15)}
+          {hasCurrentPrice ? <option value="current">Precio actual - {format(currentPrice)}</option> : null}
+          {msrpPrice !== null ? <option value="msrp">MSRP - {format(msrpPrice)}</option> : null}
+          <option value="high">
+            Estimado Alto (+15%) - {format(currentPrice * 1.15)}
           </option>
-          <option value={basePrice * 0.9}>
-            Estimado Bajo (-10%) - {format(basePrice * 0.9)}
+          <option value="low">
+            Estimado Bajo (-10%) - {format(currentPrice * 0.9)}
           </option>
         </select>
         <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600">

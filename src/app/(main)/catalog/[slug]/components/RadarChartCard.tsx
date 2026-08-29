@@ -18,6 +18,7 @@ import {
   type CpuValueProfile,
 } from '@/lib/scoring/components/calculations/cpu/profiles';
 import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
+import { getProductPrice } from '@/lib/catalog/product-price';
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
 
@@ -126,8 +127,7 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
   const isEUR = currency === 'EUR';
   const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
   const isCpu = String(product?.type ?? '').toUpperCase() === 'CPU';
-  const priceColumn = isEUR ? 'price_base_eur' : 'price_base_usd';
-  const initialPrice = product[priceColumn] || 0;
+  const initialPrice = getProductPrice(product, currency);
 
   const evaluation = useCatalogPriceEvaluationStore((state) => state.current);
   const isCurrentEvaluation = evaluation?.productId === String(product?.id ?? '') && evaluation.currency === (isEUR ? 'EUR' : 'USD');

@@ -5,6 +5,7 @@ import { AlertCircle, Check, CircleHelp, Search, Settings2, X } from 'lucide-rea
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
+import { resolveProductPrice } from '@/lib/catalog/product-price';
 import { useAiVisiblePriceStore } from '@/store/useAiVisiblePriceStore';
 import ComboEvaluationSection from '@/app/(main)/combos/[slug]/components/ComboEvaluationSection';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
@@ -21,6 +22,8 @@ interface Product {
   type: string;
   price_base_usd?: number;
   price_base_eur?: number;
+  price_usd?: number;
+  price_eur?: number;
   specs?: any;
   compatibility?: any;
   [key: string]: any;
@@ -113,7 +116,7 @@ function getProductPrice(product: Product | null, slot: SlotKey, combo: DraftSta
   if (combo.priceModes[slot] === 'custom' && combo.customPrices[slot]) {
     return Number(combo.customPrices[slot]) || 0;
   }
-  return Number(currency === 'EUR' ? product.price_base_eur : product.price_base_usd) || 0;
+  return resolveProductPrice(product, currency).value;
 }
 
 function getAiPriceContext(draft: DraftState, currency: string) {
@@ -578,7 +581,8 @@ function ComponentModal({
   onApply: () => void;
   onClose: () => void;
 }) {
-  const msrp = product ? Number(currency === 'EUR' ? product.price_base_eur : product.price_base_usd) || 0 : 0;
+  const catalogPrice = product ? resolveProductPrice(product, currency) : null;
+  const currentPrice = catalogPrice?.value || 0;
   const symbol = currency === 'EUR' ? '€' : '$';
 
   return (
@@ -612,7 +616,7 @@ function ComponentModal({
                 <span className="block truncate text-xs font-bold text-zinc-200">{suggestion.name}</span>
                 <span className="mt-1 block text-[8px] font-black uppercase tracking-widest text-zinc-600">{suggestion.brand}</span>
               </span>
-              <span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{Number(currency === 'EUR' ? (suggestion.price_base_eur || 0) : (suggestion.price_base_usd || 0)).toFixed(0)}</span>
+              <span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{resolveProductPrice(suggestion, currency).value.toFixed(0)}</span>
             </button>
           ))}
           {!isSearching && searchTerm.trim().length >= 2 && suggestions.length === 0 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Sin resultados</p>}
@@ -624,10 +628,10 @@ function ComponentModal({
             <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio del componente</label>
             <div className="mt-3 grid grid-cols-[1fr_110px] gap-2">
               <select value={priceMode} onChange={(event) => onPriceModeChange(event.target.value as PriceMode)} className="rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none focus:border-zinc-700">
-                <option value="msrp">MSRP ({symbol}{msrp.toFixed(2)})</option>
+                <option value="msrp">{catalogPrice?.source === 'current' ? 'Precio actual' : 'MSRP'} ({symbol}{currentPrice.toFixed(2)})</option>
                 <option value="custom">Precio personalizado</option>
               </select>
-              <input type="number" min="0" step="0.01" value={priceMode === 'custom' ? price : msrp} onChange={(event) => onPriceChange(event.target.value)} disabled={priceMode !== 'custom'} className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none disabled:text-zinc-700 focus:border-zinc-700" />
+              <input type="number" min="0" step="0.01" value={priceMode === 'custom' ? price : currentPrice} onChange={(event) => onPriceChange(event.target.value)} disabled={priceMode !== 'custom'} className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none disabled:text-zinc-700 focus:border-zinc-700" />
             </div>
           </div>
         )}

@@ -2,6 +2,7 @@ import React from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { resolveRequestCurrency } from '@/lib/serverCurrency'
 import { Card } from '@/ui/card/Card'
+import { resolveProductPrice } from '@/lib/catalog/product-price'
 import FilterBar from './components/FilterBar'
 import Pagination from './components/Pagination' // Importamos el nuevo componente
 
@@ -28,12 +29,13 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const from = (currentPage - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
 
-  const priceColumn = currency === 'EUR' ? 'price_base_eur' : 'price_base_usd';
+  const currentPriceColumn = currency === 'EUR' ? 'price_eur' : 'price_usd';
+  const msrpPriceColumn = currency === 'EUR' ? 'price_base_eur' : 'price_base_usd';
 
   // 1. Construir consulta con RANGO (.range)
   let query = supabase
     .from("products_with_priority")
-    .select(`id, slug, name, type, brand, ${priceColumn}, specs, compatibility, release_date`, { count: 'exact' });
+    .select(`id, slug, name, type, brand, ${currentPriceColumn}, ${msrpPriceColumn}, specs, compatibility, release_date`, { count: 'exact' });
 
   query = query
   .order('priority', { ascending: true })       // 1. CPUs y GPUs primero
@@ -43,8 +45,14 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%`);
   if (brand) query = query.in("brand", brand.split(","));
   if (type) query = query.eq("type", type);
-  if (minPrice) query = query.gte(priceColumn, parseFloat(minPrice));
-  if (maxPrice) query = query.lte(priceColumn, parseFloat(maxPrice));
+  const minPriceValue = Number(minPrice);
+  const maxPriceValue = Number(maxPrice);
+  if (Number.isFinite(minPriceValue)) {
+    query = query.or(`${currentPriceColumn}.gte.${minPriceValue},and(${currentPriceColumn}.is.null,${msrpPriceColumn}.gte.${minPriceValue})`);
+  }
+  if (Number.isFinite(maxPriceValue)) {
+    query = query.or(`${currentPriceColumn}.lte.${maxPriceValue},and(${currentPriceColumn}.is.null,${msrpPriceColumn}.lte.${maxPriceValue})`);
+  }
 
   // Aplicamos el límite de 12 productos por página
   query = query.range(from, to).order('release_date', { ascending: false });
@@ -75,22 +83,25 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         />
 
         <div className="grid grid-cols-1 gap-4 sm:gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products?.map((product: any) => (
-            <Card 
+          {products?.map((product: any) => {
+            const price = resolveProductPrice(product, currency);
+            return <Card
               key={product.id}
               id={product.id}
               slug={product.slug}
               type={product.type}
               brand={product.brand}
               name={product.name}
-              price={product[priceColumn] || 0} 
+              price={price.value}
+              priceSource={price.source}
+              showMsrpBadge
               currency={currency}
               specs={product.specs}
               compatibility={product.compatibility}
               release_date={product.release_date}
               wholeCardClickable
             />
-          ))}
+          })}
         </div>
 
         {/* CONTROLES DE PAGINACIÓN */}

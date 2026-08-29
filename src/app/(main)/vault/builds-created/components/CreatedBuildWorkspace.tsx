@@ -5,6 +5,7 @@ import { AlertCircle, Check, CircleHelp, Search, Settings2, X } from 'lucide-rea
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
+import { resolveProductPrice } from '@/lib/catalog/product-price';
 import { useAiVisiblePriceStore } from '@/store/useAiVisiblePriceStore';
 import BuildNotesCard from '@/app/(main)/builds/[slug]/components/BuildNotesCard';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
@@ -21,6 +22,8 @@ interface Product {
   type: string;
   price_base_usd?: number;
   price_base_eur?: number;
+  price_usd?: number;
+  price_eur?: number;
   specs?: unknown;
   compatibility?: unknown;
   [key: string]: any;
@@ -135,7 +138,7 @@ function getProductPrice(product: Product | null, slot: SlotKey, draft: DraftSta
   if (draft.priceModes[slot] === 'custom' && draft.customPrices[slot]) {
     return Number(draft.customPrices[slot]) || 0;
   }
-  return Number(currency === 'EUR' ? product.price_base_eur : product.price_base_usd) || 0;
+  return resolveProductPrice(product, currency).value;
 }
 
 function getAiPriceContext(draft: DraftState, currency: string) {
@@ -554,15 +557,16 @@ function ComponentModal({
   onApply: () => void;
   onClose: () => void;
 }) {
-  const msrp = product ? Number(currency === 'EUR' ? product.price_base_eur : product.price_base_usd) || 0 : 0;
+  const catalogPrice = product ? resolveProductPrice(product, currency) : null;
+  const currentPrice = catalogPrice?.value || 0;
   const symbol = currency === 'EUR' ? '€' : '$';
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
         <div className="flex items-center justify-between border-b border-zinc-900 pb-4"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Componente elegido</span><h2 className="mt-1 text-sm font-black uppercase text-white">{slotLabels[slot]}</h2></div><button type="button" onClick={onClose} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white" aria-label="Cerrar"><X size={15} /></button></div>
         <div className="relative mt-5"><input value={searchTerm} onChange={(event) => onSearchChange(event.target.value)} placeholder="Buscar componente..." className="w-full rounded-xl border border-zinc-900 bg-black px-4 py-3 pl-10 text-xs font-bold text-white outline-none placeholder:text-zinc-700 focus:border-zinc-700" /><Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />{isSearching && <span className="absolute right-4 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin rounded-full border-2 border-zinc-700 border-t-white" />}</div>
-        <div className="mt-3 max-h-40 space-y-1 overflow-y-auto">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onClick={() => onSelectProduct(suggestion)} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${product?.id === suggestion.id ? 'border-white bg-zinc-900' : 'border-transparent bg-zinc-900/30 hover:border-zinc-700'}`}><span className="min-w-0"><span className="block truncate text-xs font-bold text-zinc-200">{suggestion.name}</span><span className="mt-1 block text-[8px] font-black uppercase tracking-widest text-zinc-600">{suggestion.brand}</span></span><span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{Number(currency === 'EUR' ? suggestion.price_base_eur || 0 : suggestion.price_base_usd || 0).toFixed(0)}</span></button>)}{!isSearching && searchTerm.trim().length >= 2 && suggestions.length === 0 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Sin resultados</p>}{searchTerm.trim().length < 2 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Introduce al menos 2 letras</p>}</div>
-        {product && <div className="mt-5 border-t border-zinc-900 pt-5"><label className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio del componente</label><div className="mt-3 grid grid-cols-[1fr_110px] gap-2"><select value={priceMode} onChange={(event) => onPriceModeChange(event.target.value as PriceMode)} className="rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none focus:border-zinc-700"><option value="msrp">MSRP ({symbol}{msrp.toFixed(2)})</option><option value="custom">Precio personalizado</option></select><input type="number" min="0" step="0.01" value={priceMode === 'custom' ? price : msrp} onChange={(event) => onPriceChange(event.target.value)} disabled={priceMode !== 'custom'} className="[appearance:textfield] rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none disabled:text-zinc-700 focus:border-zinc-700" /></div></div>}
+        <div className="mt-3 max-h-40 space-y-1 overflow-y-auto">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onClick={() => onSelectProduct(suggestion)} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${product?.id === suggestion.id ? 'border-white bg-zinc-900' : 'border-transparent bg-zinc-900/30 hover:border-zinc-700'}`}><span className="min-w-0"><span className="block truncate text-xs font-bold text-zinc-200">{suggestion.name}</span><span className="mt-1 block text-[8px] font-black uppercase tracking-widest text-zinc-600">{suggestion.brand}</span></span><span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{resolveProductPrice(suggestion, currency).value.toFixed(0)}</span></button>)}{!isSearching && searchTerm.trim().length >= 2 && suggestions.length === 0 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Sin resultados</p>}{searchTerm.trim().length < 2 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Introduce al menos 2 letras</p>}</div>
+        {product && <div className="mt-5 border-t border-zinc-900 pt-5"><label className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio del componente</label><div className="mt-3 grid grid-cols-[1fr_110px] gap-2"><select value={priceMode} onChange={(event) => onPriceModeChange(event.target.value as PriceMode)} className="rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none focus:border-zinc-700"><option value="msrp">{catalogPrice?.source === 'current' ? 'Precio actual' : 'MSRP'} ({symbol}{currentPrice.toFixed(2)})</option><option value="custom">Precio personalizado</option></select><input type="number" min="0" step="0.01" value={priceMode === 'custom' ? price : currentPrice} onChange={(event) => onPriceChange(event.target.value)} disabled={priceMode !== 'custom'} className="[appearance:textfield] rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none disabled:text-zinc-700 focus:border-zinc-700" /></div></div>}
         <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button><button type="button" onClick={onApply} className="rounded-xl bg-white px-4 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200">Aplicar</button></div>
       </div>
     </div>

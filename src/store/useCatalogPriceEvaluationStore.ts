@@ -22,7 +22,7 @@ export const useCatalogPriceEvaluationStore = create<CatalogPriceEvaluationState
   initialize: (input) => {
     const current = get().current;
     if (current?.productId === input.productId && current.currency === input.currency) return;
-    const evaluation = createEvaluation({ ...input, source: "base" });
+    const evaluation = createEvaluation(input);
     if (evaluation) set({ current: evaluation });
   },
   apply: (input) => {

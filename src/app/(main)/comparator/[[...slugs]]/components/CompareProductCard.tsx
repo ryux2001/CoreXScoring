@@ -38,6 +38,8 @@ interface CompareProductCardProps {
     currency?: string;
     price_base_eur?: number;
     price_base_usd?: number;
+    price_eur?: number;
+    price_usd?: number;
     [key: string]: any;
   };
   globalCurrency: string;

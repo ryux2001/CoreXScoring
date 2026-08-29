@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import { Card } from '@/ui/card/Card';
+import { resolveProductPrice } from '@/lib/catalog/product-price';
 import SavedProductsFilterBar from './components/SavedProductsFilterBar';
 import SavedProductsPagination from './components/SavedProductsPagination';
 
@@ -26,6 +27,8 @@ interface SavedProduct {
   brand: string;
   price_base_usd: number | null;
   price_base_eur: number | null;
+  price_usd: number | null;
+  price_eur: number | null;
   specs: Record<string, unknown> | null;
   compatibility: Record<string, unknown> | null;
   release_date: string | null;
@@ -82,7 +85,7 @@ export default async function VaultProductsPage({
     .select(
       `created_at, product:products(
         id, slug, name, type, brand,
-        price_base_usd, price_base_eur,
+        price_base_usd, price_base_eur, price_usd, price_eur,
         specs, compatibility, release_date
       )`,
     )
@@ -114,8 +117,7 @@ export default async function VaultProductsPage({
     const matchesBrand =
       selectedBrands.length === 0 || selectedBrands.includes(product.brand);
     const matchesType = !selectedType || product.type === selectedType;
-    const price =
-      currency === 'EUR' ? product.price_base_eur : product.price_base_usd;
+    const price = resolveProductPrice(product, currency).value;
     const matchesMin = minPrice === null || (price ?? 0) >= minPrice;
     const matchesMax = maxPrice === null || (price ?? 0) <= maxPrice;
 
@@ -165,26 +167,23 @@ export default async function VaultProductsPage({
 
           {visibleProducts.length > 0 ? (
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {visibleProducts.map((product) => (
-                <Card
+              {visibleProducts.map((product) => {
+                const price = resolveProductPrice(product, currency);
+                return <Card
                   key={product.id}
                   id={product.id}
                   slug={product.slug}
                   type={product.type}
                   brand={product.brand}
                   name={product.name}
-                  price={
-                    currency === 'EUR'
-                      ? product.price_base_eur || 0
-                      : product.price_base_usd || 0
-                  }
+                  price={price.value}
                   currency={currency}
                   specs={product.specs}
                   compatibility={product.compatibility}
                   release_date={product.release_date}
                   wholeCardClickable
                 />
-              ))}
+              })}
             </div>
           ) : (
             <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50 px-6 text-center">

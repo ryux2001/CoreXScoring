@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot, PendingAction, PendingActionComponent } from "./types";
 import type { AiToolContext, AiToolResult } from "./tools/types";
+import { getProductPrice } from "@/lib/catalog/product-price";
 
 type Row = Record<string, unknown>;
 type ActionSlot = ComboSlot | "motherboard" | "storage" | "psu";
@@ -198,7 +199,7 @@ async function resolveBuildComponent(
   // "SSD de 1TB" o "cualquier placa B550", aunque el producto sí exista.
   const request = context.supabase
     .from("products_with_priority")
-    .select("id,name,brand,slug,type,specs,compatibility,price_base_usd,price_base_eur")
+    .select("id,name,brand,slug,type,specs,compatibility,price_usd,price_eur,price_base_usd,price_base_eur")
     .eq("type", slot)
     .limit(100);
 
@@ -214,7 +215,7 @@ async function resolveBuildComponent(
       const leftTokenCount = normalizeMatch(asText(left.row.name)).split(" ").filter(Boolean).length;
       const rightTokenCount = normalizeMatch(asText(right.row.name)).split(" ").filter(Boolean).length;
       if (leftTokenCount !== rightTokenCount) return leftTokenCount - rightTokenCount;
-      const priceDifference = Number(left.row.price_base_usd || 0) - Number(right.row.price_base_usd || 0);
+      const priceDifference = getProductPrice(left.row, "USD") - getProductPrice(right.row, "USD");
       if (priceDifference !== 0) return priceDifference;
       return asText(left.row.name).localeCompare(asText(right.row.name));
     });
@@ -267,7 +268,7 @@ async function fetchProducts(context: AiToolContext, ids: string[]): Promise<{ r
   if (uniqueIds.length === 0) return { rows: [], error: "No se indicaron componentes." };
   const { data, error } = await context.supabase
     .from("products")
-    .select("id,name,type,specs,compatibility,price_base_usd,price_base_eur")
+    .select("id,name,type,specs,compatibility,price_usd,price_eur,price_base_usd,price_base_eur")
     .in("id", uniqueIds);
   if (error) return { rows: [], error: "No se pudieron validar los componentes." };
   return { rows: Array.isArray(data) ? data.map(asRow) : [] };
@@ -556,7 +557,7 @@ export async function planBuild(args: unknown, context: AiToolContext): Promise<
             name: asText(row.name),
             brand: asText(row.brand),
             type: asText(row.type),
-            prices: { USD: row.price_base_usd ?? null, EUR: row.price_base_eur ?? null },
+            prices: { USD: getProductPrice(row, "USD"), EUR: getProductPrice(row, "EUR") },
           })),
         })),
       },
