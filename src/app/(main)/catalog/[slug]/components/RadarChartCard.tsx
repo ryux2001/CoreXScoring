@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer 
 } from 'recharts';
-import { 
-  Info, Zap, Cpu, Gamepad2, Leaf, CircleDollarSign, 
-  ThermometerSnowflake, Shield, Activity, Layers, Network, Wrench 
+import {
+  BadgeDollarSign, Blocks, BriefcaseBusiness, CircuitBoard, Code2, Gauge,
+  Gamepad2, Info, Leaf, MemoryStick, Network, PlugZap, ScanLine, ShieldCheck,
+  ThermometerSnowflake, Timer, Wrench, Zap,
 } from 'lucide-react';
 import { getComponentNotes } from '@/lib/scoring/index';
 import { convertPrice } from '@/lib/currency';
@@ -27,22 +28,29 @@ interface RadarChartProps {
   currentMobileView?: 'radar';   // NUEVO PROP OPCIONAL
 }
 
-// 1. DICCIONARIO DE ICONOS
+// Cada métrica se expresa con un símbolo propio; los aliases mantienen la
+// compatibilidad con los nombres que devuelven los distintos perfiles.
 const getIconForCategory = (category: string) => {
   const cat = category.toLowerCase();
-  if (cat.includes('raster') || cat.includes('potencia') || cat.includes('rendimiento') || cat.includes('velocidad')) return <Zap size={20} />;
-  if (cat.includes('ray tracing') || cat.includes('juego')) return <Gamepad2 size={20} />;
+  if (cat.includes('potencia')) return <Zap size={20} />;
+  if (cat.includes('raster') || cat.includes('rendimiento') || cat.includes('velocidad')) return <Gauge size={20} />;
+  if (cat.includes('ray tracing')) return <ScanLine size={20} />;
+  if (cat.includes('juego') || cat.includes('gaming')) return <Gamepad2 size={20} />;
   if (cat.includes('eficiencia')) return <Leaf size={20} />;
-  if (cat.includes('precio')) return <CircleDollarSign size={20} />;
-  if (cat.includes('tecnología')) return <Cpu size={20} />;
+  if (cat.includes('precio') || cat.includes('calidad')) return <BadgeDollarSign size={20} />;
+  if (cat.includes('tecnología')) return <CircuitBoard size={20} />;
   if (cat.includes('temperatura')) return <ThermometerSnowflake size={20} />;
-  if (cat.includes('durabilidad') || cat.includes('proteccion')) return <Shield size={20} />;
-  if (cat.includes('estabilidad') || cat.includes('latencia')) return <Activity size={20} />;
-  if (cat.includes('productividad') || cat.includes('memoria')) return <Layers size={20} />;
-  if (cat.includes('software')) return <Cpu size={20} />;
-  if (cat.includes('conectividad') || cat.includes('compatibilidad') || cat.includes('expansión')) return <Network size={20} />;
+  if (cat.includes('durabilidad') || cat.includes('proteccion')) return <ShieldCheck size={20} />;
+  if (cat.includes('estabilidad')) return <Gauge size={20} />;
+  if (cat.includes('latencia')) return <Timer size={20} />;
+  if (cat.includes('productividad')) return <BriefcaseBusiness size={20} />;
+  if (cat.includes('memoria')) return <MemoryStick size={20} />;
+  if (cat.includes('software')) return <Code2 size={20} />;
+  if (cat.includes('conectividad')) return <Network size={20} />;
+  if (cat.includes('compatibilidad')) return <PlugZap size={20} />;
+  if (cat.includes('expansión')) return <Blocks size={20} />;
   if (cat.includes('construcción')) return <Wrench size={20} />;
-  return <Activity size={20} />; 
+  return <Gauge size={20} />;
 };
 
 // 2. FUNCIÓN DE COLORES DINÁMICOS
@@ -150,6 +158,7 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
   const getTooltipTransform = (x: number, y: number, cx: number, cy: number) => {
     let translateX = "-50%";
     let translateY = "-50%";
+    // Keep the tooltip inside the chart/card: labels point inward.
     if (y < cy - 20) translateY = "calc(-100% - 20px)";
     else if (y > cy + 20) translateY = "20px";
     if (x < cx - 20) translateX = "calc(-100% - 20px)";
@@ -160,7 +169,7 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
   const activeStyles = activeTooltip ? getColorStyles(activeTooltip.score) : null;
 
   return (
-    <div className="relative z-20 flex flex-col rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl h-full min-h-[400px] lg:p-8">
+    <div className="relative z-[10001] flex flex-col overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl h-full min-h-[400px] lg:p-8">
       
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
@@ -202,7 +211,10 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
       </div>
 
       {/* CONTENEDOR DEL GRÁFICO: Se eliminó el z-10 para que los tooltips calculen su z-index contra el componente entero */}
-      <div className="flex-1 w-full relative min-h-[300px]">
+      <div
+        className="flex-1 w-full relative min-h-[300px]"
+        onMouseDown={(event) => event.preventDefault()}
+      >
         
         {/* MINIVENTANITA DE LOS ICONOS */}
         {activeTooltip && activeStyles && (
@@ -227,8 +239,8 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
 
         {isMounted ? (
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart 
-              cx="50%" 
+            <RadarChart
+              cx="50%"
               cy="50%" 
               outerRadius="85%" 
               data={chartData}

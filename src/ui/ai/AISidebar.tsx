@@ -12,6 +12,7 @@ import {
   RefreshCw,
   SendHorizontal,
   Square,
+  MessageCircle
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";

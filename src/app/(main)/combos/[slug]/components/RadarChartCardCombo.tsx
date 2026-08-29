@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer 
 } from 'recharts';
-import { 
-  Info, Zap, Gamepad2, Leaf, CircleDollarSign, Layers, Gauge
+import {
+  BadgeDollarSign, BriefcaseBusiness, Gamepad2, Gauge, Info, Leaf, Zap,
 } from 'lucide-react';
 import { getComboNotes } from '@/lib/scoringCombos';
 
@@ -18,12 +18,12 @@ interface RadarChartCardComboProps {
 const getIconForCategory = (category: string) => {
   const cat = category.toLowerCase();
   if (cat.includes('potencia')) return <Zap size={18} />;
-  if (cat.includes('productividad')) return <Layers size={18} />;
+  if (cat.includes('productividad')) return <BriefcaseBusiness size={18} />;
   if (cat.includes('gaming') || cat.includes('juego')) return <Gamepad2 size={18} />;
   if (cat.includes('eficiencia')) return <Leaf size={18} />;
   if (cat.includes('cuello') || cat.includes('botella')) return <Gauge size={18} />;
-  if (cat.includes('precio') || cat.includes('calidad')) return <CircleDollarSign size={18} />;
-  return <Zap size={18} />; 
+  if (cat.includes('precio') || cat.includes('calidad')) return <BadgeDollarSign size={18} />;
+  return <Gauge size={18} />;
 };
 
 const getColorStyles = (score: number) => {
@@ -121,6 +121,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
   const getTooltipTransform = (x: number, y: number, cx: number, cy: number) => {
     let translateX = "-50%";
     let translateY = "-50%";
+    // Keep the tooltip inside the chart/card: labels point inward.
     if (y < cy - 20) translateY = "calc(-100% - 15px)";
     else if (y > cy + 20) translateY = "15px";
     if (x < cx - 20) translateX = "calc(-100% - 15px)";
@@ -131,7 +132,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
   const activeStyles = activeTooltip ? getColorStyles(activeTooltip.score) : null;
 
   return (
-    <div className="relative z-20 flex flex-col justify-between rounded-3xl border border-zinc-900 bg-zinc-950/40 p-6 shadow-2xl backdrop-blur-sm h-full min-h-[250px] lg:pb-0">
+    <div className="relative z-[10001] flex flex-col justify-between overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/40 p-6 shadow-2xl backdrop-blur-sm h-full min-h-[250px] lg:pb-0">
       
       {/* Resplandor de fondo */}
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -172,7 +173,10 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
       </div>
 
       {/* CONTENEDOR DEL GRÁFICO */}
-      <div className="flex-1 w-full relative min-h-[220px] flex items-center justify-center">
+      <div
+        className="flex-1 w-full relative min-h-[220px] flex items-center justify-center"
+        onMouseDown={(event) => event.preventDefault()}
+      >
         
         {activeTooltip && activeStyles && (
           <div 
@@ -196,8 +200,8 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
 
         {isMounted ? (
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart 
-              cx="50%" 
+            <RadarChart
+              cx="50%"
               cy="50%" 
               outerRadius="75%" 
               data={chartData}
