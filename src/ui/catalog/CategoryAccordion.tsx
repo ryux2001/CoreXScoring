@@ -5,12 +5,14 @@ interface CategoryAccordionProps {
   title: string;
   itemCount: number;
   children: ReactNode;
+  contentClassName?: string;
 }
 
 export default function CategoryAccordion({
   title,
   itemCount,
   children,
+  contentClassName = 'mt-6 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
 }: CategoryAccordionProps) {
   return (
     <details open className="group border-b border-zinc-900 pb-8 last:border-b-0">
@@ -30,7 +32,7 @@ export default function CategoryAccordion({
         </span>
       </summary>
 
-      <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className={contentClassName}>
         {children}
       </div>
     </details>

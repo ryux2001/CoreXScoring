@@ -2,21 +2,24 @@ import { supabase } from '@/lib/supabaseClient';
 import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import ComboCard from './components/ComboCard';
 import ComboCurrencyToggle from './components/ComboCurrencyToggle';
+import ComboCategoryCarousel from './components/ComboCategoryCarousel';
 import ComboFilterBar from './components/ComboFilterBar';
-import ComboPagination from './components/ComboPagination';
 import CategoryAccordion from '@/ui/catalog/CategoryAccordion';
 import {
   filterCombos,
   getComboCategories,
-  paginateCombos,
 } from './components/comboListUtils';
+
+type ComboRecord = Record<string, unknown> & {
+  category: string;
+  id: string;
+};
 
 interface CombosPageProps {
   searchParams: Promise<{
     currency?: string;
     q?: string;
     category?: string;
-    page?: string;
   }>;
 }
 
@@ -38,19 +41,14 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
     console.error('Error al obtener combos:', error);
   }
 
-  const allCombos = combos || [];
+  const allCombos = (combos || []) as ComboRecord[];
   const availableCategories = getComboCategories(allCombos);
   const filteredCombos = filterCombos(
     allCombos,
     params.q || '',
     params.category || '',
-  );
-  const { currentPage, totalPages, visibleCombos } = paginateCombos(
-    filteredCombos,
-    params.page,
-  );
-
-  const combosByCategory = visibleCombos.reduce<Record<string, any[]>>(
+  ) as ComboRecord[];
+  const combosByCategory = filteredCombos.reduce<Record<string, ComboRecord[]>>(
     (acc, combo) => {
       if (!acc[combo.category]) acc[combo.category] = [];
       acc[combo.category].push(combo);
@@ -82,7 +80,7 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
           showCurrencyToggle={false}
         />
 
-        {visibleCombos.length === 0 ? (
+        {filteredCombos.length === 0 ? (
           <div className="mt-8 flex h-96 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 text-center">
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-600">
               No hay combos que coincidan con estos filtros
@@ -95,25 +93,22 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
                 key={categoryName}
                 title={categoryName}
                 itemCount={categoryCombos.length}
+                contentClassName="mt-6"
               >
-                {categoryCombos.map((combo) => (
-                  <ComboCard
-                    key={combo.id}
-                    combo={combo}
-                    currency={currency}
-                    wholeCardClickable
-                  />
-                ))}
+                <ComboCategoryCarousel>
+                  {categoryCombos.map((combo) => (
+                    <ComboCard
+                      key={combo.id}
+                      combo={combo}
+                      currency={currency}
+                      wholeCardClickable
+                    />
+                  ))}
+                </ComboCategoryCarousel>
               </CategoryAccordion>
             ))}
           </div>
         )}
-
-        <ComboPagination
-          basePath="/combos"
-          currentPage={currentPage}
-          totalPages={totalPages}
-        />
       </div>
     </main>
   );

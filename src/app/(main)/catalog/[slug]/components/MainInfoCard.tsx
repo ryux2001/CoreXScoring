@@ -56,6 +56,15 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
     const dateValue = isMounted ? formatReleaseDate(product.release_date) : "";
 
     const details = [{ label: "Marca", value: product.brand }, { label: "Lanzamiento", value: dateValue }];
+
+    const formatCacheValue = (value: unknown) => {
+      const cacheInKb = Number(value);
+
+      if (!Number.isFinite(cacheInKb)) return String(value);
+      if (cacheInKb < 1024) return `${cacheInKb} KB`;
+
+      return `${(cacheInKb / 1024).toFixed(0)} MB`;
+    };
     
     if (product.compatibility) {
       Object.entries(product.compatibility).forEach(([key, value]) => {
@@ -65,9 +74,14 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
 
     if (product.specs) {
       Object.entries(product.specs).forEach(([key, value]) => {
-        if (key === 'processing_units' && typeof value === 'object' && value !== null) {
+        if ((key === 'processing_units' || key === 'cache') && typeof value === 'object' && value !== null) {
           Object.entries(value).forEach(([subKey, subValue]) => {
-            details.push({ label: subKey.replace(/_/g, ' '), value: String(subValue) });
+            const label = key === 'cache'
+              ? `Caché ${subKey.toUpperCase()}`
+              : subKey.replace(/_/g, ' ');
+            const formattedValue = key === 'cache' ? formatCacheValue(subValue) : String(subValue);
+
+            details.push({ label, value: formattedValue });
           });
         } else {
           details.push({ label: key.replace(/_/g, ' '), value: String(value) });
