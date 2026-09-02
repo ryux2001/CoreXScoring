@@ -9,10 +9,10 @@ import {
   Info,
   Maximize2,
   Minimize2,
+  PanelRightClose,
   RefreshCw,
   SendHorizontal,
   Square,
-  MessageCircle
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
@@ -140,17 +140,17 @@ function getPageStatusLabel(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
   const root = segments[0];
   const identifier = root === "vault" ? segments[2] : segments[1];
-  if (root === "catalog" && identifier) return `Viendo: ${humanizePageIdentifier(identifier)}`;
-  if (root === "combos" && identifier) return `Viendo combo: ${humanizePageIdentifier(identifier)}`;
-  if (root === "builds" && identifier) return `Viendo build: ${humanizePageIdentifier(identifier)}`;
-  if (root === "vault" && segments[1] === "combos-created" && identifier) return `Viendo combo creado: ${humanizePageIdentifier(identifier)}`;
-  if (root === "vault" && segments[1] === "builds-created" && identifier) return `Viendo build creada: ${humanizePageIdentifier(identifier)}`;
-  if (root === "catalog") return "Viendo: Catálogo";
-  if (root === "combos") return "Viendo: Combos";
-  if (root === "builds") return "Viendo: Builds";
-  if (root === "comparator") return "Viendo: Comparador";
-  if (root === "vault") return "Viendo: Bóveda";
-  return "Viendo: Inicio";
+  if (root === "catalog" && identifier) return `Componente: ${humanizePageIdentifier(identifier)}`;
+  if (root === "combos" && identifier) return `Combo: ${humanizePageIdentifier(identifier)}`;
+  if (root === "builds" && identifier) return `Build: ${humanizePageIdentifier(identifier)}`;
+  if (root === "vault" && segments[1] === "combos-created" && identifier) return `Combo creado: ${humanizePageIdentifier(identifier)}`;
+  if (root === "vault" && segments[1] === "builds-created" && identifier) return `Build creada: ${humanizePageIdentifier(identifier)}`;
+  if (root === "catalog") return "Catálogo";
+  if (root === "combos") return "Combos";
+  if (root === "builds") return "Builds";
+  if (root === "comparator") return "Comparador";
+  if (root === "vault") return "Bóveda";
+  return "Inicio";
 }
 
 function findFocusableElements(container: HTMLElement) {
@@ -196,6 +196,7 @@ interface ChatPanelProps {
   onConfirmAction: () => void;
   onCancelAction: () => void;
   onMinimize?: () => void;
+  onHideDesktop?: () => void;
   onExpand?: () => void;
   onReduce?: () => void;
   onOpenHistory: () => void;
@@ -232,6 +233,7 @@ function ChatPanel({
   onConfirmAction,
   onCancelAction,
   onMinimize,
+  onHideDesktop,
   onExpand,
   onReduce,
   onOpenHistory,
@@ -245,7 +247,7 @@ function ChatPanel({
   inputRef,
   expandButtonRef,
 }: ChatPanelProps) {
-  const hasActions = Boolean(onMinimize || onExpand || onReduce || onOpenHistory);
+  const hasActions = Boolean(onMinimize || onExpand || onReduce || onOpenHistory || onHideDesktop);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col" aria-label="Conversación con CoreX AI">
@@ -258,7 +260,7 @@ function ChatPanel({
             <h2 className="font-display truncate text-base font-bold tracking-tight text-white">{conversationTitle || "CoreX AI"}</h2>
             <p className="font-technical text-[12px] text-zinc-500 font-extrabold">
               {conversationMode === "temporary"
-                ? "Chat temporal · no se guarda"
+                ? "Chat temporal"
                 : sessionKind === "anonymous"
                 ? "Modo invitado · hardware"
                 : provider === "local"
@@ -273,7 +275,7 @@ function ChatPanel({
                   ? "CoreX AI · alcance protegido"
                   : provider === "groq"
                     ? "Groq · principal"
-                    : "Hardware · asistente especializado"}
+                    : "Chat asistente"}
             </p>
             <p className="font-technical max-w-[15rem] truncate text-[10px] font-semibold text-cyan-200/75" title={pageStatus} aria-label={`Contexto actual: ${pageStatus}`}>
               {pageStatus}
@@ -360,6 +362,16 @@ function ChatPanel({
                 className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
                 <Minimize2 aria-hidden="true" size={16} />
+              </button>
+            )}
+            {onHideDesktop && (
+              <button
+                type="button"
+                onClick={onHideDesktop}
+                aria-label="Ocultar CoreX AI en escritorio"
+                className="hidden min-h-9 min-w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 md:inline-flex"
+              >
+                <PanelRightClose aria-hidden="true" size={16} />
               </button>
             )}
           </div>
@@ -553,19 +565,24 @@ export default function AISidebar() {
   const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const [desktopPanelWidth, setDesktopPanelWidth] = useState(DESKTOP_CHAT_INITIAL_WIDTH);
+  const [isDesktopVisible, setIsDesktopVisible] = useState(true);
   const [isDesktopResizing, setIsDesktopResizing] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const desktopResizeStartRef = useRef<{ pointerId: number; clientX: number; width: number } | null>(null);
   const lastMessageRef = useRef("");
   const mobileInputRef = useRef<HTMLTextAreaElement>(null);
   const desktopInputRef = useRef<HTMLTextAreaElement>(null);
+  const desktopShowButtonRef = useRef<HTMLButtonElement>(null);
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const mobileExpandButtonRef = useRef<HTMLButtonElement>(null);
   const expandedPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--ai-sidebar-width", `${desktopPanelWidth}px`);
-  }, [desktopPanelWidth]);
+    document.documentElement.style.setProperty(
+      "--ai-sidebar-width",
+      isDesktopVisible ? `${desktopPanelWidth}px` : "0px",
+    );
+  }, [desktopPanelWidth, isDesktopVisible]);
 
   useEffect(() => () => {
     document.documentElement.style.removeProperty("--ai-sidebar-width");
@@ -1127,48 +1144,73 @@ export default function AISidebar() {
     setDesktopPanelWidth(Math.min(DESKTOP_CHAT_MAX_WIDTH, Math.max(DESKTOP_CHAT_MIN_WIDTH, nextWidth)));
   };
 
+  const hideDesktopChat = () => {
+    setIsDesktopVisible(false);
+    window.requestAnimationFrame(() => desktopShowButtonRef.current?.focus());
+  };
+
+  const showDesktopChat = () => {
+    setIsDesktopVisible(true);
+    window.requestAnimationFrame(() => desktopInputRef.current?.focus());
+  };
+
   return (
     <>
-      <aside
-        className={`fixed bottom-0 right-0 top-[81px] z-40 hidden border-l border-white/10 bg-zinc-950/95 shadow-[-20px_0_55px_rgba(0,0,0,0.28)] backdrop-blur-xl md:flex ${isDesktopResizing ? "select-none" : ""}`}
-        style={{ width: `${desktopPanelWidth}px` }}
-      >
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Ajustar el ancho del chat"
-          aria-valuemin={DESKTOP_CHAT_MIN_WIDTH}
-          aria-valuemax={DESKTOP_CHAT_MAX_WIDTH}
-          aria-valuenow={desktopPanelWidth}
-          tabIndex={0}
-          onPointerDown={beginDesktopResize}
-          onPointerMove={updateDesktopResize}
-          onPointerUp={endDesktopResize}
-          onPointerCancel={endDesktopResize}
-          onKeyDown={resizeDesktopWithKeyboard}
-          className="group absolute inset-y-0 left-0 z-20 hidden w-3 -translate-x-1/2 cursor-ew-resize touch-none md:block"
+      {isDesktopVisible ? (
+        <aside
+          className={`fixed bottom-0 right-0 top-[81px] z-40 hidden border-l border-white/10 bg-zinc-950/95 backdrop-blur-xl md:flex ${isDesktopResizing ? "select-none" : ""}`}
+          style={{ width: `${desktopPanelWidth}px` }}
         >
-          <span
-            aria-hidden="true"
-            className={`absolute inset-y-0 left-1/2 w-px transition-colors ${isDesktopResizing ? "bg-cyan-300/70" : "bg-transparent group-hover:bg-cyan-300/50 group-focus-visible:bg-cyan-300/70"}`}
-          />
-        </div>
-        {isHistoryOpen ? (
-          <ChatHistoryPanel
-            conversations={conversations}
-            activeConversationId={conversationId}
-            mode={conversationMode}
-            isLoading={isHistoryLoading}
-            error={historyError}
-            canSave={canSaveChats}
-            onClose={() => setIsHistoryOpen(false)}
-            onSelect={(id) => void selectConversation(id)}
-            onNew={startConversation}
-            onRename={renameConversation}
-            onDelete={deleteConversation}
-          />
-        ) : <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} inputRef={desktopInputRef} />}
-      </aside>
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Ajustar el ancho del chat"
+            aria-valuemin={DESKTOP_CHAT_MIN_WIDTH}
+            aria-valuemax={DESKTOP_CHAT_MAX_WIDTH}
+            aria-valuenow={desktopPanelWidth}
+            tabIndex={0}
+            onPointerDown={beginDesktopResize}
+            onPointerMove={updateDesktopResize}
+            onPointerUp={endDesktopResize}
+            onPointerCancel={endDesktopResize}
+            onKeyDown={resizeDesktopWithKeyboard}
+            className="group absolute inset-y-0 left-0 z-20 hidden w-3 -translate-x-1/2 cursor-ew-resize touch-none md:block"
+          >
+            <span
+              aria-hidden="true"
+              className={`absolute inset-y-0 left-1/2 w-px transition-colors ${isDesktopResizing ? "bg-cyan-300/70" : "bg-transparent group-hover:bg-cyan-300/50 group-focus-visible:bg-cyan-300/70"}`}
+            />
+          </div>
+          {isHistoryOpen ? (
+            <ChatHistoryPanel
+              conversations={conversations}
+              activeConversationId={conversationId}
+              mode={conversationMode}
+              isLoading={isHistoryLoading}
+              error={historyError}
+              canSave={canSaveChats}
+              onClose={() => setIsHistoryOpen(false)}
+              onSelect={(id) => void selectConversation(id)}
+              onNew={startConversation}
+              onRename={renameConversation}
+              onDelete={deleteConversation}
+            />
+          ) : <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} inputRef={desktopInputRef} onHideDesktop={hideDesktopChat} />}
+        </aside>
+      ) : (
+        <button
+          ref={desktopShowButtonRef}
+          type="button"
+          onClick={showDesktopChat}
+          aria-label="Mostrar CoreX AI en escritorio"
+          className="group fixed right-0 top-24 z-40 hidden h-12 items-center gap-2 rounded-l-xl border border-r-0 border-cyan-200/25 bg-zinc-950/95 py-1.5 pl-2 pr-3 text-cyan-100 shadow-[-8px_8px_28px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] hover:border-cyan-200/45 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 md:inline-flex"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200/20 bg-cyan-300/10 text-cyan-100 transition-colors group-hover:bg-cyan-300/15">
+            <Bot aria-hidden="true" size={17} strokeWidth={1.8} />
+          </span>
+          <span className="font-display text-[11px] font-bold tracking-wide text-white">CoreX AI</span>
+        </button>
+      )}
 
       <div className="md:hidden">
         {mobileMode === "collapsed" && isMobileToastVisible && mobileToastPreview && (
