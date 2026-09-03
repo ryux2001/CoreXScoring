@@ -34,8 +34,8 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/70 backdrop-blur-md">
-      <nav aria-label="Navegación principal" className="relative mx-auto px-4 py-1.5 sm:px-6 sm:py-2 lg:px-8">
-        <div className="flex h-14 items-center justify-between gap-2 sm:hidden">
+      <nav aria-label="Navegación principal" className="relative mx-auto px-4 py-1.5 sm:px-6 sm:py-2 xl:px-8">
+        <div className="flex h-14 items-center justify-between gap-2 xl:hidden">
           <Link
             href="/"
             className="font-display min-w-0 truncate whitespace-nowrap text-xl font-bold tracking-tight text-white"
@@ -64,16 +64,16 @@ export default function Navbar() {
         </div>
 
         {isMobileSearchOpen && (
-          <div id="mobile-search" className="absolute inset-x-4 top-full z-50 mt-2 sm:hidden">
+          <div id="mobile-search" className="absolute inset-x-4 top-full z-50 mt-2 xl:hidden">
             <SearchBar autoFocus showCloseButton onClose={closeMobileSearch} />
           </div>
         )}
 
-        <div className="hidden h-16 items-center justify-between gap-4 sm:flex">
+        <div className="hidden h-16 items-center justify-between gap-4 xl:flex">
           <div className="flex min-w-0 flex-1 items-center gap-4">
             <Link
               href="/"
-              className="font-display whitespace-nowrap text-xl font-bold tracking-tight text-white sm:text-2xl"
+              className="font-display whitespace-nowrap text-xl font-bold tracking-tight text-white xl:text-2xl"
             >
               CorexScoring
             </Link>
@@ -83,8 +83,8 @@ export default function Navbar() {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <div className="hidden lg:flex lg:items-center lg:gap-3 me-5">
+          <div className="flex shrink-0 items-center gap-2 xl:gap-3">
+            <div className="hidden me-5 xl:flex xl:items-center xl:gap-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
@@ -103,7 +103,7 @@ export default function Navbar() {
 
             <CompareCartDropdown />
 
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
               <AuthStatus />
             </div>
 

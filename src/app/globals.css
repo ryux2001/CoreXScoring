@@ -162,7 +162,8 @@ body {
 }
 
 .ai-chat-input {
-  field-sizing: content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .ai-thinking-wave > span {

@@ -140,7 +140,7 @@ function getPageStatusLabel(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
   const root = segments[0];
   const identifier = root === "vault" ? segments[2] : segments[1];
-  if (root === "catalog" && identifier) return `Componente: ${humanizePageIdentifier(identifier)}`;
+  if (root === "catalog" && identifier) return `${humanizePageIdentifier(identifier)}`;
   if (root === "combos" && identifier) return `Combo: ${humanizePageIdentifier(identifier)}`;
   if (root === "builds" && identifier) return `Build: ${humanizePageIdentifier(identifier)}`;
   if (root === "vault" && segments[1] === "combos-created" && identifier) return `Combo creado: ${humanizePageIdentifier(identifier)}`;
@@ -207,6 +207,7 @@ interface ChatPanelProps {
   isQuotaOpen: boolean;
   onToggleQuota: () => void;
   onRefreshQuota: () => void;
+  pageStatusMaxWidth?: number;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   expandButtonRef?: RefObject<HTMLButtonElement | null>;
 }
@@ -244,6 +245,7 @@ function ChatPanel({
   isQuotaOpen,
   onToggleQuota,
   onRefreshQuota,
+  pageStatusMaxWidth,
   inputRef,
   expandButtonRef,
 }: ChatPanelProps) {
@@ -277,7 +279,12 @@ function ChatPanel({
                     ? "Groq · principal"
                     : "Chat asistente"}
             </p>
-            <p className="font-technical max-w-[15rem] truncate text-[10px] font-semibold text-cyan-200/75" title={pageStatus} aria-label={`Contexto actual: ${pageStatus}`}>
+            <p
+              className="font-technical max-w-[13rem] truncate text-[10px] font-semibold text-cyan-200/75"
+              style={pageStatusMaxWidth ? { maxWidth: `${pageStatusMaxWidth}px` } : undefined}
+              title={pageStatus}
+              aria-label={`Contexto actual: ${pageStatus}`}
+            >
               {pageStatus}
             </p>
           </div>
@@ -502,7 +509,7 @@ function ChatPanel({
             rows={1}
             maxLength={4_000}
             placeholder="Escribe…"
-            className="ai-chat-input font-technical max-h-28 min-h-9 flex-1 resize-none overflow-y-hidden bg-transparent py-1 text-sm leading-5 text-zinc-100 outline-none placeholder:text-zinc-600"
+            className="ai-chat-input font-technical max-h-28 min-h-9 min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent py-2 text-sm leading-5 text-zinc-100 outline-none placeholder:text-zinc-600"
           />
           {isSending ? (
             <button
@@ -609,7 +616,7 @@ export default function AISidebar() {
     ? getMobileToastPreview(lastAssistantContent)
     : null;
   const pageStatus = pathname.startsWith("/catalog/") && catalogPriceEvaluation
-    ? `${getPageStatusLabel(pathname)} · Evaluado: ${catalogPriceEvaluation.price}${catalogPriceEvaluation.currency === "EUR" ? "€" : "$"} · C/P: ${catalogPriceEvaluation.qualityPriceScore.toFixed(2)}`
+    ? `${getPageStatusLabel(pathname)} | Precio: ${catalogPriceEvaluation.price}${catalogPriceEvaluation.currency === "EUR" ? "€" : "$"} · C/P: ${catalogPriceEvaluation.qualityPriceScore.toFixed(2)}`
     : getPageStatusLabel(pathname);
 
   const applyComparisonAction = (action: ComparisonUiAction): string | null => {
@@ -1153,6 +1160,7 @@ export default function AISidebar() {
     setIsDesktopVisible(true);
     window.requestAnimationFrame(() => desktopInputRef.current?.focus());
   };
+  const desktopPageStatusMaxWidth = Math.min(360, Math.max(208, desktopPanelWidth - 212));
 
   return (
     <>
@@ -1195,7 +1203,7 @@ export default function AISidebar() {
               onRename={renameConversation}
               onDelete={deleteConversation}
             />
-          ) : <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} inputRef={desktopInputRef} onHideDesktop={hideDesktopChat} />}
+          ) : <ChatPanel id="desktop-ai-chat" {...sharedPanelProps} inputRef={desktopInputRef} pageStatusMaxWidth={desktopPageStatusMaxWidth} onHideDesktop={hideDesktopChat} />}
         </aside>
       ) : (
         <button

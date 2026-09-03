@@ -94,7 +94,7 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
       className={`${
         isMobile
           ? "font-display flex min-h-11 w-full items-center justify-center rounded-xl bg-white px-3 text-center text-sm font-bold text-zinc-950 hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          : "font-display hidden rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-black hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 lg:block"
+          : "font-display hidden rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-black hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 xl:block"
       } transition-colors cursor-pointer`}
     >
       Iniciar sesión

@@ -85,7 +85,7 @@ export default function MobileMenu({ links, onOpen }: Props) {
 
   return (
     <>
-      <div className="relative z-50 lg:hidden">
+      <div className="relative z-50 xl:hidden">
         <button
           ref={buttonRef}
           type="button"
