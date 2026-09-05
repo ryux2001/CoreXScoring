@@ -123,6 +123,20 @@ body {
   padding-right: 0;
 }
 
+@media (min-width: 1024px) {
+  .catalog-detail-right {
+    container-name: catalog-detail-right;
+    container-type: inline-size;
+  }
+
+  @container catalog-detail-right (max-width: 980px) {
+    .catalog-detail-right > .catalog-detail-price,
+    .catalog-detail-right > .catalog-detail-notes {
+      grid-column: span 12 / span 12;
+    }
+  }
+}
+
 @media (min-width: 1280px) {
   .ai-sidebar-offset {
     padding-right: var(--ai-sidebar-width, 24rem);

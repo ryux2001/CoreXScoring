@@ -52,16 +52,16 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
           </div>
 
           {/* COLUMNA DERECHA (Contenedor de las Islas) */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:col-span-9">
+          <div className="catalog-detail-right grid grid-cols-1 gap-6 lg:col-span-9 lg:grid-cols-12">
             
             {/* --- SECCIÓN PRECIO (Siempre visible en su cuadrante) --- */}
-            <div className="lg:col-span-4">
+            <div className="catalog-detail-price lg:col-span-4">
               <PriceCustomCard product={product} currency={currency} />
             </div>
 
             {/* --- VISTA ESCRITORIO (hidden lg:block) --- */}
             {/* Notas (Fila 1) */}
-            <div className="hidden lg:block lg:col-span-8">
+            <div className="catalog-detail-notes hidden lg:col-span-8 lg:block">
                <NotesCard product={product} currency={currency} />
             </div>
 
