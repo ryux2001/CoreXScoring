@@ -3,6 +3,7 @@ import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import ComboCurrencyToggle from '@/app/(main)/combos/components/ComboCurrencyToggle';
 import ComboFilterBar from '@/app/(main)/combos/components/ComboFilterBar';
 import ComboPagination from '@/app/(main)/combos/components/ComboPagination';
+import ComboCategoryCarousel from '@/app/(main)/combos/components/ComboCategoryCarousel';
 import BuildCard from './components/BuildCard';
 import CategoryAccordion from '@/ui/catalog/CategoryAccordion';
 import {
@@ -101,15 +102,18 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
                 key={categoryName}
                 title={categoryName}
                 itemCount={categoryBuilds.length}
+                contentClassName="mt-6"
               >
-                {categoryBuilds.map((build) => (
-                  <BuildCard
-                    key={build.id}
-                    build={build}
-                    currency={currency}
-                    wholeCardClickable
-                  />
-                ))}
+                <ComboCategoryCarousel>
+                  {categoryBuilds.map((build) => (
+                    <BuildCard
+                      key={build.id}
+                      build={build}
+                      currency={currency}
+                      wholeCardClickable
+                    />
+                  ))}
+                </ComboCategoryCarousel>
               </CategoryAccordion>
             ))}
           </div>
