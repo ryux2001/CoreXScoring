@@ -25,7 +25,7 @@ export default function BenchmarksCard({ product }: BenchmarksCardProps) {
           >
             <Info size={11} strokeWidth={3} />
           </button>
-          <div className="invisible absolute right-0 top-9 z-[10000] w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+          <div className="invisible absolute right-0 top-9 z-40 w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">Datos Técnicos Crudos</div>
             <p>Resultados extraídos directamente del hardware. Las barras reflejan la posición del componente frente al techo teórico actual de tu configuración.</p>
           </div>
