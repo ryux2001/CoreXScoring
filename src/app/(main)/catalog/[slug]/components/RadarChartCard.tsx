@@ -57,26 +57,32 @@ const getIconForCategory = (category: string) => {
 // 2. FUNCIÓN DE COLORES DINÁMICOS
 const getColorStyles = (score: number) => {
   if (score >= 9) return {
+    border: 'border-purple-500/50',
+    bg: 'bg-purple-950/30',
+    text: 'text-purple-300',
+    icon: 'text-purple-300'
+  };
+  if (score >= 7) return {
     border: 'border-blue-500/50',
-    bg: 'bg-blue-950/95',
+    bg: 'bg-blue-950/30',
     text: 'text-blue-400',
     icon: 'text-blue-400'
   };
-  if (score >= 7) return {
+  if (score >= 5) return {
     border: 'border-emerald-500/50',
-    bg: 'bg-emerald-950/95',
+    bg: 'bg-emerald-950/30',
     text: 'text-emerald-400',
     icon: 'text-emerald-400'
   };
-  if (score >= 5) return {
+  if (score >= 3) return {
     border: 'border-yellow-500/50',
-    bg: 'bg-yellow-950/95',
+    bg: 'bg-yellow-950/30',
     text: 'text-yellow-400',
     icon: 'text-yellow-400'
   };
   return {
     border: 'border-red-500/50',
-    bg: 'bg-red-950/95',
+    bg: 'bg-red-950/30',
     text: 'text-red-400',
     icon: 'text-red-400'
   };
