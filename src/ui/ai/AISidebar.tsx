@@ -1166,7 +1166,7 @@ export default function AISidebar() {
     <>
       {isDesktopVisible ? (
         <aside
-          className={`fixed bottom-0 right-0 top-[81px] z-40 hidden border-l border-white/10 bg-zinc-950/95 backdrop-blur-xl md:flex ${isDesktopResizing ? "select-none" : ""}`}
+          className={`fixed bottom-0 right-0 top-[81px] z-40 hidden border-l border-white/10 bg-zinc-950/95 backdrop-blur-xl xl:flex ${isDesktopResizing ? "select-none" : ""}`}
           style={{ width: `${desktopPanelWidth}px` }}
         >
           <div
@@ -1182,7 +1182,7 @@ export default function AISidebar() {
             onPointerUp={endDesktopResize}
             onPointerCancel={endDesktopResize}
             onKeyDown={resizeDesktopWithKeyboard}
-            className="group absolute inset-y-0 left-0 z-20 hidden w-3 -translate-x-1/2 cursor-ew-resize touch-none md:block"
+            className="group absolute inset-y-0 left-0 z-20 hidden w-3 -translate-x-1/2 cursor-ew-resize touch-none xl:block"
           >
             <span
               aria-hidden="true"
@@ -1211,7 +1211,7 @@ export default function AISidebar() {
           type="button"
           onClick={showDesktopChat}
           aria-label="Mostrar CoreX AI en escritorio"
-          className="group fixed right-0 top-24 z-40 hidden h-12 items-center gap-2 rounded-l-xl border border-r-0 border-cyan-200/25 bg-zinc-950/95 py-1.5 pl-2 pr-3 text-cyan-100 shadow-[-8px_8px_28px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] hover:border-cyan-200/45 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 md:inline-flex"
+          className="group fixed right-0 top-24 z-40 hidden h-12 items-center gap-2 rounded-l-xl border border-r-0 border-cyan-200/25 bg-zinc-950/95 py-1.5 pl-2 pr-3 text-cyan-100 shadow-[-8px_8px_28px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] hover:border-cyan-200/45 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 xl:inline-flex"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200/20 bg-cyan-300/10 text-cyan-100 transition-colors group-hover:bg-cyan-300/15">
             <Bot aria-hidden="true" size={17} strokeWidth={1.8} />
@@ -1220,7 +1220,7 @@ export default function AISidebar() {
         </button>
       )}
 
-      <div className="md:hidden">
+      <div className="xl:hidden">
         {mobileMode === "collapsed" && isMobileToastVisible && mobileToastPreview && (
           <button
             type="button"
