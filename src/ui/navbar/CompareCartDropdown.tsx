@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, X, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCompareStore } from "@/store/useCompareStore";
@@ -11,6 +11,7 @@ interface CompareCartDropdownProps {
 
 export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps) {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const items = useCompareStore((state) => state.items);
   const componentType = useCompareStore((state) => state.componentType);
   const removeItem = useCompareStore((state) => state.removeItem);
@@ -34,8 +35,22 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isCartOpen]);
 
+  useEffect(() => {
+    if (!isCartOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !containerRef.current?.contains(target)) {
+        setIsCartOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isCartOpen]);
+
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       {/* Botón de la balanza - Siempre visible (flex) y protegido contra deformaciones (shrink-0) */}
       <button
         type="button"

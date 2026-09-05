@@ -189,7 +189,7 @@ export default function ComboCard({
                   {part.item.name}
                 </span>
               </div>
-              <span className="text-xs font-bold text-zinc-400">
+              <span className="font-display text-xs font-bold text-zinc-400">
                 {symbol}{part.price.toFixed(0)}
               </span>
             </div>
@@ -204,7 +204,7 @@ export default function ComboCard({
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
               Total
             </span>
-            <span className="text-lg font-black text-white mt-0.5">
+            <span className="font-display text-lg font-black text-white mt-0.5">
               {symbol}{totalPrice.toFixed(2)}
             </span>
           </div>

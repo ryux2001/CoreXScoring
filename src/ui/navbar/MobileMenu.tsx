@@ -18,6 +18,7 @@ export default function MobileMenu({ links, onOpen }: Props) {
   const pathname = usePathname();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollPositionRef = useRef({ x: 0, y: 0 });
 
@@ -42,6 +43,23 @@ export default function MobileMenu({ links, onOpen }: Props) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeMenu, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      const clickedTrigger = buttonRef.current?.contains(target);
+      const clickedNavigation = navigationRef.current?.contains(target);
+
+      if (!clickedTrigger && !clickedNavigation) closeMenu();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [closeMenu, isOpen]);
 
   useEffect(() => () => {
@@ -110,6 +128,7 @@ export default function MobileMenu({ links, onOpen }: Props) {
               onClick={closeMenu}
             />
             <nav
+              ref={navigationRef}
               id="mobile-navigation"
               aria-label="Navegación móvil"
               aria-hidden={!isOpen}
