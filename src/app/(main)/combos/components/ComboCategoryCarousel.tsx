@@ -107,7 +107,7 @@ export default function ComboCategoryCarousel({ children }: ComboCategoryCarouse
           {cards.map((card, index) => (
             <div
               key={index}
-              className="min-w-0 shrink-0 snap-start basis-full [&>*]:h-full sm:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-4.5rem)/4)]"
+              className="min-w-0 shrink-0 snap-start basis-full [&>*]:h-full sm:min-w-72 sm:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-4.5rem)/4)]"
             >
               {card}
             </div>

@@ -158,7 +158,7 @@ export default function ComboCard({
 
   return (
     <div
-      className={`flex w-full flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition-all duration-300 hover:border-zinc-800 hover:bg-zinc-900/50 sm:p-5 ${wholeCardClickable ? 'cursor-pointer' : ''}`}
+      className={`flex min-w-0 w-full flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-5 transition-all duration-300 hover:border-zinc-800 hover:bg-zinc-900/50 sm:p-5 ${wholeCardClickable ? 'cursor-pointer' : ''}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
       role={wholeCardClickable ? 'link' : undefined}
