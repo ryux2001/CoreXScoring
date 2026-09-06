@@ -88,7 +88,7 @@ export default function ComboMainCard({
             <div key={part.key} className="flex flex-col gap-1.5 w-full min-w-0">
               
               {/* Etiqueta del Componente */}
-              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 pl-1">
+              <span className="text-[10px] font-display font-black uppercase tracking-[0.15em] text-zinc-500 pl-1">
                 {part.role}
               </span>
 
@@ -121,7 +121,7 @@ export default function ComboMainCard({
                         {part.item.brand}
                       </span>
                       <span 
-                        className="truncate text-xs font-bold text-zinc-200"
+                        className="truncate text-xs font-display font-bold text-zinc-200"
                         title={part.item.name}
                       >
                         {part.item.name}
@@ -131,7 +131,7 @@ export default function ComboMainCard({
 
                   {/* Precio e indicador de calidad/precio */}
                   <div className="flex shrink-0 items-center gap-3 pl-1 text-right sm:pl-2">
-                    <span className="text-xs sm:text-sm font-black text-white tracking-tight whitespace-nowrap">
+                    <span className="text-xs sm:text-sm font-black font-display text-white tracking-tight whitespace-nowrap">
                       {priceFormatted}
                     </span>
                     <span

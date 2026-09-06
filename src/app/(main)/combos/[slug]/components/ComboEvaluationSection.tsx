@@ -18,13 +18,13 @@ export default function ComboEvaluationSection({ combo, currency }: ComboEvaluat
 
   return (
     <>
-      {/* 💻 VISTA ESCRITORIO: Ambos componentes visibles en su respectivo grid */}
-      <div className="hidden lg:block lg:col-span-3">
-        <RadarChartCardCombo combo={combo} currency={currency} />
+      {/* 💻 VISTA ESCRITORIO: Notas arriba y radar junto a las métricas */}
+      <div className="hidden lg:col-span-12 lg:row-start-1 lg:block">
+        <ComboNotesCard combo={combo} currency={currency} />
       </div>
 
-      <div className="hidden lg:block lg:col-span-9">
-        <ComboNotesCard combo={combo} currency={currency} />
+      <div className="hidden lg:col-span-6 lg:col-start-7 lg:row-start-2 lg:block">
+        <RadarChartCardCombo combo={combo} currency={currency} />
       </div>
 
       {/* 📱 VISTA MÓVIL: Se muestra solo una tarjeta a la vez con el botón de intercambio */}

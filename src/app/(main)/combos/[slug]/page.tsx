@@ -59,16 +59,16 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
           </div>
 
           {/* COLUMNA DERECHA */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:col-span-8">
+          <div className="grid grid-cols-1 gap-6 lg:col-span-8 lg:grid-cols-12">
 
-            {/* Sección de Evaluación (Radar y Notas con alternancia en móvil) */}
+            {/* Sección de Evaluación (Notas y Radar en desktop, alternancia en móvil) */}
             <ComboEvaluationSection combo={combo} currency={currency} />
 
-            <div className="lg:col-span-6">
+            <div className="lg:col-span-6 lg:col-start-1 lg:row-start-2">
               <Metrics combo={combo} />
             </div>
 
-            <div className="lg:col-span-6">
+            <div className="lg:col-span-12 lg:col-start-1 lg:row-start-3">
               <FpsCard combo={combo} games={games || []} />
             </div>
 

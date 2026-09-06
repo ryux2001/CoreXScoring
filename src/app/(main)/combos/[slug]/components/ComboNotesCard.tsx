@@ -138,7 +138,7 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
       </div>
 
       {/* CUERPO: GRID DINÁMICO (6 Cajas simétricas) */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-4">
         {allNotes.map((note, idx) => {
           const score = note.score || 0;
           const styles = getColorStyles(score);
@@ -150,7 +150,7 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
             >
               {/* Título de la nota */}
               <div className="flex h-6 items-center justify-center text-center">
-                <p className={`text-[10px] font-black uppercase tracking-widest leading-tight ${styles.label}`}>
+                <p className={`text-[8px] font-black uppercase tracking-widest leading-tight ${styles.label}`}>
                   {note.label}
                 </p>
               </div>
