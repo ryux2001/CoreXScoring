@@ -102,8 +102,8 @@ export default function ComboMainCard({
                   {/* Bloque Nombre + Icono */}
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 overflow-hidden">
                     
-                    {/* Icono (Oculto en móvil, visible en sm+) */}
-                    <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950 border border-zinc-900">
+                    {/* Icono visible también en móvil, con tamaño reducido */}
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-900 bg-zinc-950 sm:h-10 sm:w-10 sm:rounded-xl">
                       {iconSrc && (
                         <Image
                           src={iconSrc}
