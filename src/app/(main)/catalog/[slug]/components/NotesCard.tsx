@@ -108,10 +108,10 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
           
           <div className="hidden sm:flex items-center gap-2 whitespace-nowrap bg-zinc-900/30 px-3 py-1 rounded-full border border-zinc-900/50">
             <span className="text-[11px] font-black uppercase tracking-[0.1em] text-zinc-600">Precio Evaluado:</span>
-            <span className="text-xs font-black text-zinc-400">
+            <span className="text-xs font-display font-black text-zinc-400">
                {isMounted ? formatPrice(evaluatedPrice) : '---'}
             </span>
-            <span className="text-[12px] font-bold text-zinc-600 uppercase ml-1">{currency}</span>
+            <span className="text-[12px] font-bold text-zinc-600 uppercase ml-1 mt-0.5">{currency}</span>
           </div>
         </div>
         
@@ -153,7 +153,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
       </div>
 
       {/* CUERPO: GRID DINÁMICO */}
-      <div className="grid grid-cols-3 gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-4 lg:gap-2 lg:grid-cols-6">
         {categories.map((cat, idx) => {
           // Obtenemos el número real desde el objeto baseNotes usando el nombre como llave
           const score = baseNotes[cat] || 0;
@@ -166,7 +166,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
             >
               {/* Título */}
               <div className="flex h-6 items-center justify-center text-center">
-                <p className={`text-[10px] font-black uppercase tracking-widest leading-tight ${styles.label}`}>
+                <p className={`text-[8px] font-black uppercase tracking-widest leading-tight ${styles.label}`}>
                   {cat}
                 </p>
               </div>

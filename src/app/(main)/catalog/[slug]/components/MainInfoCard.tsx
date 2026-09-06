@@ -113,18 +113,18 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
 
           <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3">
             <div className="rounded-lg border border-zinc-900 bg-black p-2 lg:p-4 lg:rounded-xl">
-              <span className="text-[10px] font-black uppercase text-zinc-600 block tracking-widest lg:mb-1">
-                {resolvedPrice.source === 'current' ? 'Precio actual' : 'MSRP'}
+              <span className="text-[10px] font-display font-black uppercase text-zinc-600 block tracking-widest lg:mb-1">
+                {resolvedPrice.source === 'current' ? 'Precio' : 'MSRP'}
               </span>
-              <div className="text-sm font-black text-white lg:text-xl">
+              <div className="text-sm font-display font-black text-white lg:text-xl">
                 {!isEUR && symbol}{Number(initialPrice).toLocaleString('es-ES')}{isEUR && symbol}
               </div>
             </div>
             
             {/* PRECIO EVALUADO DINÁMICO */}
             <div className="rounded-lg border border-zinc-800 border-dashed bg-zinc-900/10 p-2 lg:p-4 lg:rounded-xl">
-              <span className="text-[10px] font-black uppercase text-zinc-400 block mb-1 tracking-widest">Evaluado</span>
-              <div className="text-sm font-black text-white lg:text-xl">
+              <span className="text-[10px] font-display font-black uppercase text-zinc-400 block mb-1 tracking-widest">Evaluado</span>
+              <div className="text-sm font-display font-black text-white lg:text-xl">
                 {!isEUR && symbol}{Number(evaluatedPrice).toLocaleString('es-ES')}{isEUR && symbol}
               </div>
             </div>
