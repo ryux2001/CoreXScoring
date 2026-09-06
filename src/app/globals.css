@@ -131,8 +131,24 @@ body {
 
   @container catalog-detail-right (max-width: 980px) {
     .catalog-detail-right > .catalog-detail-price,
-    .catalog-detail-right > .catalog-detail-notes {
+    .catalog-detail-right > .catalog-detail-notes,
+    .catalog-detail-right > .catalog-detail-fps,
+    .catalog-detail-right > .catalog-detail-description {
       grid-column: span 12 / span 12;
+    }
+
+    .catalog-price-form-desktop {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .catalog-price-form-desktop > :not(:last-child) {
+      margin-top: 0;
+    }
+
+    .catalog-price-form-desktop > * {
+      min-width: 0;
     }
   }
 }

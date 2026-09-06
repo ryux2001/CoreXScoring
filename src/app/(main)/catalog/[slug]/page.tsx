@@ -85,13 +85,13 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
             </div>
 
             {isGpu && (
-              <div className="lg:col-span-7">
+              <div className="catalog-detail-fps lg:col-span-7">
                 <GpuFpsCard product={product} games={games} />
               </div>
             )}
 
             {/* --- SECCIÓN DESCRIPCIÓN (Última isla en móvil) --- */}
-            <div className={isGpu ? "lg:col-span-5" : "lg:col-span-12"}>
+            <div className={`catalog-detail-description ${isGpu ? "lg:col-span-5" : "lg:col-span-12"}`}>
               <DescriptionCard product={product} />
             </div>
 

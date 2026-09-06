@@ -41,6 +41,7 @@ interface PriceFormProps {
   isValidValueProfile: (value: unknown) => boolean;
   onValueProfileChange: (value: string) => void;
   profileSelectId: string;
+  className?: string;
 }
 
 export default function PriceCustomCard({
@@ -196,10 +197,11 @@ export default function PriceCustomCard({
           isValueProfileComponent={isValueProfileComponent}
           valueProfile={valueProfile}
           profileOptions={profileOptions}
-          isValidValueProfile={isGpu ? isGpuValueProfile : isCpuValueProfile}
-          onValueProfileChange={handleValueProfileChange}
-          profileSelectId="value-profile-desktop"
-        />
+           isValidValueProfile={isGpu ? isGpuValueProfile : isCpuValueProfile}
+           onValueProfileChange={handleValueProfileChange}
+           profileSelectId="value-profile-desktop"
+           className="catalog-price-form-desktop"
+         />
 
         <div className="pt-3 border-t border-zinc-900/50">
           <p className="text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
@@ -293,8 +295,9 @@ const PriceForm = ({
   isValidValueProfile,
   onValueProfileChange,
   profileSelectId,
+  className,
 }: PriceFormProps) => (
-  <div className="space-y-4">
+  <div className={`space-y-4 ${className ?? ""}`}>
     {/* PRECIOS ALTERNATIVOS */}
     <div className="space-y-1.5">
       <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
@@ -361,15 +364,15 @@ const PriceForm = ({
             <ChevronDown size={14} />
           </div>
         </div>
-        <p id={`${profileSelectId}-description`} className="px-1 text-[10px] leading-relaxed text-zinc-500">
+        {/* <p id={`${profileSelectId}-description`} className="px-1 text-[10px] leading-relaxed text-zinc-500">
           Cambia qué tipo de rendimiento pesa más en Calidad/Precio.
-        </p>
+        </p> */}
       </div>
     )}
 
     {/* PRECIO PERSONALIZADO */}
     <div className="space-y-1.5">
-      <label className="text-[8px] font-black uppercase tracking-widest text-zinc-700 ml-1">
+      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
         Precio Personalizado
       </label>
       <div className="flex gap-2">
