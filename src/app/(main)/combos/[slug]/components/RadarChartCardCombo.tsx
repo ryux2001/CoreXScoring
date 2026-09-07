@@ -28,26 +28,32 @@ const getIconForCategory = (category: string) => {
 
 const getColorStyles = (score: number) => {
   if (score >= 9) return {
+    border: 'border-purple-500/50',
+    bg: 'bg-purple-950/30',
+    text: 'text-purple-300',
+    icon: 'text-purple-300'
+  };
+  if (score >= 7) return {
     border: 'border-blue-500/50',
-    bg: 'bg-blue-950/95',
+    bg: 'bg-blue-950/30',
     text: 'text-blue-400',
     icon: 'text-blue-400'
   };
-  if (score >= 7) return {
+  if (score >= 5) return {
     border: 'border-emerald-500/50',
-    bg: 'bg-emerald-950/95',
+    bg: 'bg-emerald-950/30',
     text: 'text-emerald-400',
     icon: 'text-emerald-400'
   };
   if (score >= 3) return {
     border: 'border-yellow-500/50',
-    bg: 'bg-yellow-950/95',
+    bg: 'bg-yellow-950/30',
     text: 'text-yellow-400',
     icon: 'text-yellow-400'
   };
   return {
     border: 'border-red-500/50',
-    bg: 'bg-red-950/95',
+    bg: 'bg-red-950/30',
     text: 'text-red-400',
     icon: 'text-red-400'
   };
@@ -132,7 +138,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
   const activeStyles = activeTooltip ? getColorStyles(activeTooltip.score) : null;
 
   return (
-    <div className="relative z-[10001] flex flex-col justify-between overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/40 p-6 shadow-2xl backdrop-blur-sm h-full min-h-[250px] lg:pb-0">
+    <div className="relative z-40 flex flex-col justify-between overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/40 p-6 shadow-2xl backdrop-blur-sm h-full min-h-[250px] lg:pb-0">
       
       {/* Resplandor de fondo */}
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -160,11 +166,11 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
             <button
               type="button"
               aria-label="Información sobre el mapa de rendimiento"
-              className="relative z-[10000] flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
+              className="relative z-10 flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
             >
               <Info size={11} strokeWidth={3} />
             </button>
-            <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[12px]">Mapa de Rendimiento</div>
               <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
             </div>
@@ -180,7 +186,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
         
         {activeTooltip && activeStyles && (
           <div 
-            className="absolute z-[10000] pointer-events-none animate-in fade-in zoom-in-95 duration-200"
+            className="absolute z-40 pointer-events-none animate-in fade-in zoom-in-95 duration-200"
             style={{
               left: activeTooltip.x,
               top: activeTooltip.y,

@@ -121,7 +121,7 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
             >
               <Info size={11} strokeWidth={3} />
             </button>
-            <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">Criterios de Evaluación</div>
               <div className="mb-3 space-y-1 text-[12px]">
                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>

@@ -106,9 +106,9 @@ export default function FpsCard({
   ];
 
   return (
-    <div className="flex h-auto min-h-0 flex-col justify-normal overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:h-full lg:min-h-[400px] lg:justify-between lg:p-8">
+    <div className="flex h-auto min-h-0 flex-col justify-normal overflow-visible rounded-3xl border border-zinc-900 bg-zinc-950/50 p-6 shadow-xl lg:h-full lg:min-h-[320px] lg:justify-between lg:p-8">
       {/* HEADER: SELECTORES + INFO */}
-      <div className="relative mb-5 lg:mb-6">
+      <div className="relative mb-4 lg:mb-4">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 pr-10 lg:justify-start">
           <div className="mr-0 pr-8 lg:mr-1 lg:pr-0">
             <h2 className="text-[14px] font-extrabold uppercase tracking-[0.16em] text-zinc-100">
@@ -171,7 +171,7 @@ export default function FpsCard({
           >
             <Info size={11} strokeWidth={3} />
           </button>
-          <div className="invisible absolute right-0 top-9 z-[10000] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+          <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">
               Estimación de FPS
             </div>
