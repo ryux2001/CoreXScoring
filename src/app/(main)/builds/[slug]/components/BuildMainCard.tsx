@@ -85,7 +85,7 @@ export default function BuildMainCard({
                 aria-label={`Ver ${item.name} en el catálogo. Calidad precio: ${valueScore.toFixed(1)}`}
               >
                   <div className="flex min-w-0 items-center gap-2.5 overflow-hidden sm:gap-3">
-                    <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-900 bg-zinc-950 sm:flex">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-900 bg-zinc-950 sm:h-10 sm:w-10 sm:rounded-xl">
                       {iconSrc && (
                         <Image
                           src={iconSrc}
@@ -110,7 +110,7 @@ export default function BuildMainCard({
                   </div>
 
                   <div className="flex shrink-0 items-center gap-3 pl-1 text-right sm:pl-2">
-                    <span className="whitespace-nowrap text-xs font-black tracking-tight text-white sm:text-sm">
+                    <span className="whitespace-nowrap text-xs font-black font-display tracking-tight text-white sm:text-sm">
                       {priceFormatted}
                     </span>
                     <span
@@ -126,10 +126,10 @@ export default function BuildMainCard({
       </div>
 
       <div className="mt-6 flex items-end justify-between border-t border-zinc-900/80 pt-5">
-        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-500">
+        <span className="text-[9px] font-black font-display uppercase tracking-[0.15em] text-zinc-500">
           Precio total
         </span>
-        <span className="text-lg font-black text-white">
+        <span className="text-lg font-black font-display text-white">
           {isEUR ? `${totalPrice.toFixed(2)}${symbol}` : `${symbol}${totalPrice.toFixed(2)}`}
         </span>
       </div>

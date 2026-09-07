@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import BuildMainCard from './components/BuildMainCard';
 import MobileBuildIsland from './components/MobileBuildIsland';
-import BuildNotesCard from './components/BuildNotesCard';
+import BuildEvaluationSection from './components/BuildEvaluationSection';
 import Metrics from '@/app/(main)/combos/[slug]/components/Metrics';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
 
@@ -55,15 +55,13 @@ export default async function BuildDetailPage({
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:col-span-8 lg:grid-cols-12">
-            <div className="lg:col-span-12">
-              <BuildNotesCard build={build} currency={currency} />
-            </div>
+            <BuildEvaluationSection build={build} currency={currency} />
 
-            <div className="lg:col-span-6">
+            <div className="lg:col-span-6 lg:col-start-1 lg:row-start-2">
               <Metrics combo={build} />
             </div>
 
-            <div className="lg:col-span-6">
+            <div className="lg:col-span-12 lg:col-start-1 lg:row-start-3">
               <FpsCard combo={build} games={games || []} />
             </div>
           </div>
