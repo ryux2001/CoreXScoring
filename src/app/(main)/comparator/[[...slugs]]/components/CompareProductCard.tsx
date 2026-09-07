@@ -318,7 +318,7 @@ export default function CompareProductCard({
 
               <Link
                 href={`/catalog/${product.slug}?currency=${globalCurrency}`}
-                className="flex h-9 w-full flex-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900/20 py-2 text-center text-[10px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-[0.98] md:w-25"
+                className="flex h-9 w-full flex-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900/20 py-2 text-center text-[10px] font-black font-display uppercase text-zinc-400 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-[0.98] md:w-25"
               >
                 ver producto
               </Link>
@@ -329,9 +329,9 @@ export default function CompareProductCard({
 
       <div className={`flex flex-1 flex-col justify-between border-t border-zinc-900/50 ${notesSpacingClass}`}>
         <div className="text-left">
-          <div className={`${notesHeaderSpacingClass} border-b border-zinc-900/70 pb-3`}>
+          {/* <div className={`${notesHeaderSpacingClass} border-b border-zinc-900/70 pb-3`}>
             <h4 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-200">Notas</h4>
-          </div>
+          </div> */}
           <div className={`grid grid-cols-2 ${notesListGapClass} gap-x-3 pl-1`}>
             {masterCategories.map((category) => {
               const currentScore = Number(baseNotes[category] || 0);
@@ -439,7 +439,7 @@ function ProductPriceEditor({
   return (
     <div className="flex w-full max-w-[320px] flex-1 flex-col gap-3">
       <div className="space-y-1">
-        <label className="ml-0.5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+        <label className="ml-0.5 text-[10px] font-black uppercase tracking-wide text-zinc-500">
           Escriba un precio...
         </label>
         <div className="flex h-[36px] items-center gap-1">
@@ -449,12 +449,12 @@ function ProductPriceEditor({
               type="number"
               value={customPrice === 0 ? "" : customPrice}
               onChange={(event) => setCustomPrice(Number(event.target.value))}
-              className="h-[38px] w-full rounded-xl border border-zinc-900 bg-black/40 p-2 pr-6 pl-6 text-[10px] font-bold text-white outline-none transition-all focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="h-[38px] w-full rounded-xl border border-zinc-900 bg-black/40 p-2 pr-6 pl-6 text-[10px] font-bold font-display text-white outline-none transition-all focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
           <button
             onClick={() => onApply(customPrice)}
-            className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
+            className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[10px] font-black uppercase text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
           >
             aplicar
           </button>

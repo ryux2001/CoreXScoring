@@ -13,6 +13,8 @@ import EmptyState from './EmptyState';
 import SearchModal from './SearchModal';
 import CompareProductCard from './CompareProductCard';
 import CompareSpecsTable from './CompareSpecsTable';
+import ComparatorFpsIsland from './ComparatorFpsIsland';
+import type { GameData } from '@/lib/fpsCombos/types';
 import {
   applyBuildPriceOverrides,
   applyComboPriceOverrides,
@@ -31,6 +33,7 @@ import type {
 interface ComparatorClientProps {
   initialItems: CompareProduct[];
   globalCurrency: string;
+  games: GameData[];
 }
 
 function getCurrentPrice(
@@ -72,7 +75,7 @@ function getItemNotes(
   return getComponentNotes(item as unknown as Record<string, unknown>, priceUSD) || {};
 }
 
-export default function ComparatorClient({ initialItems, globalCurrency }: ComparatorClientProps) {
+export default function ComparatorClient({ initialItems, globalCurrency, games }: ComparatorClientProps) {
   const router = useRouter();
 
   const items = useCompareStore((state) => state.items);
@@ -320,6 +323,8 @@ export default function ComparatorClient({ initialItems, globalCurrency }: Compa
           )}
         </div>
       </div>
+
+      <ComparatorFpsIsland items={items} games={games} />
 
       <CompareSpecsTable items={items} />
 
