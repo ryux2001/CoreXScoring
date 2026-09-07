@@ -7,9 +7,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
 import { resolveProductPrice } from '@/lib/catalog/product-price';
 import { useAiVisiblePriceStore } from '@/store/useAiVisiblePriceStore';
-import BuildNotesCard from '@/app/(main)/builds/[slug]/components/BuildNotesCard';
+import BuildEvaluationSection from '@/app/(main)/builds/[slug]/components/BuildEvaluationSection';
 import FpsCard from '@/app/(main)/combos/[slug]/components/FpsCard';
 import Metrics from '@/app/(main)/combos/[slug]/components/Metrics';
+import type { Build } from '@/lib/scoringBuilds';
 
 type SlotKey = 'cpu' | 'gpu' | 'ram' | 'motherboard' | 'storage' | 'psu';
 type PriceMode = 'msrp' | 'custom';
@@ -447,9 +448,9 @@ export default function CreatedBuildWorkspace({
           <div className="grid grid-cols-1 gap-6 lg:col-span-8 lg:grid-cols-12">
             {isComplete ? (
               <>
-                <div className="lg:col-span-12"><BuildNotesCard build={draft} currency={currency} /></div>
-                <div className="lg:col-span-6"><Metrics combo={draft} /></div>
-                <div className="lg:col-span-6"><FpsCard combo={draft} games={games} /></div>
+                <BuildEvaluationSection build={draft as unknown as Build} currency={currency} />
+                <div className="lg:col-span-6 lg:col-start-1 lg:row-start-2"><Metrics combo={draft} /></div>
+                <div className="lg:col-span-12 lg:col-start-1 lg:row-start-3"><FpsCard combo={draft} games={games} /></div>
               </>
             ) : (
               <UnavailableAnalysis />
@@ -531,8 +532,8 @@ function CreatedBuildEditorCard({
           );
         })}
       </div>
-      <label className="mt-5 block"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Nombre de la build</span><input value={draft.title} onChange={(event) => onTitleChange(event.target.value)} placeholder="Escribe un nombre..." className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600" /></label>
-      <div className="mt-5 hidden items-center justify-between border-t border-zinc-900 pt-5 lg:flex"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio total</span><span className="mt-1 block text-lg font-black text-white">{symbol}{totalPrice.toFixed(2)}</span></div><div className="flex gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button><button type="button" onClick={onSave} disabled={isSaving} className="rounded-xl bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">{isSaving ? 'Guardando' : 'Guardar'}</button></div></div>
+      <label className="mt-5 block"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Nombre de la build</span><input value={draft.title} onChange={(event) => onTitleChange(event.target.value)} placeholder="Escribe un nombre..." className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600" /></label>
+      <div className="mt-5 hidden items-center justify-between border-t border-zinc-900 pt-5 lg:flex"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio total</span><span className="mt-1 block text-xl font-black font-display text-white">{symbol}{totalPrice.toFixed(2)}</span></div><div className="flex gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button><button type="button" onClick={onSave} disabled={isSaving} className="rounded-xl bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">{isSaving ? 'Guardando' : 'Guardar'}</button></div></div>
     </div>
   );
 }

@@ -409,10 +409,10 @@ export default function CreatedComboWorkspace({
             {isComplete ? (
               <>
                 <ComboEvaluationSection combo={draft} currency={currency} />
-                <div className="lg:col-span-6">
+                <div className="lg:col-span-6 lg:col-start-1 lg:row-start-2">
                   <Metrics combo={draft} />
                 </div>
-                <div className="lg:col-span-6">
+                <div className="lg:col-span-12 lg:col-start-1 lg:row-start-3">
                   <FpsCard combo={draft} games={games} />
                 </div>
               </>
@@ -526,14 +526,14 @@ function CreatedComboEditorCard({
           value={draft.title}
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder="Escribe un nombre..."
-          className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600"
+          className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600"
         />
       </label>
 
       <div className="mt-5 hidden items-center justify-between border-t border-zinc-900 pt-5 lg:flex">
         <div>
           <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio total</span>
-          <span className="mt-1 block text-lg font-black text-white">{symbol}{totalPrice.toFixed(2)}</span>
+          <span className="mt-1 block text-xl font-black font-display text-white">{symbol}{totalPrice.toFixed(2)}</span>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">
