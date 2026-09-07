@@ -36,6 +36,8 @@ interface ComparatorClientProps {
   games: GameData[];
 }
 
+type ScrollSource = 'comparison' | 'fps';
+
 function getCurrentPrice(
   item: CompareProduct,
   currency: string,
@@ -99,8 +101,63 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   const [buildPriceOverrides, setBuildPriceOverrides] = useState<
     Record<string | number, BuildPriceOverrides>
   >({});
+  const comparisonScrollRef = useRef<HTMLDivElement>(null);
+  const fpsScrollRef = useRef<HTMLDivElement>(null);
+  const scrollSyncFrameRef = useRef<number | null>(null);
+  const pendingScrollSourceRef = useRef<ScrollSource | null>(null);
+  const suppressedScrollRef = useRef<{ source: ScrollSource; scrollLeft: number } | null>(null);
   const hasHydratedInitialItems = useRef(false);
   const hasHydratedStoredProducts = useRef(false);
+
+  const syncComparisonScroll = (source: ScrollSource) => {
+    const sourceElement = source === 'comparison'
+      ? comparisonScrollRef.current
+      : fpsScrollRef.current;
+    const targetElement = source === 'comparison'
+      ? fpsScrollRef.current
+      : comparisonScrollRef.current;
+
+    if (!sourceElement || !targetElement) return;
+
+    const suppressedScroll = suppressedScrollRef.current;
+    if (suppressedScroll?.source === source) {
+      if (Math.abs(sourceElement.scrollLeft - suppressedScroll.scrollLeft) <= 1) {
+        suppressedScrollRef.current = null;
+        return;
+      }
+
+      suppressedScrollRef.current = null;
+    }
+
+    pendingScrollSourceRef.current = source;
+    if (scrollSyncFrameRef.current !== null) return;
+
+    scrollSyncFrameRef.current = window.requestAnimationFrame(() => {
+      scrollSyncFrameRef.current = null;
+
+      const pendingSource = pendingScrollSourceRef.current;
+      pendingScrollSourceRef.current = null;
+      if (!pendingSource) return;
+
+      const pendingSourceElement = pendingSource === 'comparison'
+        ? comparisonScrollRef.current
+        : fpsScrollRef.current;
+      const pendingTargetElement = pendingSource === 'comparison'
+        ? fpsScrollRef.current
+        : comparisonScrollRef.current;
+
+      if (!pendingSourceElement || !pendingTargetElement) return;
+
+      const nextScrollLeft = pendingSourceElement.scrollLeft;
+      if (Math.abs(pendingTargetElement.scrollLeft - nextScrollLeft) > 1) {
+        pendingTargetElement.scrollLeft = nextScrollLeft;
+        suppressedScrollRef.current = {
+          source: pendingSource === 'comparison' ? 'fps' : 'comparison',
+          scrollLeft: pendingTargetElement.scrollLeft,
+        };
+      }
+    });
+  };
 
   useEffect(() => {
     if (hasHydratedInitialItems.current || initialItems.length === 0) return;
@@ -269,6 +326,8 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
     <div className="flex flex-col items-center w-full px-0 md:px-4 py-8 animate-in fade-in duration-300">
       <div className={`w-full ${maxWidthClass} bg-zinc-950/50 border border-zinc-900 rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ease-out`}>
         <div
+          ref={comparisonScrollRef}
+          onScroll={() => syncComparisonScroll('comparison')}
           className="flex overflow-x-auto snap-x snap-mandatory divide-x divide-zinc-900 md:grid md:divide-y-0 md:divide-x md:divide-zinc-900 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}
         >
@@ -324,7 +383,12 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
         </div>
       </div>
 
-      <ComparatorFpsIsland items={items} games={games} />
+      <ComparatorFpsIsland
+        items={items}
+        games={games}
+        scrollContainerRef={fpsScrollRef}
+        onScroll={() => syncComparisonScroll('fps')}
+      />
 
       <CompareSpecsTable items={items} />
 

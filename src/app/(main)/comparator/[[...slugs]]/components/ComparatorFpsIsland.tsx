@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { RefObject } from "react";
 import { Gamepad2, Sliders } from "lucide-react";
 import { calculateComboFps } from "@/lib/fpsCombos";
 import type { GameData } from "@/lib/fpsCombos/types";
@@ -164,9 +165,16 @@ function hasGameData(item: ComparisonItem, game: GameData, kind: ComparisonKind)
 interface ComparatorFpsIslandProps {
   items: ComparisonItem[];
   games: GameData[];
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  onScroll: () => void;
 }
 
-export default function ComparatorFpsIsland({ items, games }: ComparatorFpsIslandProps) {
+export default function ComparatorFpsIsland({
+  items,
+  games,
+  scrollContainerRef,
+  onScroll,
+}: ComparatorFpsIslandProps) {
   const kind = getComparisonKind(items);
   const normalizedGames = useMemo(() => games.map(normalizeGame), [games]);
   const availableGames = useMemo(
@@ -186,25 +194,16 @@ export default function ComparatorFpsIsland({ items, games }: ComparatorFpsIslan
   const activeQuality = availablePresets.includes(selectedQuality)
     ? selectedQuality
     : availablePresets[0] ?? "medio";
+  const totalColumns = items.length < 3 ? items.length + 1 : 3;
 
   if (!kind) return null;
 
   return (
     <section
-      aria-labelledby="comparator-fps-title"
-      className="mt-8 w-full max-w-255 overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-xl"
+      aria-label="Comparativa de FPS"
+      className="mt-4 w-full max-w-255"
     >
-      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-zinc-900 px-5 py-5 md:px-6">
-        <div>
-          <h2 id="comparator-fps-title" className="text-[14px] font-extrabold uppercase tracking-[0.16em] text-zinc-100">
-            FPS en juegos
-          </h2>
-          <p className="mt-1 text-[10px] font-medium text-zinc-400">
-            {kind === "gpu" ? "Valores directos por tarjeta" : "Rendimiento estimado por resolución"}
-          </p>
-        </div>
-
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="flex items-center justify-center gap-2 rounded-3xl border border-zinc-900 bg-zinc-950/50 px-2 py-4 shadow-xl md:px-6 max-w-[350px]">
           <label className="flex min-w-0 items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
             <Gamepad2 size={12} className="shrink-0 text-zinc-400" />
             <span className="sr-only">Juego</span>
@@ -244,17 +243,18 @@ export default function ComparatorFpsIsland({ items, games }: ComparatorFpsIslan
               ))}
             </select>
           </label>
-        </div>
-      </header>
+      </div>
 
       {activeGame ? (
-        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mt-3 overflow-hidden rounded-3xl border border-zinc-900 bg-zinc-950/50 shadow-xl">
           <div
-            className="grid min-w-[620px] gap-3 p-4 md:min-w-0 md:grid-cols-3 md:gap-4 md:p-5"
-            style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+            ref={scrollContainerRef}
+            onScroll={onScroll}
+            className="flex overflow-x-auto snap-x snap-mandatory divide-x divide-zinc-900 md:grid md:grid-cols-3 md:divide-x md:divide-zinc-900 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}
           >
             {items.map((item) => (
-              <article key={item.id} className="min-w-0 rounded-2xl border border-zinc-900 bg-black/30 p-3 md:p-4">
+              <article key={item.id} className="w-1/2 min-w-0 shrink-0 snap-start bg-black/30 p-3 md:w-full md:p-4">
                 <h3 className="mb-3 truncate text-[10px] font-black uppercase tracking-[0.12em] text-zinc-400" title={String(item.name || item.title || "Sin nombre")}>
                   {String(item.name || item.title || "Sin nombre")}
                 </h3>
@@ -282,6 +282,12 @@ export default function ComparatorFpsIsland({ items, games }: ComparatorFpsIslan
                 </div>
               </article>
             ))}
+            {items.length < 3 && (
+              <div
+                aria-hidden="true"
+                className="w-1/2 min-w-0 shrink-0 snap-start bg-black/30 p-3 md:w-full md:p-4"
+              />
+            )}
           </div>
         </div>
       ) : (
