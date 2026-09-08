@@ -70,7 +70,7 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
   const { data: games } = await gamesPromise;
 
   return (
-    <main className="comparator-page font-technical flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center bg-black p-1 md:p-6 relative overflow-hidden">
+    <main className="comparator-page font-technical flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center bg-black p-1 md:p-6 relative overflow-x-clip">
       <ComparatorClient
         initialItems={initialItems}
         globalCurrency={currency}

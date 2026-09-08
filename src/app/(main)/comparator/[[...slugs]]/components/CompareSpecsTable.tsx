@@ -60,7 +60,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
 
     return (
       <div className="mt-12 w-full rounded-2xl border border-zinc-900 bg-zinc-950/20 backdrop-blur-sm overflow-x-auto md:overflow-x-visible animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-255 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="grid grid-cols-12 border-b border-zinc-900 bg-zinc-950/60 px-6 py-4 items-center min-w-[650px] md:min-w-0">
+        <div className="sticky top-[4.25rem] z-20 grid grid-cols-12 border-b border-zinc-900 bg-zinc-950 px-6 py-4 items-center min-w-[650px] md:min-w-0">
           <div className="col-span-3">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Especificaciones</span>
           </div>
@@ -118,7 +118,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
       
       {/* CABECERA DE LA TABLA */}
       {/* 📱 min-w-[650px] asegura que haya espacio suficiente para las columnas en móvil */}
-      <div className="grid grid-cols-12 border-b border-zinc-900 bg-zinc-950/60 px-6 py-4 items-center min-w-[650px] md:min-w-0">
+      <div className="sticky top-[4.25rem] z-20 grid grid-cols-12 border-b border-zinc-900 bg-zinc-950 px-6 py-4 items-center min-w-[650px] md:min-w-0">
         <div className="col-span-3">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
             Especificaciones

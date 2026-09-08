@@ -82,56 +82,26 @@ function getDirectGpuFps(
 
 function getFpsStyles(fps: number | null) {
   if (fps === null) {
-    return {
-      border: "border-zinc-800",
-      bg: "bg-zinc-900/40",
-      text: "text-zinc-500",
-      label: "text-zinc-600",
-    };
+    return { text: "text-zinc-500" };
   }
 
   if (fps > 144) {
-    return {
-      border: "border-purple-500/50",
-      bg: "bg-purple-950/30",
-      text: "text-purple-300",
-      label: "text-purple-400/80",
-    };
+    return { text: "text-purple-500" };
   }
 
   if (fps > 90) {
-    return {
-      border: "border-blue-500/50",
-      bg: "bg-blue-950/30",
-      text: "text-blue-300",
-      label: "text-blue-400/80",
-    };
+    return { text: "text-blue-500" };
   }
 
   if (fps > 60) {
-    return {
-      border: "border-emerald-500/50",
-      bg: "bg-emerald-950/30",
-      text: "text-emerald-300",
-      label: "text-emerald-400/80",
-    };
+    return { text: "text-emerald-500" };
   }
 
   if (fps > 30) {
-    return {
-      border: "border-yellow-500/50",
-      bg: "bg-yellow-950/30",
-      text: "text-yellow-300",
-      label: "text-yellow-400/80",
-    };
+    return { text: "text-yellow-300" };
   }
 
-  return {
-    border: "border-red-500/50",
-    bg: "bg-red-950/30",
-    text: "text-red-300",
-    label: "text-red-400/80",
-  };
+  return { text: "text-red-500" };
 }
 
 function getCollectionFps(
@@ -266,16 +236,16 @@ export default function ComparatorFpsIsland({
                     const styles = getFpsStyles(value);
 
                     return (
-                      <div key={key} className={`flex min-h-24 flex-col items-center justify-center rounded-xl border p-2 ${styles.border} ${styles.bg}`}>
-                        <span className={`mb-2 text-[9px] font-black uppercase tracking-[0.12em] ${styles.label}`}>
+                      <div key={key} className="flex min-h-24 flex-col items-center justify-center p-2">
+                        <span className="mb-2 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
                           {label}
                         </span>
-                        <span className={`font-display text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
-                          {value ?? "—"}
+                        <span className={`font-display text-[28px] font-medium leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
+                          {value ?? "—"}<span className="text-[14px] text-zinc-500">fps</span>
                         </span>
-                        <span className="mt-1 text-[8px] font-bold uppercase tracking-widest text-zinc-600">
+                        {/* <span className="mt-1 text-[8px] font-bold uppercase tracking-widest text-zinc-600">
                           FPS
-                        </span>
+                        </span> */}
                       </div>
                     );
                   })}
