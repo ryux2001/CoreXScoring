@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import {
+  Activity,
   Bookmark,
   Boxes,
   FolderHeart,
   Hammer,
   Layers2,
+  Settings2,
   ShieldCheck,
   UserRound,
 } from 'lucide-react';
@@ -55,12 +57,27 @@ export default async function VaultPage() {
     data: { user },
   } = await supabase.auth.getUser();
   const sections = user?.app_metadata?.role === 'admin'
-    ? [...vaultSections, {
-      title: 'Panel de IA',
-      description: 'Consulta cuotas, proveedores, errores y uso del asistente.',
-      href: '/vault/admin/ai',
-      icon: ShieldCheck,
-    }]
+    ? [
+      ...vaultSections,
+      {
+        title: 'Panel de IA',
+        description: 'Consulta cuotas, proveedores, errores y uso del asistente.',
+        href: '/vault/admin/ai',
+        icon: ShieldCheck,
+      },
+      {
+        title: 'Seguimiento',
+        description: 'Supervisa el uso de usuarios, errores y actividad de la plataforma.',
+        href: '/vault/admin/monitoring',
+        icon: Activity,
+      },
+      {
+        title: 'Gestión de catálogo',
+        description: 'Administra categorías, builds y combos destacados del catálogo.',
+        href: '/vault/admin/catalog',
+        icon: Settings2,
+      },
+    ]
     : vaultSections;
 
   return (

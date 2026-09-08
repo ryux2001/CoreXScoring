@@ -201,7 +201,7 @@ export const Card = ({
 
   return (
     <div
-      className={`group flex min-w-0 w-full max-w-[320px] cursor-pointer flex-row overflow-hidden rounded-2xl border border-zinc-900 bg-black p-0 font-technical transition-all hover:border-zinc-700 ${wholeCardClickable ? "sm:flex-col" : "sm:cursor-default sm:flex-col"}`}
+      className={`group flex min-w-0 w-full max-w-[100%] md:max-w-[400px] lg:max-w-[330px] cursor-pointer flex-row overflow-hidden rounded-2xl border border-zinc-900 bg-black p-0 font-technical transition-all hover:border-zinc-700 ${wholeCardClickable ? "sm:flex-col" : "sm:cursor-default sm:flex-col"}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
       role={wholeCardClickable ? "link" : undefined}
