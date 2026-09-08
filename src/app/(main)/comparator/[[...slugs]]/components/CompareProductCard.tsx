@@ -327,11 +327,8 @@ export default function CompareProductCard({
         )}
       </div>
 
-      <div className={`flex flex-1 flex-col justify-between border-t border-zinc-900/50 ${notesSpacingClass}`}>
+      <div className={`flex flex-1 flex-col justify-between border-t border-zinc-800/50 ${notesSpacingClass}`}>
         <div className="text-left">
-          {/* <div className={`${notesHeaderSpacingClass} border-b border-zinc-900/70 pb-3`}>
-            <h4 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-200">Notas</h4>
-          </div> */}
           <div className={`grid grid-cols-2 ${notesListGapClass} gap-x-3 pl-1`}>
             {masterCategories.map((category) => {
               const currentScore = Number(baseNotes[category] || 0);

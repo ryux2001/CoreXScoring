@@ -173,7 +173,7 @@ export default function ComparatorFpsIsland({
       aria-label="Comparativa de FPS"
       className="mt-4 w-full max-w-255"
     >
-      <div className="flex items-center justify-center gap-2 rounded-3xl border border-zinc-900 bg-zinc-950/50 px-2 py-4 shadow-xl md:px-6 max-w-[350px]">
+      <div className="flex items-center justify-center gap-2 rounded-3xl border border-zinc-900 bg-zinc-950/50 px-2 py-3 shadow-xl md:px-6 max-w-[350px]">
           <label className="flex min-w-0 items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
             <Gamepad2 size={12} className="shrink-0 text-zinc-400" />
             <span className="sr-only">Juego</span>
@@ -225,7 +225,7 @@ export default function ComparatorFpsIsland({
           >
             {items.map((item) => (
               <article key={item.id} className="w-1/2 min-w-0 shrink-0 snap-start bg-black/30 p-3 md:w-full md:p-4">
-                <h3 className="mb-3 truncate text-[10px] font-black uppercase tracking-[0.12em] text-zinc-400" title={String(item.name || item.title || "Sin nombre")}>
+                <h3 className="mb-0 truncate text-[10px] font-black uppercase tracking-[0.12em] text-zinc-400" title={String(item.name || item.title || "Sin nombre")}>
                   {String(item.name || item.title || "Sin nombre")}
                 </h3>
                 <div className="grid grid-cols-3 gap-2">
@@ -237,15 +237,12 @@ export default function ComparatorFpsIsland({
 
                     return (
                       <div key={key} className="flex min-h-24 flex-col items-center justify-center p-2">
-                        <span className="mb-2 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
+                        <span className="mb-0 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
                           {label}
                         </span>
                         <span className={`font-display text-[28px] font-medium leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
                           {value ?? "—"}<span className="text-[14px] text-zinc-500">fps</span>
                         </span>
-                        {/* <span className="mt-1 text-[8px] font-bold uppercase tracking-widest text-zinc-600">
-                          FPS
-                        </span> */}
                       </div>
                     );
                   })}

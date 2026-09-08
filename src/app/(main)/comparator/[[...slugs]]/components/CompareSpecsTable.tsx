@@ -61,7 +61,7 @@ function SpecsTableHeader({ items, headerContentRef, variant }: SpecsTableHeader
   const itemTypeLabel = variant === "build" ? "Build" : "Combo";
 
   return (
-    <div className="pointer-events-none sticky top-[4.25rem] z-20 w-full overflow-hidden border-b border-zinc-900 bg-zinc-950">
+    <div className="pointer-events-none sticky top-[4.25rem] lg:top-[5rem] z-20 w-full overflow-hidden border-b border-zinc-900 bg-zinc-950">
       <div
         ref={headerContentRef}
         className="grid grid-cols-12 px-6 py-4 items-center min-w-[650px] md:min-w-0"
