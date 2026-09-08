@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { ArrowUp, X } from "lucide-react";
+import { ArrowUp, Currency, X } from "lucide-react";
 import Link from "next/link";
 import { useCompareStore } from "@/store/useCompareStore";
 import { getComponentNotes } from "@/lib/scoring";
@@ -26,6 +26,7 @@ import type {
   ComboPartKey,
   ComboPriceOverrides,
 } from "./comparisonUtils";
+import CurrencyPreferenceSync from "@/ui/currency/CurrencyPreferenceSync";
 
 interface CompareProductCardProps {
   product: {
@@ -338,10 +339,10 @@ export default function CompareProductCard({
               return (
                 <div key={category} className="group flex min-w-0 flex-col gap-1.5 animate-in fade-in duration-200 md:gap-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-zinc-400" title={category}>
+                    <span className="min-w-0 truncate text-[10px] font-bold font- uppercase tracking-tighter text-zinc-400" title={category}>
                       {category}
                     </span>
-                    <span className="hidden shrink-0 items-center gap-1 text-[12px] font-thin uppercase tracking-wider tabular-nums text-zinc-300 md:flex">
+                    <span className="hidden shrink-0 items-center gap-1 text-[12px] font-thin uppercase tracking-[-2px] tabular-nums text-zinc-300 md:flex">
                       {isHighest && (
                         <span className="text-emerald-400" title="Mejor nota">
                           <ArrowUp aria-hidden="true" size={10} strokeWidth={3} />
@@ -357,7 +358,7 @@ export default function CompareProductCard({
                         style={{ width: `${normalizedScore * 10}%` }}
                       />
                     </div>
-                    <span className="flex shrink-0 items-center gap-1 text-[12px] font-thin uppercase tracking-wider tabular-nums text-zinc-300 md:hidden">
+                    <span className="flex shrink-0 items-center gap-1 text-[9px] font-thin uppercase tracking-[-2px] tabular-nums text-zinc-300 md:hidden">
                       {isHighest && (
                         <span className="text-emerald-400" title="Mejor nota">
                           <ArrowUp aria-hidden="true" size={10} strokeWidth={3} />
@@ -374,8 +375,8 @@ export default function CompareProductCard({
 
         <div className={`font-display ${evaluationSpacingClass} flex items-center justify-between rounded-xl border transition-all duration-300 ${valueStyles.bg} ${valueStyles.border}`}>
           <div className="flex flex-col text-left">
-            <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${valueStyles.label}`}>Evaluacion global</span>
-            <span className="mt-0.5 text-[10px] font-bold uppercase tracking-tight text-zinc-200">Calidad Precio</span>
+            <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${valueStyles.label}`}>Evaluación global</span>
+            <span className="mt-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-normal text-zinc-200">Referencia: {displayedPrice}{symbol}</span>
           </div>
           <div className={`flex h-9 w-11 items-center justify-center rounded-lg border border-zinc-900 bg-zinc-950 text-sm font-black tracking-tighter shadow-xl transition-colors duration-300 ${valueStyles.text}`}>
             {finalScore.toFixed(1)}
