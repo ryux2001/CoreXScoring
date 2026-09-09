@@ -190,9 +190,12 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   }, [applyComparisonSnapshot, globalCurrency, hydratedRouteKey, initialItems, initialItemsKey]);
 
   useEffect(() => {
+    // A URL comparison owns the store; local hydration must never overwrite it.
+    if (initialItems.length > 0) return;
     if (hasHydratedStoredProducts.current || items.length === 0) return;
 
     hasHydratedStoredProducts.current = true;
+    let isCancelled = false;
 
     const hydrateStoredProducts = async () => {
       const componentItems = items.filter(
@@ -210,6 +213,7 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
         console.error('Error hydrating comparison products:', error);
         return;
       }
+      if (isCancelled) return;
 
       const fullProducts = completeProducts as Array<CompareProduct & Record<string, unknown>>;
 
@@ -238,11 +242,14 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
       });
 
       const changed = hydratedItems.some((item, index) => item !== items[index]);
-      if (changed) replaceItems(hydratedItems);
+      if (changed && !isCancelled) replaceItems(hydratedItems);
     };
 
     void hydrateStoredProducts();
-  }, [items, replaceItems, globalCurrency]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [items, replaceItems, globalCurrency, initialItems.length]);
 
   useEffect(() => {
     if (initialItems.length > 0 && hydratedRouteKey !== initialItemsKey) return;
