@@ -1,3 +1,114 @@
-export default function HomePage() {
-  return <main className="min-h-full bg-black">Home</main>;
+import Link from 'next/link';
+import { ArrowRight, BarChart3, Boxes, Cpu, Hammer } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { resolveRequestCurrency } from '@/lib/serverCurrency';
+import { getItemContent, loadPublicHomeData, type HomeCatalogItem, type HomeSection } from '@/lib/admin/home';
+import HomeCarousel from './components/home/HomeCarousel';
+import HomeCollectionCard from './components/home/HomeCollectionCard';
+import HomeComparisonCard from './components/home/HomeComparisonCard';
+import HomeComponentList from './components/home/HomeComponentList';
+
+interface HomePageProps {
+  searchParams: Promise<{ currency?: string }>;
+}
+
+function sectionItems(section: HomeSection): HomeCatalogItem[] {
+  return section.home_section_items
+    .map(getItemContent)
+    .filter((item): item is HomeCatalogItem => Boolean(item));
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const currency = await resolveRequestCurrency((await searchParams).currency);
+  const { hero, sections } = await loadPublicHomeData(supabase);
+
+  return (
+    <main className="min-h-screen bg-black font-technical text-white">
+      {hero.is_active && (
+        <section className="border-b border-zinc-900 px-4 py-14 sm:px-6 sm:py-20 md:px-12 lg:px-16 lg:py-28">
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
+            <div className="max-w-3xl">
+              <h1 className="font-display text-4xl font-black leading-[0.92] tracking-tight text-white sm:text-6xl lg:text-7xl">{hero.title}</h1>
+              <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">{hero.description}</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href={hero.primary_href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-xs font-black uppercase tracking-wider text-black transition-colors hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">{hero.primary_label}<ArrowRight aria-hidden="true" size={16} /></Link>
+                <Link href={hero.secondary_href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-5 text-xs font-black uppercase tracking-wider text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">{hero.secondary_label}<BarChart3 aria-hidden="true" size={16} /></Link>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800"><HeroTile icon={Cpu} label="Hardware" /><HeroTile icon={Boxes} label="Combos" /><HeroTile icon={Hammer} label="Builds" /></div>
+          </div>
+        </section>
+      )}
+
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 md:px-12 md:py-20 lg:px-16">
+        <HomeSections sections={sections} currency={currency} />
+      </div>
+    </main>
+  );
+}
+
+function HeroTile({ icon: Icon, label }: { icon: typeof Cpu; label: string }) {
+  return <div className="flex min-h-28 flex-col justify-between bg-zinc-950 p-4 text-zinc-500"><Icon aria-hidden="true" size={18} /><span className="font-display text-sm font-bold uppercase tracking-wider text-zinc-300">{label}</span></div>;
+}
+
+function HomeSections({ sections, currency }: { sections: HomeSection[]; currency: string }) {
+  const blocks: ReactNode[] = [];
+  let productSections: HomeSection[] = [];
+
+  const flushProductSections = () => {
+    if (productSections.length === 0) return;
+    blocks.push(
+      <div key={`product-group-${productSections[0].id}`} className="grid gap-6 md:grid-cols-2">
+        {productSections.map((section) => <HomeComponentList key={section.id} section={section} items={sectionItems(section)} currency={currency} />)}
+      </div>,
+    );
+    productSections = [];
+  };
+
+  for (const section of sections) {
+    const items = sectionItems(section);
+    if (section.content_type === 'products') {
+      if (items.length > 0) productSections.push(section);
+      continue;
+    }
+    flushProductSections();
+
+    if ((section.content_type === 'combos' || section.content_type === 'builds') && items.length > 0) {
+      const collectionType = section.content_type === 'builds' ? 'builds' : 'combos';
+      blocks.push(
+        <EditorialSection key={section.id} section={section}>
+          <HomeCarousel label={section.title}>
+            {items.map((item) => <HomeCollectionCard key={item.id} item={item} itemType={collectionType} currency={currency} variant={section.visual_variant} />)}
+          </HomeCarousel>
+        </EditorialSection>,
+      );
+      continue;
+    }
+
+    if (section.content_type === 'comparisons') {
+      const comparisons = section.home_comparisons.filter((comparison) => comparison.is_active && comparison.home_comparison_items.length === 2);
+      if (comparisons.length > 0) {
+        blocks.push(
+          <EditorialSection key={section.id} section={section}>
+            <HomeCarousel label={section.title}>{comparisons.map((comparison) => <HomeComparisonCard key={comparison.id} comparison={comparison} currency={currency} />)}</HomeCarousel>
+          </EditorialSection>,
+        );
+      }
+    }
+  }
+  flushProductSections();
+
+  return blocks.length > 0
+    ? <div className="space-y-20">{blocks}</div>
+    : <div className="py-24 text-center"><h1 className="font-display text-4xl font-black text-white">Próximamente</h1><p className="mt-3 text-zinc-500">Estamos preparando nuevas selecciones de hardware.</p></div>;
+}
+
+function EditorialSection({ section, children }: { section: HomeSection; children: ReactNode }) {
+  return <section aria-labelledby={`home-section-${section.id}`}>
+    <header className="mb-7 flex flex-col gap-3 border-b border-zinc-900 pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <div><h2 id={`home-section-${section.id}`} className="font-display text-3xl font-black tracking-tight text-white sm:text-4xl">{section.title}</h2>{section.description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">{section.description}</p>}</div>
+    </header>
+    {children}
+  </section>;
 }

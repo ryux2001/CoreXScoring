@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore, type CompareProduct } from '@/store/useCompareStore';
@@ -84,8 +84,8 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   const clearCompare = useCompareStore((state) => state.clearCompare);
   const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
   const setEvaluatedPrice = useCompareStore((state) => state.setEvaluatedPrice);
-  const addItem = useCompareStore((state) => state.addItem);
   const replaceItems = useCompareStore((state) => state.replaceItems);
+  const applyComparisonSnapshot = useCompareStore((state) => state.applyComparisonSnapshot);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(() => (
@@ -106,8 +106,9 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   const scrollSyncFrameRef = useRef<number | null>(null);
   const pendingScrollSourceRef = useRef<ScrollSource | null>(null);
   const suppressedScrollRef = useRef<{ source: ScrollSource; scrollLeft: number } | null>(null);
-  const hasHydratedInitialItems = useRef(false);
   const hasHydratedStoredProducts = useRef(false);
+  const [hydratedRouteKey, setHydratedRouteKey] = useState('');
+  const initialItemsKey = initialItems.map((item) => `${item.id}:${item.slug}`).join('|');
 
   const syncComparisonScroll = (source: ScrollSource) => {
     const sourceElement = source === 'comparison'
@@ -160,20 +161,33 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   };
 
   useEffect(() => {
-    if (hasHydratedInitialItems.current || initialItems.length === 0) return;
+    if (initialItems.length === 0 || hydratedRouteKey === initialItemsKey) return;
 
-    hasHydratedInitialItems.current = true;
-
-    if (items.length === 0) {
-      initialItems.forEach((item) => {
-        addItem({
-          ...item,
-          price: getCurrentPrice(item, globalCurrency, {}, {}, {}),
-          currency: globalCurrency,
-        });
-      });
+    const routeItems = initialItems.map((item) => ({
+      ...item,
+      price: getCurrentPrice(item, globalCurrency, {}, {}, {}),
+      currency: globalCurrency,
+    }));
+    const result = applyComparisonSnapshot(routeItems, {});
+    if (!result.success) {
+      console.error('Unable to load comparison from URL:', result.error);
+      return;
     }
-  }, [initialItems, items.length, addItem, globalCurrency]);
+
+    // Editorial and shared comparison URLs are the source of truth, never stale local storage.
+    startTransition(() => {
+      setComboPriceOverrides({});
+      setBuildPriceOverrides({});
+      setComparisonMode(
+        routeItems.some((item) => isBuildItem(item))
+          ? 'builds'
+          : routeItems.some((item) => isComboItem(item))
+            ? 'combos'
+            : 'components',
+      );
+      setHydratedRouteKey(initialItemsKey);
+    });
+  }, [applyComparisonSnapshot, globalCurrency, hydratedRouteKey, initialItems, initialItemsKey]);
 
   useEffect(() => {
     if (hasHydratedStoredProducts.current || items.length === 0) return;
@@ -231,13 +245,15 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   }, [items, replaceItems, globalCurrency]);
 
   useEffect(() => {
+    if (initialItems.length > 0 && hydratedRouteKey !== initialItemsKey) return;
+
     if (items.length === 0) {
       router.replace('/comparator', { scroll: false });
     } else {
       const pathSlugs = items.map((item) => item.slug).join('/');
       router.replace(`/comparator/${pathSlugs}?currency=${globalCurrency}`, { scroll: false });
     }
-  }, [items, router, globalCurrency]);
+  }, [items, router, globalCurrency, hydratedRouteKey, initialItems.length, initialItemsKey]);
 
   const maxScoresByCategory = useMemo(() => {
     const maxes: Record<string, number> = {};

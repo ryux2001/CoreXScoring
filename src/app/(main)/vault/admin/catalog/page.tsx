@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Boxes, Hammer, Settings2 } from 'lucide-react';
+import { ArrowRight, Boxes, Hammer, Home, Settings2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { getAdminDb, getAdminUser, loadCatalogCounts } from '@/lib/admin/catalog';
@@ -30,7 +30,15 @@ export default async function AdminCatalogPage() {
           </p>
         </header>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <CatalogTypeCard
+            href="/vault/admin/catalog/home"
+            title="Inicio"
+            description="Banner, listas editoriales y comparaciones recomendadas de la página principal."
+            count={null}
+            icon={Home}
+            accent="amber"
+          />
           <CatalogTypeCard
             href="/vault/admin/catalog/builds"
             title="Builds"
@@ -68,13 +76,15 @@ function CatalogTypeCard({
   href: string;
   title: string;
   description: string;
-  count: number;
+  count: number | null;
   icon: LucideIcon;
-  accent: 'cyan' | 'violet';
+  accent: 'cyan' | 'violet' | 'amber';
 }) {
   const colors = accent === 'cyan'
     ? 'border-cyan-200/20 bg-cyan-200/[0.04] text-cyan-200 group-hover:border-cyan-200/45'
-    : 'border-violet-200/20 bg-violet-200/[0.04] text-violet-200 group-hover:border-violet-200/45';
+    : accent === 'violet'
+      ? 'border-violet-200/20 bg-violet-200/[0.04] text-violet-200 group-hover:border-violet-200/45'
+      : 'border-amber-200/20 bg-amber-200/[0.04] text-amber-200 group-hover:border-amber-200/45';
 
   return (
     <Link
@@ -85,7 +95,7 @@ function CatalogTypeCard({
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-current/20 bg-black/30">
           <Icon aria-hidden="true" size={23} />
         </div>
-        <span className="font-display text-3xl font-black text-white">{count}</span>
+        {count !== null && <span className="font-display text-3xl font-black text-white">{count}</span>}
       </div>
       <h2 className="mt-10 font-display text-2xl font-black text-white">{title}</h2>
       <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">{description}</p>
