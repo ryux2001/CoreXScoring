@@ -37,10 +37,20 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
       psu:products!psu_id(*)
     `)
     .eq('is_active', true)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
+
+  const { data: categoryOrders, error: categoryOrderError } = await supabase
+    .from('catalog_category_orders')
+    .select('category,sort_order')
+    .eq('catalog_kind', 'builds')
+    .order('sort_order', { ascending: true });
 
   if (error) {
     console.error('Error al obtener builds:', error);
+  }
+  if (categoryOrderError) {
+    console.error('Error al obtener el orden de categorías de builds:', categoryOrderError);
   }
 
   const allBuilds = builds || [];
@@ -63,6 +73,11 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
     },
     {},
   );
+  const categoryPosition = new Map((categoryOrders ?? []).map((item) => [item.category, item.sort_order]));
+  const orderedBuildCategories = Object.entries(buildsByCategory).sort(([left], [right]) => (
+    (categoryPosition.get(left) ?? Number.MAX_SAFE_INTEGER) - (categoryPosition.get(right) ?? Number.MAX_SAFE_INTEGER)
+      || left.localeCompare(right)
+  ));
 
   return (
     <main className="build-page font-technical min-h-screen bg-black px-4 py-6 sm:px-6 md:p-12 lg:p-16">
@@ -97,7 +112,7 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
           </div>
         ) : (
           <div className="mt-10 flex flex-col gap-8 sm:gap-10">
-            {Object.entries(buildsByCategory).map(([categoryName, categoryBuilds]) => (
+            {orderedBuildCategories.map(([categoryName, categoryBuilds]) => (
               <CategoryAccordion
                 key={categoryName}
                 title={categoryName}

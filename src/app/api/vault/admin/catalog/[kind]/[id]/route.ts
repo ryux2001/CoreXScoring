@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import {
   buildCatalogMutation,
+  ensureCatalogCategoryOrder,
   getAdminDb,
   getAdminUser,
   parseCatalogKind,
@@ -53,6 +54,7 @@ export async function PATCH(
 
     if (error) throw error;
     if (!data) return NextResponse.json({ error: 'No se encontró el registro.' }, { status: 404 });
+    await ensureCatalogCategoryOrder(db, kind, String(payload.category));
 
     return NextResponse.json({ id: data.id }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

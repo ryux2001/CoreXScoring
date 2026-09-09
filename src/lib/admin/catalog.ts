@@ -24,6 +24,7 @@ export interface AdminCatalogRow {
   category: string;
   is_active: boolean;
   created_at: string;
+  sort_order: number;
   cpu_id: string;
   gpu_id: string;
   ram_id: string;
@@ -37,6 +38,11 @@ export interface AdminCatalogRow {
   storage?: AdminCatalogProduct | null;
   psu?: AdminCatalogProduct | null;
   [key: string]: unknown;
+}
+
+export interface CatalogCategoryOrder {
+  category: string;
+  sort_order: number;
 }
 
 export const BUILD_SLOTS: CatalogSlot[] = ['cpu', 'gpu', 'ram', 'motherboard', 'storage', 'psu'];
@@ -82,11 +88,40 @@ export async function loadCatalogRows(db: SupabaseClient, kind: CatalogKind): Pr
   const { data, error } = await db
     .from(getTable(kind))
     .select(getRelations(kind))
-    .order('category', { ascending: true })
+    .order('sort_order', { ascending: true })
     .order('title', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as unknown as AdminCatalogRow[];
+  const rows = (data ?? []) as unknown as AdminCatalogRow[];
+  const categoryOrders = await loadCatalogCategoryOrders(db, kind);
+  const categoryPosition = new Map(categoryOrders.map((item) => [item.category, item.sort_order]));
+
+  return rows.sort((left, right) => {
+    const leftCategory = normalizeCategory(left.category);
+    const rightCategory = normalizeCategory(right.category);
+    const categoryDifference = (categoryPosition.get(leftCategory) ?? Number.MAX_SAFE_INTEGER)
+      - (categoryPosition.get(rightCategory) ?? Number.MAX_SAFE_INTEGER);
+    if (categoryDifference !== 0) return categoryDifference;
+    return Number(left.sort_order) - Number(right.sort_order);
+  });
+}
+
+export function normalizeCategory(category: unknown): string {
+  return typeof category === 'string' && category.trim() ? category.trim() : 'Sin categoría';
+}
+
+export async function loadCatalogCategoryOrders(
+  db: SupabaseClient,
+  kind: CatalogKind,
+): Promise<CatalogCategoryOrder[]> {
+  const { data, error } = await db
+    .from('catalog_category_orders')
+    .select('category,sort_order')
+    .eq('catalog_kind', kind)
+    .order('sort_order', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as CatalogCategoryOrder[];
 }
 
 export async function loadCatalogRow(
@@ -161,6 +196,54 @@ function requiredString(value: unknown, field: string, maxLength: number): strin
   return value.trim();
 }
 
+async function getNextItemOrder(db: SupabaseClient, kind: CatalogKind, category: string): Promise<number> {
+  const { data, error } = await db
+    .from(kind)
+    .select('sort_order')
+    .eq('category', category)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Number(data?.sort_order ?? 0) + 1;
+}
+
+export async function ensureCatalogCategoryOrder(
+  db: SupabaseClient,
+  kind: CatalogKind,
+  category: string,
+): Promise<void> {
+  const normalizedCategory = normalizeCategory(category);
+  const { data: existing, error: existingError } = await db
+    .from('catalog_category_orders')
+    .select('category')
+    .eq('catalog_kind', kind)
+    .eq('category', normalizedCategory)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+  if (existing) return;
+
+  const { data: lastCategory, error: orderError } = await db
+    .from('catalog_category_orders')
+    .select('sort_order')
+    .eq('catalog_kind', kind)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (orderError) throw orderError;
+
+  const { error } = await db.from('catalog_category_orders').insert({
+    catalog_kind: kind,
+    category: normalizedCategory,
+    sort_order: Number(lastCategory?.sort_order ?? 0) + 1,
+  });
+
+  if (error && error.code !== '23505') throw error;
+}
+
 export interface CatalogMutationPayload {
   title?: unknown;
   category?: unknown;
@@ -222,6 +305,18 @@ export async function buildCatalogMutation(
   if (!id) {
     const baseSlug = slugify(String(payload.title));
     payload.slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+    payload.sort_order = await getNextItemOrder(db, kind, String(payload.category));
+  } else {
+    const { data: current, error: currentError } = await db
+      .from(kind)
+      .select('category')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (currentError) throw currentError;
+    if (normalizeCategory(current?.category) !== normalizeCategory(payload.category)) {
+      payload.sort_order = await getNextItemOrder(db, kind, String(payload.category));
+    }
   }
 
   return payload;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import {
   buildCatalogMutation,
+  ensureCatalogCategoryOrder,
   getAdminDb,
   getAdminUser,
   parseCatalogKind,
@@ -42,6 +43,7 @@ export async function POST(
     const { data, error } = await db.from(kind).insert(payload).select('id').single();
 
     if (error) throw error;
+    await ensureCatalogCategoryOrder(db, kind, String(payload.category));
 
     return NextResponse.json({ id: data.id }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

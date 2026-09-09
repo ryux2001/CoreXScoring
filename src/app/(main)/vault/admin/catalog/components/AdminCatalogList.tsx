@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, EyeOff, Plus, Search, Settings2 } from 'lucide-react';
+import { ArrowLeft, ArrowDownUp, CheckCircle2, EyeOff, Plus, Search, Settings2 } from 'lucide-react';
 import { useDeferredValue, useState } from 'react';
 import type { AdminCatalogRow, CatalogKind, CatalogSlot } from '@/lib/admin/catalog';
+import AdminCatalogCategoryOrderDialog from './AdminCatalogCategoryOrderDialog';
+import AdminCatalogOrderDialog from './AdminCatalogOrderDialog';
+import AdminCatalogSelect from './AdminCatalogSelect';
 
 const SLOT_LABELS: Record<CatalogSlot, string> = {
   cpu: 'CPU',
@@ -30,9 +33,11 @@ export default function AdminCatalogList({ kind, rows }: { kind: CatalogKind; ro
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState<'all' | 'active' | 'hidden'>('all');
+  const [isCategoryOrderOpen, setIsCategoryOrderOpen] = useState(false);
+  const [isItemOrderOpen, setIsItemOrderOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const slots = getSlots(kind);
-  const categories = [...new Set(rows.map((row) => row.category || 'Sin categoría'))].sort((a, b) => a.localeCompare(b));
+  const categories = [...new Set(rows.map((row) => row.category || 'Sin categoría'))];
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const filteredRows = rows.filter((row) => {
     if (category !== 'all' && (row.category || 'Sin categoría') !== category) return false;
@@ -62,10 +67,20 @@ export default function AdminCatalogList({ kind, rows }: { kind: CatalogKind; ro
             <h1 className="mt-2 font-display text-3xl font-black tracking-tight text-white md:text-5xl">{KIND_LABELS[kind]}</h1>
             <p className="mt-2 text-sm text-zinc-500">{filteredRows.length} de {rows.length} registros visibles en esta vista.</p>
           </div>
-          <Link href={`/vault/admin/catalog/${kind}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black uppercase tracking-wider text-black transition-colors hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
-            <Plus aria-hidden="true" size={16} />
-            Nuevo {kind === 'builds' ? 'build' : 'combo'}
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={() => setIsCategoryOrderOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 text-xs font-black uppercase tracking-wider text-zinc-300 transition-colors hover:border-cyan-200/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
+              <ArrowDownUp aria-hidden="true" size={16} />
+              Ordenar categorías
+            </button>
+            <button type="button" onClick={() => setIsItemOrderOpen(true)} disabled={categories.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 text-xs font-black uppercase tracking-wider text-zinc-300 transition-colors hover:border-cyan-200/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
+              <ArrowDownUp aria-hidden="true" size={16} />
+              Ordenar tarjetas
+            </button>
+            <Link href={`/vault/admin/catalog/${kind}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black uppercase tracking-wider text-black transition-colors hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
+              <Plus aria-hidden="true" size={16} />
+              Nuevo {kind === 'builds' ? 'build' : 'combo'}
+            </Link>
+          </div>
         </div>
 
         <section aria-label={`Filtros de ${KIND_LABELS[kind]}`} className="mt-8 grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3 md:grid-cols-[minmax(0,1fr)_220px_180px]">
@@ -74,21 +89,18 @@ export default function AdminCatalogList({ kind, rows }: { kind: CatalogKind; ro
             <span className="sr-only">Buscar {KIND_LABELS[kind].toLowerCase()}</span>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, categoría o componente" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600" />
           </label>
-          <label className="flex min-h-11 items-center rounded-xl border border-zinc-800 bg-black px-3">
-            <span className="sr-only">Filtrar por categoría</span>
-            <select value={category} onChange={(event) => setCategory(event.target.value)} className="w-full bg-transparent text-xs text-zinc-300 outline-none">
-              <option value="all">Todas las categorías</option>
-              {categories.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-          <label className="flex min-h-11 items-center rounded-xl border border-zinc-800 bg-black px-3">
-            <span className="sr-only">Filtrar por estado</span>
-            <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="w-full bg-transparent text-xs text-zinc-300 outline-none">
-              <option value="all">Todos los estados</option>
-              <option value="active">Publicados</option>
-              <option value="hidden">Ocultos</option>
-            </select>
-          </label>
+          <AdminCatalogSelect
+            label="Filtrar por categoría"
+            value={category}
+            options={[{ value: 'all', label: 'Todas las categorías' }, ...categories.map((item) => ({ value: item, label: item }))]}
+            onChange={setCategory}
+          />
+          <AdminCatalogSelect
+            label="Filtrar por estado"
+            value={status}
+            options={[{ value: 'all', label: 'Todos los estados' }, { value: 'active', label: 'Publicados' }, { value: 'hidden', label: 'Ocultos' }]}
+            onChange={(value) => setStatus(value as typeof status)}
+          />
         </section>
 
         <div className="mt-8 space-y-8">
@@ -123,6 +135,8 @@ export default function AdminCatalogList({ kind, rows }: { kind: CatalogKind; ro
           {filteredRows.length === 0 && <div className="rounded-2xl border border-dashed border-zinc-800 px-5 py-16 text-center text-sm text-zinc-500">No hay registros que coincidan con los filtros.</div>}
         </div>
       </div>
+      {isCategoryOrderOpen && <AdminCatalogCategoryOrderDialog kind={kind} categories={categories} onClose={() => setIsCategoryOrderOpen(false)} onSaved={() => { setIsCategoryOrderOpen(false); window.location.reload(); }} />}
+      {isItemOrderOpen && <AdminCatalogOrderDialog kind={kind} rows={rows} categories={categories} onClose={() => setIsItemOrderOpen(false)} onSaved={() => { setIsItemOrderOpen(false); window.location.reload(); }} />}
     </main>
   );
 }

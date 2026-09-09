@@ -35,10 +35,21 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
       gpu:products!gpu_id(*),
       ram:products!ram_id(*)
     `)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  const { data: categoryOrders, error: categoryOrderError } = await supabase
+    .from('catalog_category_orders')
+    .select('category,sort_order')
+    .eq('catalog_kind', 'combos')
+    .order('sort_order', { ascending: true });
 
   if (error) {
     console.error('Error al obtener combos:', error);
+  }
+  if (categoryOrderError) {
+    console.error('Error al obtener el orden de categorías de combos:', categoryOrderError);
   }
 
   const allCombos = (combos || []) as ComboRecord[];
@@ -56,6 +67,11 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
     },
     {},
   );
+  const categoryPosition = new Map((categoryOrders ?? []).map((item) => [item.category, item.sort_order]));
+  const orderedComboCategories = Object.entries(combosByCategory).sort(([left], [right]) => (
+    (categoryPosition.get(left) ?? Number.MAX_SAFE_INTEGER) - (categoryPosition.get(right) ?? Number.MAX_SAFE_INTEGER)
+      || left.localeCompare(right)
+  ));
 
   return (
     <main className="combo-page font-technical min-h-screen bg-black p-3 sm:p-6 md:p-12 lg:p-16">
@@ -88,7 +104,7 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
           </div>
         ) : (
           <div className="mt-5 flex flex-col gap-8 sm:mt-10 sm:gap-10">
-            {Object.entries(combosByCategory).map(([categoryName, categoryCombos]) => (
+            {orderedComboCategories.map(([categoryName, categoryCombos]) => (
               <CategoryAccordion
                 key={categoryName}
                 title={categoryName}
