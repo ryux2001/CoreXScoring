@@ -262,7 +262,7 @@ function SectionEditor({
 
   return (
     <section className="rounded-3xl border border-zinc-800 bg-zinc-950/60 p-5 sm:p-7">
-      <div className="flex flex-col gap-4 border-b border-zinc-800 pb-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 border-b border-zinc-800 pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex shrink-0 flex-col rounded-lg border border-zinc-800 bg-black p-1">
             <OrderButton direction="up" disabled={!canMoveUp} onClick={() => onMove(-1)} />
@@ -273,7 +273,7 @@ function SectionEditor({
             <h3 className="font-display text-xl font-black text-white">{section.title}</h3>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <VisibilityToggle value={form.is_active} onChange={(value) => update('is_active', value)} />
           <button type="button" onClick={remove} disabled={isDeleting || isSaving} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-red-900/60 px-3 text-[10px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-950/40 disabled:cursor-wait disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300">
             {isDeleting ? <LoaderCircle aria-hidden="true" className="animate-spin" size={14} /> : <Trash2 aria-hidden="true" size={14} />}
@@ -394,7 +394,7 @@ function ComparisonEditor({ comparison, canMoveUp, canMoveDown, onMove, onSaved,
         <div className="flex flex-col rounded-lg border border-zinc-800 bg-zinc-950 p-1"><OrderButton direction="up" disabled={!canMoveUp} onClick={() => onMove(-1)} /><OrderButton direction="down" disabled={!canMoveDown} onClick={() => onMove(1)} /></div>
         <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-200/75">{CATALOG_TYPE_LABELS[comparison.item_type]}</p><h5 className="font-display text-lg font-black text-white">{comparison.title}</h5></div>
       </div>
-      <div className="flex items-center gap-3"><VisibilityToggle value={form.is_active} onChange={(value) => update('is_active', value)} /><button type="button" onClick={remove} disabled={isDeleting || isSaving} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-red-900/60 px-3 text-red-300 transition-colors hover:bg-red-950/40 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label="Eliminar comparación">{isDeleting ? <LoaderCircle aria-hidden="true" className="animate-spin" size={14} /> : <Trash2 aria-hidden="true" size={14} />}</button></div>
+        <div className="flex flex-wrap items-center gap-3"><VisibilityToggle value={form.is_active} onChange={(value) => update('is_active', value)} /><button type="button" onClick={remove} disabled={isDeleting || isSaving} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-900/60 px-3 text-red-300 transition-colors hover:bg-red-950/40 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label="Eliminar comparación">{isDeleting ? <LoaderCircle aria-hidden="true" className="animate-spin" size={14} /> : <Trash2 aria-hidden="true" size={14} />}</button></div>
     </div>
     <form onSubmit={save} className="mt-4 grid gap-4 md:grid-cols-2">
       <TextInput label="Título" value={form.title} onChange={(value) => update('title', value)} required />
@@ -444,7 +444,7 @@ function ItemListEditor({ title, itemType, initialItems, savePath, onSaved, empt
       {items.map((item, index) => <div key={item.id} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-black/45 p-3">
         <div className="flex flex-col rounded-md border border-zinc-800 bg-zinc-950 p-0.5"><OrderButton direction="up" disabled={index === 0} onClick={() => setItems((current) => moveItem(current, index, -1))} /><OrderButton direction="down" disabled={index === items.length - 1} onClick={() => setItems((current) => moveItem(current, index, 1))} /></div>
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-zinc-200">{catalogItemLabel(item)}</p><p className="truncate text-[11px] text-zinc-600">{item.slug}</p></div>
-        <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.id !== item.id))} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 transition-colors hover:border-red-900/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label={`Quitar ${catalogItemLabel(item)}`}><Trash2 aria-hidden="true" size={14} /></button>
+        <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.id !== item.id))} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 transition-colors hover:border-red-900/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label={`Quitar ${catalogItemLabel(item)}`}><Trash2 aria-hidden="true" size={14} /></button>
       </div>)}
       {items.length === 0 && <p className="rounded-xl border border-dashed border-zinc-800 px-4 py-6 text-center text-xs text-zinc-600">{emptyMessage}</p>}
     </div>
@@ -497,7 +497,7 @@ function SelectInput({ label, value, onChange, options }: { label: string; value
 }
 
 function VisibilityToggle({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
-  return <button type="button" onClick={() => onChange(!value)} aria-pressed={value} className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-[10px] font-black uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 ${value ? 'border-emerald-300/30 bg-emerald-950/40 text-emerald-200' : 'border-zinc-700 bg-black/30 text-cyan-100/60'}`}>{value ? <Eye aria-hidden="true" size={14} /> : <EyeOff aria-hidden="true" size={14} />}{value ? 'Publicado' : 'Oculto'}</button>;
+  return <button type="button" onClick={() => onChange(!value)} aria-pressed={value} className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-[10px] font-black uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 ${value ? 'border-emerald-300/30 bg-emerald-950/40 text-emerald-200' : 'border-zinc-700 bg-black/30 text-cyan-100/60'}`}>{value ? <Eye aria-hidden="true" size={14} /> : <EyeOff aria-hidden="true" size={14} />}{value ? 'Publicado' : 'Oculto'}</button>;
 }
 
 function SaveButton({ isSaving, label, onClick, type = 'submit' }: { isSaving: boolean; label: string; onClick?: () => void; type?: 'submit' | 'button' }) {
@@ -506,5 +506,5 @@ function SaveButton({ isSaving, label, onClick, type = 'submit' }: { isSaving: b
 
 function OrderButton({ direction, disabled, onClick }: { direction: 'up' | 'down'; disabled: boolean; onClick: () => void }) {
   const Icon = direction === 'up' ? ArrowUp : ArrowDown;
-  return <button type="button" disabled={disabled} onClick={onClick} className="inline-flex h-5 w-5 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-200" aria-label={direction === 'up' ? 'Mover arriba' : 'Mover abajo'}><Icon aria-hidden="true" size={12} /></button>;
+  return <button type="button" disabled={disabled} onClick={onClick} className="inline-flex h-11 w-11 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-200" aria-label={direction === 'up' ? 'Mover arriba' : 'Mover abajo'}><Icon aria-hidden="true" size={14} /></button>;
 }

@@ -37,15 +37,20 @@ function getProductNotes(item: HomeCatalogItem, currency: string): Array<[string
     .map(([label, score]) => [label, Number(score) || 0]);
 }
 
+function compactMetricLabel(label: string): string {
+  const compactLabels: Record<string, string> = { Rasterización: 'Raster.', Productividad: 'Prod.' };
+  return compactLabels[label] ?? label;
+}
+
 function ComponentColumn({ item, currency }: { item: HomeCatalogItem; currency: string }) {
   return (
-    <div className="min-w-0 p-4 sm:p-5">
-      <p className="line-clamp-2 font-display text-xl font-black leading-[0.95] text-white">{item.brand ? `${item.brand} ${item.name}` : item.name}</p>
-      <dl className="mt-5 space-y-2.5">
+    <div className="min-w-0 p-3 sm:p-5">
+      <p className="line-clamp-2 font-display text-base font-black leading-[0.98] text-white sm:text-xl sm:leading-[0.95]">{item.brand ? `${item.brand} ${item.name}` : item.name}</p>
+      <dl className="mt-3 space-y-1.5 sm:mt-5 sm:space-y-2.5">
         {getProductNotes(item, currency).map(([label, score]) => (
-          <div key={label} className="grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-2">
-            <dt className="truncate text-[10px] font-black uppercase tracking-wider text-zinc-500" title={label}>{label}</dt>
-            <dd className="text-right text-sm font-black tabular-nums text-zinc-200">{score.toFixed(1)}</dd>
+          <div key={label} className="grid grid-cols-[minmax(0,1fr)_1.8rem] items-center gap-1 sm:grid-cols-[minmax(0,1fr)_2rem] sm:gap-2">
+            <dt className="truncate text-[0.6875rem] font-black uppercase tracking-tight text-zinc-400 sm:text-[0.75rem] sm:tracking-wider" title={label}><span className="sm:hidden">{compactMetricLabel(label)}</span><span className="hidden sm:inline">{label}</span></dt>
+            <dd className="text-right text-[0.75rem] font-black tabular-nums text-zinc-100 sm:text-sm">{score.toFixed(1)}</dd>
           </div>
         ))}
       </dl>
@@ -57,13 +62,13 @@ function CollectionColumn({ item, itemType }: { item: HomeCatalogItem; itemType:
   const record = asRecord(item);
   const parts = itemType === 'combos' ? COMBO_PARTS : BUILD_PARTS;
   return (
-    <div className="min-w-0 p-4 sm:p-5">
-      <p className="line-clamp-2 font-display text-xl font-black leading-[0.95] text-white">{item.title || item.name}</p>
-      <dl className="mt-5 space-y-2.5">
+    <div className="min-w-0 p-3 sm:p-5">
+      <p className="line-clamp-2 font-display text-base font-black leading-[0.98] text-white sm:text-xl sm:leading-[0.95]">{item.title || item.name}</p>
+      <dl className="mt-3 space-y-1.5 sm:mt-5 sm:space-y-2.5">
         {parts.map((part) => {
           const component = record[part.key] as { name?: string } | null | undefined;
           if (!component) return null;
-          return <div key={part.key} className="flex min-w-0 items-baseline justify-between gap-3"><dt className="shrink-0 text-[10px] font-black uppercase tracking-wider text-zinc-600">{part.label}</dt><dd className="truncate text-right text-xs font-bold text-zinc-300" title={component.name}>{component.name}</dd></div>;
+          return <div key={part.key} className="flex min-w-0 items-baseline justify-between gap-1.5 sm:gap-3"><dt className="shrink-0 text-[0.6875rem] font-black uppercase tracking-tight text-zinc-500 sm:text-[0.75rem] sm:tracking-wider">{part.label}</dt><dd className="truncate text-right text-[0.75rem] font-bold text-zinc-200 sm:text-xs" title={component.name}>{component.name}</dd></div>;
         })}
       </dl>
     </div>
@@ -81,15 +86,15 @@ export default function HomeComparisonCard({ comparison, currency }: { compariso
   return (
     <Link
       href={href}
-      className="group w-[min(32rem,calc(100vw-3rem))] shrink-0 snap-start overflow-hidden rounded-[1.8rem] border border-zinc-700 bg-zinc-950 transition-colors hover:border-cyan-200/60 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:w-[34rem] lg:w-[calc((100%-1.25rem)/2)]"
+      className="group flex h-full w-full flex-col overflow-hidden rounded-[1.8rem] border border-zinc-700 bg-zinc-950 transition-colors hover:border-cyan-200/60 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
     >
-      <div className="flex items-center justify-between gap-4 border-b border-zinc-700 px-5 py-4 sm:px-6">
-        <div className="min-w-0"><p className="truncate font-display text-xl font-black text-white">{comparison.title}</p>{comparison.description && <p className="mt-1 truncate text-xs text-zinc-500">{comparison.description}</p>}</div>
+      <div className="flex items-center justify-between gap-3 border-b border-zinc-700 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        <div className="min-w-0"><p className="truncate font-display text-lg font-black text-white sm:text-xl">{comparison.title}</p>{comparison.description && <p className="mt-1 truncate text-[10px] text-zinc-500 sm:text-xs">{comparison.description}</p>}</div>
         <ArrowUpRight aria-hidden="true" size={17} className="shrink-0 text-zinc-600 transition-colors group-hover:text-cyan-100" />
       </div>
-      <div className="relative grid grid-cols-2">
+      <div className="relative grid grid-cols-2 pt-9 sm:pt-10">
         {isProducts ? <ComponentColumn item={left} currency={currency} /> : <CollectionColumn item={left} itemType={collectionType} />}
-        <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-5 z-10 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-zinc-700 bg-black font-display text-xs font-black text-zinc-300">VS</span>
+        <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-3 z-10 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-zinc-700 bg-black font-display text-xs font-black text-zinc-300">VS</span>
         <div className="border-l border-zinc-700">{isProducts ? <ComponentColumn item={right} currency={currency} /> : <CollectionColumn item={right} itemType={collectionType} />}</div>
       </div>
     </Link>

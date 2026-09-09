@@ -78,8 +78,8 @@ function HomeSections({ sections, currency }: { sections: HomeSection[]; currenc
       const collectionType = section.content_type === 'builds' ? 'builds' : 'combos';
       blocks.push(
         <EditorialSection key={section.id} section={section}>
-          <HomeCarousel label={section.title}>
-            {items.map((item) => <HomeCollectionCard key={item.id} item={item} itemType={collectionType} currency={currency} variant={section.visual_variant} />)}
+          <HomeCarousel label={section.title} layout={section.visual_variant === 'spotlight' ? 'spotlight' : 'collection'}>
+            {items.map((item) => <HomeCollectionCard key={item.id} item={item} itemType={collectionType} currency={currency} />)}
           </HomeCarousel>
         </EditorialSection>,
       );
@@ -91,7 +91,7 @@ function HomeSections({ sections, currency }: { sections: HomeSection[]; currenc
       if (comparisons.length > 0) {
         blocks.push(
           <EditorialSection key={section.id} section={section}>
-            <HomeCarousel label={section.title}>{comparisons.map((comparison) => <HomeComparisonCard key={comparison.id} comparison={comparison} currency={currency} />)}</HomeCarousel>
+            <HomeCarousel label={section.title} layout="comparison">{comparisons.map((comparison) => <HomeComparisonCard key={comparison.id} comparison={comparison} currency={currency} />)}</HomeCarousel>
           </EditorialSection>,
         );
       }
@@ -100,8 +100,8 @@ function HomeSections({ sections, currency }: { sections: HomeSection[]; currenc
   flushProductSections();
 
   return blocks.length > 0
-    ? <div className="space-y-20">{blocks}</div>
-    : <div className="py-24 text-center"><h1 className="font-display text-4xl font-black text-white">Próximamente</h1><p className="mt-3 text-zinc-500">Estamos preparando nuevas selecciones de hardware.</p></div>;
+    ? <div className="space-y-14 sm:space-y-20">{blocks}</div>
+    : <div className="py-24 text-center"><h2 className="font-display text-4xl font-black text-white">Próximamente</h2><p className="mt-3 text-zinc-500">Estamos preparando nuevas selecciones de hardware.</p></div>;
 }
 
 function EditorialSection({ section, children }: { section: HomeSection; children: ReactNode }) {

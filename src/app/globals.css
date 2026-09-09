@@ -123,6 +123,68 @@ body {
   padding-right: 0;
 }
 
+/* The home carousel responds to the usable content width, including the AI sidebar. */
+.home-carousel {
+  container-name: home-carousel;
+  container-type: inline-size;
+}
+
+.home-carousel-viewport {
+  gap: 1rem;
+}
+
+.home-carousel-item {
+  flex-basis: 100%;
+}
+
+@media (max-width: 767px) {
+  .home-carousel-viewport {
+    padding-inline: max(1rem, calc((100% - 20rem) / 2));
+    scroll-padding-inline: max(1rem, calc((100% - 20rem) / 2));
+  }
+
+  .home-carousel-item {
+    flex-basis: min(20rem, calc(100vw - 2rem));
+    scroll-snap-align: center;
+  }
+}
+
+@container home-carousel (min-width: 36rem) {
+  .home-carousel-viewport {
+    gap: 1.25rem;
+  }
+
+  .home-carousel-item--collection {
+    flex-basis: calc((100% - 1.25rem) / 2);
+  }
+}
+
+@container home-carousel (min-width: 52rem) {
+  .home-carousel-viewport {
+    gap: 1.5rem;
+  }
+
+  .home-carousel-item--collection {
+    flex-basis: calc((100% - 3rem) / 3);
+  }
+
+  .home-carousel-item--spotlight {
+    flex-basis: calc((100% - 1.5rem) / 2);
+  }
+}
+
+@container home-carousel (min-width: 68rem) {
+  .home-carousel-item--collection {
+    flex-basis: calc((100% - 4.5rem) / 4);
+  }
+}
+
+@container home-carousel (min-width: 70rem) {
+  .home-carousel-item--comparison {
+    flex-basis: calc((100% - 1.5rem) / 2);
+  }
+}
+
 @media (min-width: 1024px) {
   .catalog-detail-right {
     container-name: catalog-detail-right;
