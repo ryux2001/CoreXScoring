@@ -46,7 +46,7 @@ export default function HomeCollectionCard({
       : getBuildPartPrice(record, part.key, currency))
   ), 0);
   const href = `/${itemType}/${item.slug}?currency=${currency}`;
-  const minimumHeight = itemType === 'combos' ? 'min-h-[22rem]' : 'min-h-[28rem]';
+  const minimumHeight = itemType === 'combos' ? 'min-h-[20rem]' : 'min-h-[26rem]';
 
   return (
     <Link
@@ -61,23 +61,22 @@ export default function HomeCollectionCard({
         <ArrowUpRight aria-hidden="true" size={17} className="shrink-0 text-zinc-600 transition-colors group-hover:text-cyan-100" />
       </div>
 
-      <dl className="mt-4 flex flex-1 flex-col justify-center gap-1.5 border-y border-zinc-800 py-3 sm:mt-6 sm:gap-2 sm:py-4">
+      <div className="mt-5 space-y-2 border-l-2 border-zinc-700 py-1.5 pl-4 sm:mt-6">
         {parts.map((part) => {
           const component = record[part.key] as { name?: string } | null | undefined;
           if (!component) return null;
           return (
-            <div key={part.key} className="flex min-w-0 items-baseline justify-between gap-3">
-              <dt className="shrink-0 text-[8px] font-black uppercase tracking-tight text-zinc-600 sm:text-[10px] sm:tracking-wider">{part.label}</dt>
-              <dd className="truncate text-right text-[10px] font-bold text-zinc-300 sm:text-xs" title={component.name}>{component.name}</dd>
+            <div key={part.key} className="min-w-0">
+              <p className="truncate text-xs font-bold text-zinc-300 sm:text-sm" title={component.name}>{component.name}</p>
             </div>
           );
         })}
-      </dl>
+      </div>
 
-      <div className="mt-4 flex items-end justify-between gap-2 sm:mt-5 sm:gap-3">
+      <div className="mt-5 flex items-end justify-between gap-2 border-t border-zinc-800/80 pt-3 sm:mt-6 sm:gap-3 sm:pt-3.5">
         <div>
-          <p className="text-[8px] font-black uppercase tracking-[0.14em] text-zinc-600 sm:text-[10px] sm:tracking-[0.16em]">Precio total</p>
-          <p className="mt-1 font-display text-xl font-black tracking-tight text-white sm:text-2xl">{formatPrice(total, currency)}</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-zinc-600 sm:text-[10px] sm:tracking-[0.16em]">Precio total</p>
+          <p className="mt-0.5 font-display text-xl font-black tracking-tight text-white sm:text-2xl">{formatPrice(total, currency)}</p>
         </div>
         <span className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 transition-colors group-hover:text-cyan-100">Ver</span>
       </div>

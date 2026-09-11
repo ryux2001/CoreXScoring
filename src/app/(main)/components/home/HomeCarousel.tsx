@@ -6,6 +6,20 @@ import type { ReactNode } from 'react';
 
 type HomeCarouselLayout = 'collection' | 'spotlight' | 'comparison';
 
+interface CarouselState {
+  currentPage: number;
+  canScrollLeft: boolean;
+  canScrollRight: boolean;
+  pageCount: number;
+}
+
+const INITIAL_CAROUSEL_STATE: CarouselState = {
+  currentPage: 0,
+  canScrollLeft: false,
+  canScrollRight: false,
+  pageCount: 1,
+};
+
 export default function HomeCarousel({
   children,
   label,
@@ -17,7 +31,7 @@ export default function HomeCarousel({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [scrollState, setScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
+  const [scrollState, setScrollState] = useState<CarouselState>(INITIAL_CAROUSEL_STATE);
   const items = Children.toArray(children);
   const setScrollContainer = useCallback((node: HTMLDivElement | null) => {
     scrollRef.current = node;
@@ -28,30 +42,50 @@ export default function HomeCarousel({
     if (!container) return;
 
     const updateScrollState = () => {
+      const maxScroll = Math.max(container.scrollWidth - container.clientWidth, 0);
+      const pageCount = maxScroll <= 1 ? 1 : Math.max(2, Math.ceil(container.scrollWidth / container.clientWidth));
       const nextState = {
+        currentPage: maxScroll <= 1
+          ? 0
+          : Math.min(pageCount - 1, Math.round((container.scrollLeft / maxScroll) * (pageCount - 1))),
         canScrollLeft: container.scrollLeft > 1,
         canScrollRight: container.scrollLeft + container.clientWidth < container.scrollWidth - 1,
+        pageCount,
       };
       setScrollState((current) => (
-        current.canScrollLeft === nextState.canScrollLeft && current.canScrollRight === nextState.canScrollRight
+        current.currentPage === nextState.currentPage
+        && current.canScrollLeft === nextState.canScrollLeft
+        && current.canScrollRight === nextState.canScrollRight
+        && current.pageCount === nextState.pageCount
           ? current
           : nextState
       ));
     };
     const observer = new ResizeObserver(updateScrollState);
     observer.observe(container);
+    updateScrollState();
     container.addEventListener('scroll', updateScrollState, { passive: true });
 
     return () => {
       observer.disconnect();
       container.removeEventListener('scroll', updateScrollState);
     };
-  }, [container]);
+  }, [container, items.length]);
 
   const scroll = (direction: -1 | 1) => {
     const container = scrollRef.current;
     if (!container) return;
     container.scrollBy({ left: direction * container.clientWidth * 0.86, behavior: 'smooth' });
+  };
+
+  const scrollToPage = (page: number) => {
+    const container = scrollRef.current;
+    if (!container || scrollState.pageCount <= 1) return;
+
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    const target = (maxScroll * page) / (scrollState.pageCount - 1);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    container.scrollTo({ left: target, behavior: reducedMotion ? 'auto' : 'smooth' });
   };
 
   return (
@@ -77,6 +111,20 @@ export default function HomeCarousel({
       </div>
       {scrollState.canScrollLeft && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-[-1rem] z-[1] hidden w-10 bg-gradient-to-r from-black/60 via-black/25 to-transparent sm:left-[-1.5rem] md:left-[-3rem] md:block lg:left-0" />}
       {scrollState.canScrollRight && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-[-1rem] z-[1] hidden w-10 bg-gradient-to-l from-black/60 via-black/25 to-transparent sm:right-[-1.5rem] md:right-[-3rem] md:block lg:right-0" />}
+      {scrollState.pageCount > 1 && (
+        <div className="mt-2 flex items-center justify-center gap-1.5" aria-label={`Páginas de ${label}`} role="navigation">
+          {Array.from({ length: scrollState.pageCount }, (_, page) => (
+            <button
+              key={page}
+              type="button"
+              onClick={() => scrollToPage(page)}
+              aria-label={`Ir a la página ${page + 1} de ${scrollState.pageCount}`}
+              aria-current={page === scrollState.currentPage ? 'true' : undefined}
+              className={`h-2 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 ${page === scrollState.currentPage ? 'w-5 bg-cyan-100' : 'w-2 bg-zinc-700 hover:bg-zinc-500'}`}
+            />
+          ))}
+        </div>
+      )}
       <button
         type="button"
         onClick={() => scroll(1)}
