@@ -38,7 +38,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </div>
             </div>
             <div className="hidden md:block"><HomeBannerCarousel /></div>
-            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800 md:hidden"><HeroTile icon={Cpu} label="Hardware" /><HeroTile icon={Boxes} label="Combos" /><HeroTile icon={Hammer} label="Builds" /></div>
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800 md:hidden"><HeroTile href="/catalog" icon={Cpu} label="Hardware" /><HeroTile href="/combos" icon={Boxes} label="Combos" /><HeroTile href="/builds" icon={Hammer} label="Builds" /></div>
           </div>
         </section>
       )}
@@ -50,8 +50,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   );
 }
 
-function HeroTile({ icon: Icon, label }: { icon: typeof Cpu; label: string }) {
-  return <div className="flex min-h-28 flex-col justify-between bg-zinc-950 p-4 text-zinc-500"><Icon aria-hidden="true" size={18} /><span className="font-display text-sm font-bold uppercase tracking-wider text-zinc-300">{label}</span></div>;
+function HeroTile({ href, icon: Icon, label }: { href: string; icon: typeof Cpu; label: string }) {
+  return <Link href={href} className="flex min-h-28 flex-col justify-between bg-zinc-950 p-4 text-zinc-500 transition-colors hover:bg-zinc-900 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"><Icon aria-hidden="true" size={18} /><span className="font-display text-sm font-bold uppercase tracking-wider text-zinc-300">{label}</span></Link>;
 }
 
 function HomeSections({ sections, currency }: { sections: HomeSection[]; currency: string }) {
