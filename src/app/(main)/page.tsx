@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { resolveRequestCurrency } from '@/lib/serverCurrency';
 import { getItemContent, loadPublicHomeData, type HomeCatalogItem, type HomeSection } from '@/lib/admin/home';
+import HomeBannerCarousel from './components/home/HomeBannerCarousel';
 import HomeCarousel from './components/home/HomeCarousel';
 import HomeCollectionCard from './components/home/HomeCollectionCard';
 import HomeComparisonCard from './components/home/HomeComparisonCard';
@@ -27,7 +28,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <main className="min-h-screen bg-black font-technical text-white">
       {hero.is_active && (
         <section className="border-b border-zinc-900 px-4 py-14 sm:px-6 sm:py-20 md:px-12 lg:px-16 lg:py-28">
-          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.9fr)] lg:items-center lg:gap-14">
             <div className="max-w-3xl">
               <h1 className="font-display text-4xl font-black leading-[0.92] tracking-tight text-white sm:text-6xl lg:text-7xl">{hero.title}</h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">{hero.description}</p>
@@ -36,7 +37,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <Link href={hero.secondary_href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-5 text-xs font-black uppercase tracking-wider text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">{hero.secondary_label}<BarChart3 aria-hidden="true" size={16} /></Link>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800"><HeroTile icon={Cpu} label="Hardware" /><HeroTile icon={Boxes} label="Combos" /><HeroTile icon={Hammer} label="Builds" /></div>
+            <div className="hidden md:block"><HomeBannerCarousel /></div>
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800 md:hidden"><HeroTile icon={Cpu} label="Hardware" /><HeroTile icon={Boxes} label="Combos" /><HeroTile icon={Hammer} label="Builds" /></div>
           </div>
         </section>
       )}
