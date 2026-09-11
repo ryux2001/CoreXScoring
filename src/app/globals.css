@@ -123,6 +123,33 @@ body {
   padding-right: 0;
 }
 
+.home-hero {
+  container-name: home-hero;
+  container-type: inline-size;
+}
+
+.home-hero-layout {
+  display: grid;
+  gap: 2.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-hero-layout > * {
+  min-width: 0;
+}
+
+@container home-hero (min-width: 46rem) {
+  .home-hero-layout {
+    align-items: center;
+    gap: 2.5rem;
+    grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
+  }
+
+  .home-hero-title {
+    font-size: clamp(3rem, 6cqw, 4.5rem);
+  }
+}
+
 /* The home carousel responds to the usable content width, including the AI sidebar. */
 .home-carousel {
   container-name: home-carousel;

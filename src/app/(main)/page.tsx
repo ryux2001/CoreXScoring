@@ -27,10 +27,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <main className="min-h-screen bg-black font-technical text-white">
       {hero.is_active && (
-        <section className="border-b border-zinc-900 px-4 py-14 sm:px-6 sm:py-20 md:px-12 lg:px-16 lg:py-28">
-          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.9fr)] lg:items-center lg:gap-14">
+        <section className="home-hero border-b border-zinc-900 px-4 py-14 sm:px-6 sm:py-20 md:px-12 md:py-16 lg:px-16 lg:py-20">
+          <div className="home-hero-layout mx-auto max-w-7xl">
             <div className="max-w-3xl">
-              <h1 className="font-display text-4xl font-black leading-[0.92] tracking-tight text-white sm:text-6xl lg:text-7xl">{hero.title}</h1>
+              <h1 className="home-hero-title font-display text-4xl font-black leading-[0.92] tracking-tight text-white sm:text-6xl">{hero.title}</h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">{hero.description}</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href={hero.primary_href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-xs font-black uppercase tracking-wider text-black transition-colors hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">{hero.primary_label}<ArrowRight aria-hidden="true" size={16} /></Link>
