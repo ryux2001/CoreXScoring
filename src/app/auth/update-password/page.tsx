@@ -1,15 +1,24 @@
 import { redirect } from 'next/navigation';
 import PasswordChangeForm from '@/app/auth/components/PasswordChangeForm';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
+import { cookies } from 'next/headers';
+import {
+  hasActiveRecoveryProof,
+  RECOVERY_PROOF_COOKIE,
+} from '@/lib/auth/recovery-proof';
 
 export default async function UpdatePasswordPage() {
   const supabase = await createSupabaseServerClient();
+  const cookieStore = await cookies();
+  const hasRecoveryProof = await hasActiveRecoveryProof(
+    cookieStore.get(RECOVERY_PROOF_COOKIE)?.value,
+  );
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect('/auth');
+  if (!user || !hasRecoveryProof) {
+    redirect('/auth?error=invalid-link');
   }
 
   return (
@@ -23,7 +32,7 @@ export default async function UpdatePasswordPage() {
             Elige una nueva contraseña para recuperar el acceso a tu cuenta.
           </p>
         </div>
-        <PasswordChangeForm successRedirect="/catalog" />
+        <PasswordChangeForm recovery successRedirect="/catalog" />
       </div>
     </main>
   );
