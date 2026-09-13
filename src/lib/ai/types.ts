@@ -36,6 +36,8 @@ export interface PageContext {
   entitySlug?: string;
   entityTitle?: string;
   entitySummary?: string;
+  /** Internal marker set only after server-side entity resolution. */
+  serverResolved?: true;
   /** Campos añadidos únicamente por el servidor después de resolver la ruta. */
   entityComponents?: Array<{ id: string; slot: string; customPriceUsd?: number; customPriceEur?: number }>;
   comparison?: ComparisonContext;
@@ -409,8 +411,6 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
     entityType: context.entityType,
     entityId: context.entityId?.slice(0, 120),
     entitySlug: context.entitySlug?.slice(0, 120),
-    entityTitle: context.entityTitle?.slice(0, 200),
-    entitySummary: context.entitySummary?.slice(0, 500),
     ...(context.comparison && context.comparison.itemIds.length > 0
       ? {
           comparison: {

@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AiGatewayError, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
+import { AiGatewayError, getServerToolCapabilities, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
 import { AiActionExecutionError, confirmPendingAction } from "@/lib/ai/actions";
 import { resolveDirectVaultLookup } from "@/lib/ai/vault-direct";
 import { getAiChatCredential } from "@/lib/ai/chat-settings";
 import { appendAiConversationTurn, getAiConversation, getConversationPromptMessages } from "@/lib/ai/conversations";
 import {
   AiQuotaUnavailableError,
+  AiBudgetUnavailableError,
   consumeAiQuota,
   estimateTokenBudget,
   getClientIpHash,
   recordAiRequest,
   settleAiQuota,
+  reserveOpenRouterBudget,
+  settleOpenRouterBudget,
 } from "@/lib/ai/limits";
 import { isChatRequest, normalizeMessages, normalizePageContext, type AiFrontendPriceContext, type BuildDraft, type ChatMessage, type ChatProvider, type ChatResponse, type ComboDraft } from "@/lib/ai/types";
 import { resolvePageContext } from "@/lib/ai/page-context";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 import { resolveAiFrontendPriceContext, resolveAiPagePriceContext } from "@/lib/ai/price-context";
 
@@ -140,6 +144,7 @@ export async function POST(request: NextRequest) {
       { status: 401 },
     ), requestId);
   }
+  const quotaAdmin = createSupabaseAdminClient();
 
   if (body.action) {
     if (user.is_anonymous) {
@@ -150,11 +155,12 @@ export async function POST(request: NextRequest) {
     const actionIpHash = getClientIpHash(request);
     try {
       const actionQuota = await consumeAiQuota({
-        supabase,
+        supabase: quotaAdmin,
         userId: user.id,
         ipHash: actionIpHash,
         isAnonymous: false,
         estimatedTokens: 0,
+        requestId,
       });
 
       if (!actionQuota.allowed) {
@@ -177,6 +183,12 @@ export async function POST(request: NextRequest) {
           headers: { "Cache-Control": "no-store", "Retry-After": String(retryAfterSeconds) },
         });
       }
+      if (!actionQuota.reservationId) throw new AiQuotaUnavailableError();
+      await settleAiQuota({
+        supabase: quotaAdmin,
+        reservationId: actionQuota.reservationId,
+        actualTokens: 0,
+      });
     } catch (error) {
       if (error instanceof AiQuotaUnavailableError) {
         return NextResponse.json({ error: "Las cuotas de CoreX AI no están disponibles. Inténtalo de nuevo más tarde." }, { status: 503 });
@@ -264,14 +276,17 @@ export async function POST(request: NextRequest) {
     ? process.env.AI_LOCAL_MODEL?.trim() || "Qwen3.5-9B-UD-Q4_K_XL"
     : process.env.AI_GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
   let userCredential: AiGatewayUserCredential | undefined;
+  let reservationId: string | undefined;
+  let budgetReservationId: string | undefined;
 
   try {
     const quota = await consumeAiQuota({
-      supabase,
+      supabase: quotaAdmin,
       userId: user.id,
       ipHash,
       isAnonymous,
       estimatedTokens: reservedTokens,
+      requestId,
     });
 
     if (!quota.allowed) {
@@ -299,6 +314,8 @@ export async function POST(request: NextRequest) {
         headers: { "Cache-Control": "no-store", "Retry-After": String(retryAfterSeconds) },
       });
     }
+    if (!quota.reservationId) throw new AiQuotaUnavailableError();
+    reservationId = quota.reservationId;
 
     const latestUserMessage = [...normalizedMessages].reverse().find((message): message is ChatMessage & { role: "user" } => message.role === "user");
     if (!latestUserMessage) {
@@ -318,8 +335,8 @@ export async function POST(request: NextRequest) {
     const effectiveMessages = (conversationMode === "saved"
       ? [...storedMessages, ...(isAlreadyStored ? [] : [latestUserMessage])]
       : normalizedMessages).slice(-12);
-    const effectiveBuildDraft = body.buildDraft || savedConversation?.state.buildDraft;
-    const effectiveComboDraft = body.comboDraft || savedConversation?.state.comboDraft;
+    const effectiveBuildDraft = savedConversation?.state.buildDraft || body.buildDraft;
+    const effectiveComboDraft = savedConversation?.state.comboDraft || body.comboDraft;
 
     const normalizedPageContext = normalizePageContext(body.context);
     const resolvedPageContext = await resolvePageContext(supabase, normalizedPageContext, user.id, isAnonymous);
@@ -365,6 +382,12 @@ export async function POST(request: NextRequest) {
       comboDraft: effectiveComboDraft,
       catalogPriceEvaluation,
       priceContext: frontendPriceContext || pagePriceContext,
+      allowedTools: getServerToolCapabilities(effectiveMessages, {
+        actor: { id: user.id, isAnonymous },
+        buildDraft: effectiveBuildDraft,
+        comboDraft: effectiveComboDraft,
+        pageContext: resolvedPageContext,
+      }),
     };
     userCredential = (await getAiChatCredential(user.id)) || undefined;
     if (userCredential) {
@@ -372,17 +395,25 @@ export async function POST(request: NextRequest) {
       completionModel = userCredential.model;
     }
 
+    const projectOpenRouterModel = process.env.AI_OPENROUTER_MODELS?.split(",")[0]?.trim() || "openai/gpt-oss-20b";
+    if (!userCredential && !localProviderEnabled && process.env.OPENROUTER_API_KEY?.trim()) {
+      const budget = await reserveOpenRouterBudget(quotaAdmin, requestId, projectOpenRouterModel);
+      if (!budget.allowed || !budget.reservationId) {
+        return NextResponse.json({ error: "El presupuesto mensual de CoreX AI está agotado." }, { status: 429, headers: { "Cache-Control": "no-store" } });
+      }
+      budgetReservationId = budget.reservationId;
+    }
+
     const directVaultResponse = await resolveDirectVaultLookup(effectiveMessages, toolContext);
     if (directVaultResponse) {
       completionProvider = directVaultResponse.provider;
       completionModel = directVaultResponse.model;
       await settleAiQuota({
-        supabase,
-        userId: user.id,
-        ipHash,
-        reservedTokens,
+        supabase: quotaAdmin,
+        reservationId,
         actualTokens: 0,
       });
+      if (budgetReservationId) await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 0, 0);
       const savedResponse = conversationMode === "saved" && latestUserMessage
         ? await persistSavedResponse({
           response: directVaultResponse,
@@ -414,20 +445,21 @@ export async function POST(request: NextRequest) {
 
     completionProvider = completion.provider;
     completionModel = completion.model;
+    if (budgetReservationId && completion.usage) {
+      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, completion.provider === "openrouter" ? completion.usage.inputTokens : 0, completion.provider === "openrouter" ? completion.usage.outputTokens : 0);
+    } else if (budgetReservationId && completion.provider === "guardrail") {
+      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 0, 0);
+    }
     if (completion.provider === "guardrail") {
       await settleAiQuota({
-        supabase,
-        userId: user.id,
-        ipHash,
-        reservedTokens,
+        supabase: quotaAdmin,
+        reservationId,
         actualTokens: 0,
       });
     } else if (completion.usage) {
       await settleAiQuota({
-        supabase,
-        userId: user.id,
-        ipHash,
-        reservedTokens,
+        supabase: quotaAdmin,
+        reservationId,
         actualTokens: completion.usage.inputTokens + completion.usage.outputTokens,
       });
     }
@@ -464,6 +496,9 @@ export async function POST(request: NextRequest) {
         { error: "Las cuotas de CoreX AI no están disponibles. Inténtalo de nuevo más tarde." },
         { status: 503, headers: { "Cache-Control": "no-store" } },
       );
+    }
+    if (error instanceof AiBudgetUnavailableError) {
+      return NextResponse.json({ error: "El presupuesto de CoreX AI no está disponible." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
 
     const gatewayError = error instanceof AiGatewayError ? error : null;

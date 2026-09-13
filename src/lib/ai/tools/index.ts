@@ -76,6 +76,9 @@ export async function executeAiTool(
 ): Promise<AiToolResult> {
   const handler = AI_TOOL_HANDLERS[name];
   if (!handler) return { ok: false, error: "La tool solicitada no está disponible." };
+  if (context.allowedTools && !context.allowedTools.includes(name)) {
+    return { ok: false, error: "La operación no está autorizada para esta solicitud." };
+  }
 
   try {
     return await handler(args, context);

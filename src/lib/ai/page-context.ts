@@ -102,11 +102,13 @@ export async function resolvePageContext(
   const location = getPageLocation(context.pathname);
   const comparison = await resolveComparisonContext(supabase, context, location.route);
   const resolved: PageContext = {
-    ...context,
+    pathname: context.pathname,
+    search: context.search,
     route: location.route,
-    identifier: location.identifier || context.identifier,
+    identifier: location.identifier,
     entityType: location.entityType,
     entitySlug: location.slug,
+    serverResolved: true,
     ...(comparison ? { comparison } : { comparison: undefined }),
   };
   if (!location.slug || !location.entityType) return resolved;
@@ -138,7 +140,7 @@ export async function resolvePageContext(
   return {
     ...resolved,
     entityId: asText(row.id) || undefined,
-    entityTitle: title || context.entityTitle || context.title,
+    entityTitle: title || undefined,
     entitySummary: getEntitySummary(row, slots),
     entityComponents: getEntityComponents(row, slots),
   };
@@ -146,10 +148,12 @@ export async function resolvePageContext(
 
 export function formatPageContextForPrompt(context: PageContext | undefined): string {
   if (!context) return "";
-  const location = context.entityTitle
-    ? `Está viendo ${context.entityType === "product" ? "el componente" : context.entityType === "combo" || context.entityType === "saved_combo" ? "el combo" : "la build"} «${context.entityTitle}».`
+  const trustedEntityTitle = context.serverResolved ? context.entityTitle : undefined;
+  const trustedEntitySummary = context.serverResolved ? context.entitySummary : undefined;
+  const location = trustedEntityTitle
+    ? `Está viendo ${context.entityType === "product" ? "el componente" : context.entityType === "combo" || context.entityType === "saved_combo" ? "el combo" : "la build"} «${trustedEntityTitle}».`
     : `Está en la sección «${context.route || "otra"}» de CoreXScoring.`;
-  const summary = context.entitySummary ? ` Componentes visibles: ${context.entitySummary}.` : "";
+  const summary = trustedEntitySummary ? ` Componentes visibles: ${trustedEntitySummary}.` : "";
   const comparison = context.comparison?.itemIds.length
     ? ` La comparación actual contiene ${context.comparison.itemIds.length} componente(s) de catálogo. Si el usuario se refiere a «estos», «el primero» o «el segundo», consulta get_current_comparison antes de responder.`
     : "";

@@ -94,7 +94,7 @@ describe("build and combo conversational flows", () => {
   });
 
   it("creates a pending build proposal only after an explicit title", async () => {
-    vi.stubEnv("AI_ACTION_SECRET", "test-action-secret");
+    vi.stubEnv("AI_ACTION_SECRET", "a".repeat(32));
     const context = createCatalogContext();
     const planned = await planBuild({ components: buildRequirements }, context as never);
     if (!planned.ok || !planned.buildDraft) throw new Error("Fixture de build no válida");
@@ -110,7 +110,7 @@ describe("build and combo conversational flows", () => {
   });
 
   it("plans and prepares a combo without saving it automatically", async () => {
-    vi.stubEnv("AI_ACTION_SECRET", "test-action-secret");
+    vi.stubEnv("AI_ACTION_SECRET", "a".repeat(32));
     const context = createCatalogContext();
     const planned = await planCombo({ components: comboRequirements, currency: "EUR" }, context as never);
     expect(planned.ok).toBe(true);

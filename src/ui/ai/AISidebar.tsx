@@ -950,13 +950,24 @@ export default function AISidebar() {
     }
   };
 
-  const cancelAction = () => {
+  const cancelAction = async () => {
     if (isConfirmingAction) return;
-    setPendingAction(null);
-    setMessages((currentMessages) => [...currentMessages, {
-      role: "assistant",
-      content: "No se realizó ningún cambio en tu bóveda.",
-    }]);
+    if (!pendingAction) return;
+    try {
+      const response = await fetch("/api/ai/action/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actionId: pendingAction.id }),
+      });
+      if (!response.ok) throw new Error("La propuesta ya no puede cancelarse.");
+      setPendingAction(null);
+      setMessages((currentMessages) => [...currentMessages, {
+        role: "assistant",
+        content: "No se realizó ningún cambio en tu bóveda.",
+      }]);
+    } catch (error) {
+      setError({ message: error instanceof Error ? error.message : "No se pudo cancelar la propuesta.", retryable: false });
+    }
   };
 
   const stopResponse = () => {

@@ -18,6 +18,8 @@ export interface AiToolContext {
   comboDraft?: ComboDraft;
   catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
   priceContext?: AiResolvedPriceContext;
+  /** Capabilities are derived server-side for the current request. */
+  allowedTools?: readonly string[];
 }
 
 export interface AiToolSuccess {

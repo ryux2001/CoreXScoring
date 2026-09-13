@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { getRequiredServerSecret } from "@/lib/server-secrets";
 import type { NextRequest } from "next/server";
 import type { ChatMessage, ChatProvider } from "./types";
 import type { AiFailureStage } from "./gateway";
@@ -12,6 +13,7 @@ export type AiQuotaReason = "user_messages" | "ip_messages" | "user_tokens" | "i
 
 export interface AiQuotaDecision {
   allowed: boolean;
+  reservationId?: string;
   reason?: AiQuotaReason;
   retryAfterSeconds?: number;
   userRemainingMessages?: number;
@@ -35,6 +37,10 @@ export class AiQuotaUnavailableError extends Error {
   }
 }
 
+export class AiBudgetUnavailableError extends Error {
+  constructor() { super("El presupuesto de CoreX AI no está disponible."); }
+}
+
 export interface AiRequestTelemetry {
   userId: string;
   isAnonymous: boolean;
@@ -53,9 +59,9 @@ export interface AiRequestTelemetry {
 }
 
 function getForwardedIp(request: NextRequest): string | null {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const realIp = request.headers.get("x-real-ip");
-  const candidate = forwardedFor?.split(",")[0]?.trim() || realIp?.trim();
+  // Only Cloudflare's origin-protected deployment can attest this header.
+  if (process.env.TRUSTED_PROXY?.trim().toLowerCase() !== "cloudflare") return null;
+  const candidate = request.headers.get("cf-connecting-ip")?.trim();
   if (!candidate || candidate.length > 128) return null;
 
   // Quita el puerto de una dirección IPv4 reenviada por algunos proxies.
@@ -66,16 +72,33 @@ function getForwardedIp(request: NextRequest): string | null {
   return candidate;
 }
 
+export async function reserveOpenRouterBudget(supabase: AiSupabaseClient, requestId: string, model: string) {
+  const { data, error } = await supabase.rpc("reserve_openrouter_budget", {
+    p_request_id: requestId,
+    p_model: model,
+    p_input_tokens: 120_000,
+    p_output_tokens: 2_400,
+  });
+  if (error) throw new AiBudgetUnavailableError();
+  const result = toRecord(data);
+  return { allowed: result.allowed === true, reservationId: typeof result.reservation_id === "string" ? result.reservation_id : undefined };
+}
+
+export async function settleOpenRouterBudget(supabase: AiSupabaseClient, reservationId: string, inputTokens: number, outputTokens: number) {
+  const { error } = await supabase.rpc("settle_openrouter_budget", {
+    p_reservation_id: reservationId,
+    p_input_tokens: Math.max(0, Math.round(inputTokens)),
+    p_output_tokens: Math.max(0, Math.round(outputTokens)),
+  });
+  if (error) console.warn("AI budget settlement failed", { code: error.code || "unknown" });
+}
+
 /** Devuelve una huella estable de la IP sin persistir nunca la dirección original. */
 export function getClientIpHash(request: NextRequest): string | null {
   const ip = getForwardedIp(request);
   if (!ip) return null;
 
-  const secret = process.env.AI_IP_HASH_SECRET?.trim()
-    || process.env.SUPABASE_SECRET_KEY?.trim()
-    || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-    || process.env.GROQ_API_KEY?.trim()
-    || "corexscoring-development-ip-hash";
+  const secret = getRequiredServerSecret("AI_IP_HASH_SECRET");
 
   return createHmac("sha256", secret).update(ip).digest("hex");
 }
@@ -127,14 +150,17 @@ export async function consumeAiQuota({
   ipHash,
   isAnonymous,
   estimatedTokens,
+  requestId,
 }: {
   supabase: AiSupabaseClient;
   userId: string;
   ipHash: string | null;
   isAnonymous: boolean;
   estimatedTokens: number;
+  requestId: string;
 }): Promise<AiQuotaDecision> {
-  const { data, error } = await supabase.rpc("consume_ai_quota", {
+  const { data, error } = await supabase.rpc("reserve_ai_quota", {
+    p_request_id: requestId,
     p_user_id: userId,
     p_ip_hash: ipHash,
     p_is_anonymous: isAnonymous,
@@ -149,6 +175,7 @@ export async function consumeAiQuota({
   const result = toRecord(data);
   return {
     allowed: result.allowed === true,
+    reservationId: typeof result.reservation_id === "string" ? result.reservation_id : undefined,
     reason: typeof result.reason === "string" ? result.reason as AiQuotaReason : undefined,
     retryAfterSeconds: toOptionalNumber(result.retry_after_seconds),
     userRemainingMessages: toOptionalNumber(result.user_remaining_messages),
@@ -191,22 +218,16 @@ export async function recordAiRequest(
 /** Sustituye la reserva temporal por el consumo real cuando el proveedor lo informa. */
 export async function settleAiQuota({
   supabase,
-  userId,
-  ipHash,
-  reservedTokens,
+  reservationId,
   actualTokens,
 }: {
   supabase: AiSupabaseClient;
-  userId: string;
-  ipHash: string | null;
-  reservedTokens: number;
+  reservationId: string;
   actualTokens: number;
 }): Promise<void> {
   try {
-    const { error } = await supabase.rpc("settle_ai_quota", {
-      p_user_id: userId,
-      p_ip_hash: ipHash,
-      p_reserved_tokens: Math.max(Math.round(reservedTokens), 0),
+    const { error } = await supabase.rpc("settle_ai_quota_reservation", {
+      p_reservation_id: reservationId,
       p_actual_tokens: Math.max(Math.round(actualTokens), 0),
     });
 
