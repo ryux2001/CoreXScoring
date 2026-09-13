@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
+  if (isMutatingApiRequest(request)) {
+    const apiRejection = rejectUnsafeApiRequest(request);
+    if (apiRejection) return apiRejection;
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -71,8 +76,33 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/api/:path*',
     '/vault/:path*',
     '/dashboard/:path*',
     '/auth/:path*',
   ],
 };
+
+function isMutatingApiRequest(request: NextRequest) {
+  return request.nextUrl.pathname.startsWith('/api/')
+    && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+}
+
+function rejectUnsafeApiRequest(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  if (origin !== request.nextUrl.origin) {
+    return NextResponse.json({ error: 'Origen no permitido.' }, { status: 403 });
+  }
+
+  const fetchSite = request.headers.get('sec-fetch-site');
+  if (fetchSite && fetchSite !== 'same-origin') {
+    return NextResponse.json({ error: 'Solicitud cross-site no permitida.' }, { status: 403 });
+  }
+
+  const contentLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > 128 * 1024) {
+    return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
+  }
+
+  return null;
+}

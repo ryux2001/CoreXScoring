@@ -22,6 +22,7 @@ import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 import { resolveAiFrontendPriceContext, resolveAiPagePriceContext } from "@/lib/ai/price-context";
+import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
@@ -121,10 +122,11 @@ export async function POST(request: NextRequest) {
 
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
+    body = await readLimitedJson(request, 64 * 1024);
+  } catch (error) {
+    const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
     console.warn("CoreX AI request rejected", { requestId, code: "invalid_json" });
-    return withRequestId(NextResponse.json({ error: "Solicitud inválida.", code: "invalid_json", retryable: false }, { status: 400 }), requestId);
+    return withRequestId(NextResponse.json({ error: "Solicitud inválida.", code: "invalid_json", retryable: false }, { status }), requestId);
   }
 
   if (!isChatRequest(body)) {
@@ -143,6 +145,19 @@ export async function POST(request: NextRequest) {
       { error: "No se pudo identificar tu sesión de CoreX AI. Recarga la página e inténtalo de nuevo." },
       { status: 401 },
     ), requestId);
+  }
+  try {
+    const rateLimitResponse = await requireApiRateLimit({
+      key: `ai-chat:user:${user.id}`,
+      windowSeconds: 60,
+      limit: 30,
+    });
+    if (rateLimitResponse) return withRequestId(rateLimitResponse, requestId);
+  } catch (error) {
+    if (error instanceof ApiRateLimitUnavailableError) {
+      return withRequestId(NextResponse.json({ error: "El límite de seguridad no está disponible." }, { status: 503 }), requestId);
+    }
+    throw error;
   }
   const quotaAdmin = createSupabaseAdminClient();
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { deleteAiConversation, getAiConversation, renameAiConversation } from "@/lib/ai/conversations";
+import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
@@ -35,9 +36,19 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (!isAllowedOrigin(request)) return NextResponse.json({ error: "Origen no permitido." }, { status: 403 });
   const user = await getRegisteredUser();
   if (!user) return NextResponse.json({ error: "Necesitas una cuenta registrada." }, { status: 401 });
+  try {
+    const rateLimitResponse = await requireApiRateLimit({ key: `ai-conversation:user:${user.id}`, windowSeconds: 60, limit: 30 });
+    if (rateLimitResponse) return rateLimitResponse;
+  } catch (error) {
+    if (error instanceof ApiRateLimitUnavailableError) return NextResponse.json({ error: "El límite de seguridad no está disponible." }, { status: 503 });
+    throw error;
+  }
   const { id } = await context.params;
   let body: { title?: unknown };
-  try { body = await request.json() as { title?: unknown }; } catch { return NextResponse.json({ error: "La solicitud no es válida." }, { status: 400 }); }
+  try { body = await readLimitedJson<{ title?: unknown }>(request, 8 * 1024); } catch (error) {
+    const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
+    return NextResponse.json({ error: "La solicitud no es válida." }, { status });
+  }
   if (typeof body.title !== "string" || !body.title.trim() || body.title.length > 80) {
     return NextResponse.json({ error: "El título debe tener entre 1 y 80 caracteres." }, { status: 400 });
   }
@@ -54,6 +65,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   if (!isAllowedOrigin(request)) return NextResponse.json({ error: "Origen no permitido." }, { status: 403 });
   const user = await getRegisteredUser();
   if (!user) return NextResponse.json({ error: "Necesitas una cuenta registrada." }, { status: 401 });
+  try {
+    const rateLimitResponse = await requireApiRateLimit({ key: `ai-conversation:user:${user.id}`, windowSeconds: 60, limit: 30 });
+    if (rateLimitResponse) return rateLimitResponse;
+  } catch (error) {
+    if (error instanceof ApiRateLimitUnavailableError) return NextResponse.json({ error: "El límite de seguridad no está disponible." }, { status: 503 });
+    throw error;
+  }
   const { id } = await context.params;
   try {
     await deleteAiConversation(user.id, id);

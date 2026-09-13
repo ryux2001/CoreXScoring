@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { readLimitedJson } from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
@@ -29,9 +30,12 @@ export async function POST(request: NextRequest) {
 
   let retentionDays = 90;
   try {
-    const body = await request.json() as { retentionDays?: unknown };
+    const body = await readLimitedJson<{ retentionDays?: unknown }>(request, 2 * 1024);
     if (body.retentionDays !== undefined) retentionDays = Number(body.retentionDays);
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && "status" in error) {
+      return NextResponse.json({ error: error.message }, { status: Number(error.status) });
+    }
     // Un cuerpo vacío usa la retención predeterminada.
   }
 

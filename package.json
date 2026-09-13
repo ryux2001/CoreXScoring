@@ -23,6 +23,7 @@
     "test:actions:api": "node --env-file=.env.local tests/rls/ai-action-api-smoke.mjs",
     "test:password-recovery:remote": "node --env-file=.env.local tests/rls/password-recovery.mjs",
     "test:account-delete:remote": "node --env-file=.env.local tests/rls/account-delete.mjs",
+    "test:api-rate-limit:remote": "node --env-file=.env.local tests/rls/api-rate-limit.mjs",
     "test:ai:watch": "vitest tests/ai",
     "test:ai:coverage": "vitest run --coverage tests/ai",
     "test:ai:local-qwen": "node tests/ai/evals/run-local-qwen.mjs"

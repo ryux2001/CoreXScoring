@@ -3,16 +3,44 @@ import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 import {
   consumeRecoveryProof,
+  hasActiveRecoveryProof,
   RECOVERY_PROOF_COOKIE,
 } from '@/lib/auth/recovery-proof';
 import { isAcceptablePassword } from '@/lib/auth/password-policy';
+import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } from '@/lib/api-security';
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const supabase = await createSupabaseServerClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  const cookieStore = await cookies();
+  const proof = cookieStore.get(RECOVERY_PROOF_COOKIE)?.value;
+
+  if (!user || !proof || !(await hasActiveRecoveryProof(proof))) {
+    return NextResponse.json({ error: 'invalid-link' }, { status: 401 });
+  }
 
   try {
-    body = await request.json();
-  } catch {
+    const rateLimitResponse = await requireApiRateLimit({
+      key: `password-recovery:user:${user.id}`,
+      windowSeconds: 900,
+      limit: 5,
+    });
+    if (rateLimitResponse) return rateLimitResponse;
+  } catch (error) {
+    if (error instanceof ApiRateLimitUnavailableError) {
+      return NextResponse.json({ error: 'rate-limit-unavailable' }, { status: 503 });
+    }
+    throw error;
+  }
+
+  let body: unknown;
+  try {
+    body = await readLimitedJson(request, 4 * 1024);
+  } catch (error) {
+    if (error instanceof Error && 'status' in error) {
+      return NextResponse.json({ error: error.message }, { status: Number(error.status) });
+    }
     return NextResponse.json({ error: 'invalid-request' }, { status: 400 });
   }
 
@@ -24,13 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid-password' }, { status: 400 });
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
-  const cookieStore = await cookies();
-  const proof = cookieStore.get(RECOVERY_PROOF_COOKIE)?.value;
-
-  if (!user || !proof || !(await consumeRecoveryProof(proof, user.id))) {
+  if (!(await consumeRecoveryProof(proof, user.id))) {
     return NextResponse.json({ error: 'invalid-link' }, { status: 401 });
   }
 

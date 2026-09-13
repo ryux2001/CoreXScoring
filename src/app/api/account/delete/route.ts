@@ -7,6 +7,7 @@ import {
   MAX_DELETE_REQUEST_BYTES,
   parseDeleteAccountRequest,
 } from '@/lib/auth/delete-account-policy';
+import { ApiRateLimitUnavailableError, requireApiRateLimit } from '@/lib/api-security';
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
@@ -41,6 +42,20 @@ export async function POST(request: NextRequest) {
 
   if (!user || user.is_anonymous || !user.email) {
     return NextResponse.json({ error: 'Sesión no válida.' }, { status: 401 });
+  }
+
+  try {
+    const rateLimitResponse = await requireApiRateLimit({
+      key: `account-delete:user:${user.id}`,
+      windowSeconds: 3600,
+      limit: 3,
+    });
+    if (rateLimitResponse) return rateLimitResponse;
+  } catch (error) {
+    if (error instanceof ApiRateLimitUnavailableError) {
+      return NextResponse.json({ error: 'El límite de seguridad no está disponible.' }, { status: 503 });
+    }
+    throw error;
   }
 
   const contentType = request.headers.get('content-type')?.toLowerCase() || '';

@@ -8,6 +8,7 @@ import {
   parseCatalogKind,
   type CatalogMutationPayload,
 } from '@/lib/admin/catalog';
+import { readLimitedJson } from '@/lib/api-security';
 
 export const runtime = 'nodejs';
 
@@ -37,7 +38,7 @@ export async function PATCH(
 
   let body: CatalogMutationPayload;
   try {
-    body = await request.json() as CatalogMutationPayload;
+    body = await readLimitedJson<CatalogMutationPayload>(request, 64 * 1024);
   } catch {
     return NextResponse.json({ error: 'El cuerpo de la petición no es válido.' }, { status: 400 });
   }
