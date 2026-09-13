@@ -14,7 +14,7 @@ const admin = createClient(url, adminKey, options);
 const createUserClient = () => createClient(url, anonKey, options);
 const results = [];
 const createdUsers = [];
-let runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+let runId = crypto.randomUUID();
 const password = `Rls-${runId}-Safe!`;
 
 function record(name, ok, error) {

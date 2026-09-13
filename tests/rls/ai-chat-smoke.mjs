@@ -13,7 +13,7 @@ if (!supabaseUrl || !anonKey || !adminKey) throw new Error("Falta configuracion 
 
 const options = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 const admin = createClient(supabaseUrl, adminKey, options);
-const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const runId = crypto.randomUUID();
 const email = `corex-chat-${runId}@example.com`;
 const password = `Chat-${runId}-Safe!`;
 const results = [];

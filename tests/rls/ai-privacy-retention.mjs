@@ -13,7 +13,7 @@ if (!url || !anonKey || !adminKey) throw new Error("Falta configuración Supabas
 
 const options = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 const admin = createClient(url, adminKey, options);
-const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const runId = crypto.randomUUID();
 const email = `corex-privacy-${runId}@example.com`;
 const password = `Privacy-${runId}-Safe!`;
 const results = [];

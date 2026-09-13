@@ -21,8 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 12.3.4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -41,8 +39,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 12.3.4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -62,6 +58,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   codeql:
     name: CodeQL
