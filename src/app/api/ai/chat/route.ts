@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AiGatewayError, getServerToolCapabilities, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
+import { AiGatewayError, getPotentialExternalProviders, getServerToolCapabilities, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
 import { AiActionExecutionError, confirmPendingAction } from "@/lib/ai/actions";
 import { resolveDirectVaultLookup } from "@/lib/ai/vault-direct";
 import { getAiChatCredential } from "@/lib/ai/chat-settings";
@@ -23,6 +23,8 @@ import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 import { resolveAiFrontendPriceContext, resolveAiPagePriceContext } from "@/lib/ai/price-context";
 import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } from "@/lib/api-security";
+import { AI_PRODUCT_SELECT } from "@/lib/ai/privacy";
+import { getMissingExternalProviderConsents } from "@/lib/ai/provider-consent";
 
 export const runtime = "nodejs";
 
@@ -364,12 +366,12 @@ export async function POST(request: NextRequest) {
     if (requestedCatalogPriceEvaluation && resolvedPageContext?.entityId) {
       const { data: productForEvaluation } = await supabase
         .from("products")
-        .select("*")
+        .select(AI_PRODUCT_SELECT)
         .eq("id", resolvedPageContext.entityId)
         .maybeSingle();
       const serverEvaluation = productForEvaluation
         ? calculateCatalogPriceEvaluation({
-            product: productForEvaluation as Record<string, unknown>,
+            product: productForEvaluation as unknown as Record<string, unknown>,
             productId: resolvedPageContext.entityId,
             price: requestedCatalogPriceEvaluation.price,
             currency: requestedCatalogPriceEvaluation.currency,
@@ -454,6 +456,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(savedResponse, {
         headers: { "Cache-Control": "no-store" },
       });
+    }
+
+    const missingExternalConsents = await getMissingExternalProviderConsents(
+      user.id,
+      getPotentialExternalProviders(userCredential),
+    );
+    if (missingExternalConsents.length > 0) {
+      await settleAiQuota({ supabase: quotaAdmin, reservationId, actualTokens: 0 });
+      if (budgetReservationId) await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 0, 0);
+      return withRequestId(NextResponse.json({
+        error: "Antes de usar un proveedor externo debes confirmar la transferencia de datos.",
+        code: "external_provider_consent_required",
+        providers: missingExternalConsents,
+        retryable: false,
+      }, { status: 428, headers: { "Cache-Control": "no-store" } }), requestId);
     }
 
     const completion = await runChat(effectiveMessages, toolContext, requestId, userCredential);
