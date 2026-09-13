@@ -201,12 +201,13 @@ async function main() {
         ...baseEnv,
         AI_LOCAL_ENABLED: "false",
         AI_LOCAL_ONLY: "false",
+        AI_MANAGED_PROVIDERS: "groq",
         GROQ_API_KEY: "ci-groq-placeholder",
         AI_GROQ_MODELS: "openai/gpt-oss-20b",
         AI_PRIVACY_SMOKE_URL: appUrl,
       });
       await waitForHttp(`${appUrl}/catalog`);
-      await runSmoke("ai-privacy-retention.mjs", { ...baseEnv, AI_LOCAL_ENABLED: "false", AI_LOCAL_ONLY: "false", GROQ_API_KEY: "ci-groq-placeholder", AI_GROQ_MODELS: "openai/gpt-oss-20b", AI_PRIVACY_SMOKE_URL: appUrl });
+      await runSmoke("ai-privacy-retention.mjs", { ...baseEnv, AI_LOCAL_ENABLED: "false", AI_LOCAL_ONLY: "false", AI_MANAGED_PROVIDERS: "groq", GROQ_API_KEY: "ci-groq-placeholder", AI_GROQ_MODELS: "openai/gpt-oss-20b", AI_PRIVACY_SMOKE_URL: appUrl });
     }
   } finally {
     await stopApp(app);

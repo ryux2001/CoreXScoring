@@ -30,6 +30,9 @@ jobs:
       - run: pnpm test:ai
       - run: pnpm security:audit
       - run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
       - run: git diff --check
 
   local-security-smokes:
