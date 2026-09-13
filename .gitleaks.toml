@@ -1,0 +1,3 @@
+[allowlist]
+description = "Synthetic credential fixture"
+commits = ["1aa8a6954b751fcb3cb3a20400cd37fb21d72a84"]

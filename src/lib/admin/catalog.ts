@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
+import { consumeApiRateLimit } from '@/lib/api-security';
 
 export type CatalogKind = 'builds' | 'combos';
 export type CatalogSlot = 'cpu' | 'gpu' | 'ram' | 'motherboard' | 'storage' | 'psu';
@@ -77,7 +78,15 @@ export async function getAdminUser() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return user && !user.is_anonymous && user.app_metadata?.role === 'admin' ? user : null;
+  if (!user || user.is_anonymous || user.app_metadata?.role !== 'admin') return null;
+
+  const rateLimit = await consumeApiRateLimit({
+    key: `admin-api:user:${user.id}`,
+    windowSeconds: 60,
+    limit: 60,
+  });
+
+  return rateLimit.allowed ? user : null;
 }
 
 export function getAdminDb(): SupabaseClient {

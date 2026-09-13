@@ -1,7 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { createHmac } from "node:crypto";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { confirmPendingAction } from "@/lib/ai/actions";
 import { createSupabaseStub } from "./helpers/query-builder";
 import { ownBuildFixture } from "./helpers/fixtures";
+
+const actionSecret = "a".repeat(32);
+function digest(payload: unknown): string {
+  return createHmac("sha256", actionSecret).update(JSON.stringify(payload)).digest("hex");
+}
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("AI pending actions", () => {
   it("does not allow anonymous confirmation", async () => {
@@ -20,40 +28,70 @@ describe("AI pending actions", () => {
   });
 
   it("confirms a valid custom price only for the owning entity", async () => {
+    vi.stubEnv("AI_ACTION_SECRET", actionSecret);
+    const payload = {
+      entityType: "build",
+      entityId: ownBuildFixture.id,
+      slot: "cpu",
+      currency: "EUR",
+      price: 349.99,
+    };
     const supabase = createSupabaseStub({
       data: {
         action_type: "set_custom_price",
-        payload: {
-          entityType: "build",
-          entityId: ownBuildFixture.id,
-          slot: "cpu",
-          currency: "EUR",
-          price: 349.99,
-        },
+        payload,
       },
       error: null,
     });
     const result = await confirmPendingAction({
       supabase: supabase as never,
       actor: { id: ownBuildFixture.user_id, isAnonymous: false },
-    }, "action-1", "a".repeat(64));
+    }, "action-1", digest(payload));
     expect(result.message).toContain("349.99 EUR");
     expect(supabase.from).toHaveBeenCalledWith("created_builds");
     expect(supabase.builder.update).toHaveBeenCalledWith({ custom_price_cpu_eur: 349.99 });
   });
 
   it("does not confirm malformed price payloads", async () => {
+    vi.stubEnv("AI_ACTION_SECRET", actionSecret);
+    const payload = { entityType: "build", entityId: "build-1", slot: "not-a-slot", currency: "EUR", price: 20 };
     const supabase = createSupabaseStub({
       data: {
         action_type: "set_custom_price",
-        payload: { entityType: "build", entityId: "build-1", slot: "not-a-slot", currency: "EUR", price: 20 },
+        payload,
       },
       error: null,
     });
     await expect(confirmPendingAction({
       supabase: supabase as never,
       actor: { id: "user-1", isAnonymous: false },
-    }, "action-1", "a".repeat(64))).rejects.toThrow("propuesta de precio no es válida");
+    }, "action-1", digest(payload))).rejects.toThrow("propuesta de precio no es válida");
     expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("marks a claimed action as failed when the vault write fails", async () => {
+    vi.stubEnv("AI_ACTION_SECRET", actionSecret);
+    const payload = { entityType: "build", entityId: "build-1", slot: "cpu", currency: "USD", price: 20 };
+    const rpc = vi.fn(async (name: string) => name === "claim_ai_pending_action"
+      ? {
+          data: {
+            action_type: "set_custom_price",
+            payload,
+          },
+          error: null,
+        }
+      : { data: null, error: null });
+    const builder = {
+      update: vi.fn(() => builder),
+      eq: vi.fn(() => builder),
+      then: <TResult>(resolve: (value: { data: null; error: { code: string; message: string } }) => TResult) => Promise.resolve(resolve({ data: null, error: { code: "write_failed", message: "temporary failure" } })),
+    };
+    const supabase = { rpc, from: vi.fn(() => builder) };
+
+    await expect(confirmPendingAction({
+      supabase: supabase as never,
+      actor: { id: "user-1", isAnonymous: false },
+    }, "action-1", digest(payload))).rejects.toMatchObject({ code: "vault_price_update_failed" });
+    expect(rpc).toHaveBeenCalledWith("fail_ai_pending_action", { p_action_id: "action-1" });
   });
 });

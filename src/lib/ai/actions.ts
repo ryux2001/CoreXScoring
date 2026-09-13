@@ -1,4 +1,5 @@
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { getRequiredServerSecret } from "@/lib/server-secrets";
 import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot, PendingAction, PendingActionComponent } from "./types";
 import type { AiToolContext, AiToolResult } from "./tools/types";
 import { getProductPrice } from "@/lib/catalog/product-price";
@@ -229,12 +230,7 @@ async function resolveBuildComponent(
 }
 
 function getActionSecret(): string {
-  const secret = process.env.AI_ACTION_SECRET?.trim()
-    || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-    || process.env.SUPABASE_SECRET_KEY?.trim()
-    || process.env.GROQ_API_KEY?.trim();
-  if (!secret) throw new Error("Falta configurar AI_ACTION_SECRET en el servidor.");
-  return secret;
+  return getRequiredServerSecret("AI_ACTION_SECRET");
 }
 
 function digestPayload(payload: PendingActionPayload): string {
@@ -330,9 +326,12 @@ async function createPendingAction(
   title: string,
   summary: PendingAction["summary"],
 ): Promise<PendingAction> {
+  if (!context.actionSupabase || !context.requestId) throw new Error("No se pudo crear la propuesta de acción de forma segura.");
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
   const digest = digestPayload(payload);
-  const { data, error } = await context.supabase.rpc("create_ai_pending_action", {
+  const { data, error } = await context.actionSupabase.rpc("create_ai_pending_action_server", {
+    p_request_id: context.requestId,
+    p_user_id: context.actor.id,
     p_action_type: type,
     p_payload: payload,
     p_payload_digest: digest,
@@ -414,8 +413,10 @@ export async function proposeCreateCombo(args: unknown, context: AiToolContext):
   const compatibilityError = validateProductSet(fetched.rows, componentIds, COMBO_SLOTS);
   if (compatibilityError) return { ok: false, error: compatibilityError };
 
+  const title = sanitizeTitle(input.title, "");
+  if (title.length < 3) return { ok: false, error: "El título debe ser elegido por el usuario antes de guardar." };
   const payload: CreateComboActionPayload = {
-    title: sanitizeTitle(input.title, "Combo propuesto"),
+    title,
     componentIds,
     customPrices: parsePrices(input.customPrices, COMBO_SLOTS),
   };
@@ -437,8 +438,10 @@ export async function proposeCreateBuild(args: unknown, context: AiToolContext):
   const compatibilityError = validateProductSet(fetched.rows, componentIds, BUILD_SLOTS);
   if (compatibilityError) return { ok: false, error: compatibilityError };
 
+  const title = sanitizeTitle(input.title, "");
+  if (title.length < 3) return { ok: false, error: "El título debe ser elegido por el usuario antes de guardar." };
   const payload: CreateBuildActionPayload = {
-    title: sanitizeTitle(input.title, "Build propuesta"),
+    title,
     category: sanitizeCategory(input.category),
     componentIds,
     customPrices: parsePrices(input.customPrices, BUILD_SLOTS),
@@ -915,7 +918,7 @@ export async function confirmPendingAction(
   digest: string,
 ): Promise<{ message: string }> {
   if (context.actor.isAnonymous) throw new Error("Las acciones sobre la bóveda requieren una cuenta registrada.");
-  const { data, error } = await context.supabase.rpc("consume_ai_pending_action", {
+  const { data, error } = await context.supabase.rpc("claim_ai_pending_action", {
     p_action_id: actionId,
     p_payload_digest: digest,
   });
@@ -926,14 +929,23 @@ export async function confirmPendingAction(
   const action = getRpcAction(data);
   if (!action) throw new Error("La propuesta de acción no es válida.");
 
-  if (action.actionType === "create_combo") {
-    const title = await insertCreatedEntity(context, "combo", action.payload as CreateComboActionPayload);
-    return { message: `El combo «${title}» se guardó en tu bóveda.` };
-  }
-  if (action.actionType === "create_build") {
-    const title = await insertCreatedEntity(context, "build", action.payload as CreateBuildActionPayload);
-    return { message: `La build «${title}» se guardó en tu bóveda.` };
-  }
+  try {
+    const calculatedDigest = digestPayload(action.payload);
+    const suppliedDigest = digest.toLowerCase();
+    const digestMatches = suppliedDigest.length === calculatedDigest.length
+      && timingSafeEqual(Buffer.from(suppliedDigest, "ascii"), Buffer.from(calculatedDigest, "ascii"));
+    if (!digestMatches) throw new Error("La propuesta de acción no es válida.");
+
+    if (action.actionType === "create_combo") {
+      const title = await insertCreatedEntity(context, "combo", action.payload as CreateComboActionPayload);
+      await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });
+      return { message: `El combo «${title}» se guardó en tu bóveda.` };
+    }
+    if (action.actionType === "create_build") {
+      const title = await insertCreatedEntity(context, "build", action.payload as CreateBuildActionPayload);
+      await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });
+      return { message: `La build «${title}» se guardó en tu bóveda.` };
+    }
 
   const payload = action.payload as SetCustomPriceActionPayload;
   if (
@@ -958,5 +970,10 @@ export async function confirmPendingAction(
       updateError.message.slice(0, 500),
     );
   }
-  return { message: `El precio personalizado de ${payload.slot} se actualizó a ${payload.price} ${payload.currency}.` };
+    await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });
+    return { message: `El precio personalizado de ${payload.slot} se actualizó a ${payload.price} ${payload.currency}.` };
+  } catch (executionError) {
+    await context.supabase.rpc("fail_ai_pending_action", { p_action_id: actionId });
+    throw executionError;
+  }
 }

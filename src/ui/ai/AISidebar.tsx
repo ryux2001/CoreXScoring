@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import {
   Bot,
@@ -12,21 +12,25 @@ import {
   PanelRightClose,
   RefreshCw,
   SendHorizontal,
+  ShieldCheck,
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
-import { ensureAiSession } from "@/lib/ai/client-session";
+import { ensureAiSession, resetExpiredAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
 import ChatHistoryPanel from "./ChatHistoryPanel";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
 import { useCompareStore, type CompareProduct } from "@/store/useCompareStore";
 import { useAiVisiblePriceStore } from "@/store/useAiVisiblePriceStore";
 import type { AiQuotaStatus } from "@/lib/ai/limits";
+import { sanitizeChatHref } from "@/lib/ai/privacy";
+import TurnstileChallenge from "./TurnstileChallenge";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
-type ChatErrorPayload = { error?: string; code?: string; retryable?: boolean; requestId?: string; retryAfterSeconds?: number };
+type ChatErrorPayload = { error?: string; code?: string; retryable?: boolean; requestId?: string; retryAfterSeconds?: number; providers?: string[] };
+type ExternalConsentRequest = { providers: string[] };
 
 const QUICK_PROMPTS = [
   "¿Qué puedes hacer por mí?",
@@ -40,19 +44,28 @@ const INPUT_MAX_HEIGHT = 112;
 const DESKTOP_CHAT_MIN_WIDTH = 420;
 const DESKTOP_CHAT_MAX_WIDTH = 580;
 const DESKTOP_CHAT_INITIAL_WIDTH = 400;
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
 const markdownComponents: Components = {
-  a: ({ children, href, title }) => (
+  a: ({ children, href, title }) => {
+    const safeHref = sanitizeChatHref(href);
+    if (!safeHref) return <span>{children}</span>;
+
+    return (
     <a
-      href={href}
+      href={safeHref.href}
       title={title}
-      target="_blank"
-      rel="noreferrer noopener"
+      target={safeHref.external ? "_blank" : undefined}
+      rel={safeHref.external ? "noreferrer noopener" : undefined}
+      onClick={(event) => {
+        if (safeHref.external && !window.confirm("Este enlace abre un sitio externo. ¿Quieres continuar?")) event.preventDefault();
+      }}
       className="font-semibold text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 transition-colors hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
     >
       {children}
     </a>
-  ),
+    );
+  },
 };
 
 function getMobileToastPreview(content: string): string {
@@ -210,6 +223,7 @@ interface ChatPanelProps {
   pageStatusMaxWidth?: number;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   expandButtonRef?: RefObject<HTMLButtonElement | null>;
+  challenge?: ReactNode;
 }
 
 function ChatPanel({
@@ -248,6 +262,7 @@ function ChatPanel({
   pageStatusMaxWidth,
   inputRef,
   expandButtonRef,
+  challenge,
 }: ChatPanelProps) {
   const hasActions = Boolean(onMinimize || onExpand || onReduce || onOpenHistory || onHideDesktop);
 
@@ -458,6 +473,8 @@ function ChatPanel({
           </div>
         )}
 
+        {challenge}
+
         {canContinue && !isSending && !pendingAction && (
           <button
             type="button"
@@ -571,9 +588,13 @@ export default function AISidebar() {
   const visibleEditorPriceContext = useAiVisiblePriceStore((state) => state.context);
   const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+  const [externalConsent, setExternalConsent] = useState<ExternalConsentRequest | null>(null);
+  const [isGrantingConsent, setIsGrantingConsent] = useState(false);
   const [desktopPanelWidth, setDesktopPanelWidth] = useState(DESKTOP_CHAT_INITIAL_WIDTH);
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
   const [isDesktopResizing, setIsDesktopResizing] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [isTurnstileRequired, setIsTurnstileRequired] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const desktopResizeStartRef = useRef<{ pointerId: number; clientX: number; width: number } | null>(null);
   const lastMessageRef = useRef("");
@@ -583,6 +604,8 @@ export default function AISidebar() {
   const bubbleRef = useRef<HTMLButtonElement>(null);
   const mobileExpandButtonRef = useRef<HTMLButtonElement>(null);
   const expandedPanelRef = useRef<HTMLDivElement>(null);
+  const externalConsentAcceptRef = useRef<HTMLButtonElement>(null);
+  const externalConsentCancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -767,7 +790,40 @@ export default function AISidebar() {
     return () => window.clearInterval(timer);
   }, [error?.retryAfterSeconds]);
 
-  const sendMessage = async (rawMessage = draft, isRetry = false) => {
+  useEffect(() => {
+    if (!externalConsent) return;
+    externalConsentAcceptRef.current?.focus();
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExternalConsent(null);
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [externalConsent]);
+
+  const confirmExternalConsent = async () => {
+    if (!externalConsent || isGrantingConsent) return;
+    setIsGrantingConsent(true);
+    setError(null);
+    try {
+      for (const provider of externalConsent.providers) {
+        const response = await fetch("/api/ai/provider-consent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider }),
+        });
+        const payload = await response.json() as { error?: string };
+        if (!response.ok) throw new Error(payload.error || "No se pudo guardar el consentimiento.");
+      }
+      setExternalConsent(null);
+      void sendMessage(lastMessageRef.current, true);
+    } catch (consentError) {
+      setError({ message: consentError instanceof Error ? consentError.message : "No se pudo guardar el consentimiento.", retryable: true });
+    } finally {
+      setIsGrantingConsent(false);
+    }
+  };
+
+  const sendMessage = async (rawMessage = draft, isRetry = false, suppliedTurnstileToken?: string) => {
     const content = rawMessage.trim();
     if (!content || isSending) return;
 
@@ -796,6 +852,7 @@ export default function AISidebar() {
         evaluatedPrices,
         visibleEditorPriceContext,
       );
+      const tokenForRequest = suppliedTurnstileToken || turnstileToken;
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -805,6 +862,7 @@ export default function AISidebar() {
           ...(conversationId ? { conversationId } : {}),
           context: getCurrentClientPageContext(comparisonItems),
           ...(frontendPriceContext ? { frontendPriceContext } : {}),
+          ...(tokenForRequest ? { turnstileToken: tokenForRequest } : {}),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
           ...(catalogPriceEvaluation ? {
@@ -820,6 +878,7 @@ export default function AISidebar() {
         }),
         signal: controller.signal,
       });
+      if (tokenForRequest) setTurnstileToken(null);
       const payload = await response.json() as ChatResponse | ChatErrorPayload;
 
       if (!response.ok || !("message" in payload)) {
@@ -835,6 +894,16 @@ export default function AISidebar() {
           retryable: errorPayload.retryable !== false,
           retryAfterSeconds,
         });
+        if (errorPayload.code === "external_provider_consent_required" && Array.isArray(errorPayload.providers) && errorPayload.providers.length > 0) {
+          setExternalConsent({ providers: errorPayload.providers });
+        }
+        if (errorPayload.code === "turnstile_required" || errorPayload.code === "turnstile_invalid") {
+          setIsTurnstileRequired(true);
+        }
+        if (errorPayload.code === "anonymous_session_expired") {
+          await resetExpiredAiSession();
+          setSessionKind("anonymous");
+        }
         setError({
           message: errorPayload.error || "No se pudo obtener una respuesta.",
           retryable: errorPayload.retryable !== false,
@@ -855,6 +924,7 @@ export default function AISidebar() {
       setMessages((currentMessages) => [...currentMessages, responseMessage]);
       setProvider(payload.provider);
       setModel(payload.model);
+      setIsTurnstileRequired(false);
       if (payload.conversationId) {
         setConversationId(payload.conversationId);
         setConversationMode("saved");
@@ -950,13 +1020,24 @@ export default function AISidebar() {
     }
   };
 
-  const cancelAction = () => {
+  const cancelAction = async () => {
     if (isConfirmingAction) return;
-    setPendingAction(null);
-    setMessages((currentMessages) => [...currentMessages, {
-      role: "assistant",
-      content: "No se realizó ningún cambio en tu bóveda.",
-    }]);
+    if (!pendingAction) return;
+    try {
+      const response = await fetch("/api/ai/action/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actionId: pendingAction.id }),
+      });
+      if (!response.ok) throw new Error("La propuesta ya no puede cancelarse.");
+      setPendingAction(null);
+      setMessages((currentMessages) => [...currentMessages, {
+        role: "assistant",
+        content: "No se realizó ningún cambio en tu bóveda.",
+      }]);
+    } catch (error) {
+      setError({ message: error instanceof Error ? error.message : "No se pudo cancelar la propuesta.", retryable: false });
+    }
   };
 
   const stopResponse = () => {
@@ -1090,6 +1171,27 @@ export default function AISidebar() {
     isQuotaOpen,
     onToggleQuota: toggleQuota,
     onRefreshQuota: () => void loadQuota(),
+    challenge: isTurnstileRequired ? (
+      TURNSTILE_SITE_KEY ? (
+        <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] p-3" role="status" aria-label="Verificación antiabuso requerida">
+          <p className="mb-3 text-xs leading-relaxed text-cyan-100">Completa la verificación para continuar usando CoreX AI como invitado.</p>
+          <TurnstileChallenge
+            siteKey={TURNSTILE_SITE_KEY}
+            onVerify={(token) => {
+              setTurnstileToken(token);
+              setError(null);
+              void sendMessage(lastMessageRef.current, true, token);
+            }}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setError({ message: "No se pudo cargar la verificación antiabuso.", retryable: true })}
+          />
+        </div>
+      ) : (
+        <div role="alert" className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-xs leading-relaxed text-red-100">
+          La verificación antiabuso está activada, pero falta su configuración pública.
+        </div>
+      )
+    ) : undefined,
   };
 
   const mobilePanelBottom = keyboardInset > 0
@@ -1164,6 +1266,45 @@ export default function AISidebar() {
 
   return (
     <>
+      {externalConsent && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="corex-ai-external-consent-title"
+            className="w-full max-w-md rounded-2xl border border-cyan-200/20 bg-zinc-950 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.65)]"
+            onKeyDown={(event) => {
+              if (event.key !== "Tab") return;
+              const first = externalConsentAcceptRef.current;
+              const last = externalConsentCancelRef.current;
+              if (!first || !last) return;
+              if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+              }
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+                <ShieldCheck aria-hidden="true" size={19} />
+              </span>
+              <div>
+                <h2 id="corex-ai-external-consent-title" className="font-display text-lg font-bold text-white">Transferencia a un proveedor externo</h2>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">Para responder, CoreX AI puede enviar tu mensaje, los últimos mensajes del chat y el contexto técnico necesario al proveedor seleccionado.</p>
+              </div>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-zinc-400">No se envían API keys ni campos internos. Los chats guardados se conservan hasta 90 días y puedes eliminarlos antes.</p>
+            <p className="mt-3 text-xs text-cyan-100">Proveedor{externalConsent.providers.length > 1 ? "es" : ""}: {externalConsent.providers.join(", ")}</p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button ref={externalConsentCancelRef} type="button" onClick={() => setExternalConsent(null)} disabled={isGrantingConsent} className="min-h-10 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">Cancelar</button>
+              <button ref={externalConsentAcceptRef} type="button" onClick={() => void confirmExternalConsent()} disabled={isGrantingConsent} className="min-h-10 rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-cyan-950 transition-colors hover:bg-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">{isGrantingConsent ? "Guardando…" : "Continuar y enviar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {isDesktopVisible ? (
         <aside
           className={`fixed bottom-0 right-0 top-[81px] z-40 hidden border-l border-white/10 bg-zinc-950/95 backdrop-blur-xl xl:flex ${isDesktopResizing ? "select-none" : ""}`}

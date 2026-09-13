@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { getRequiredServerSecret } from "@/lib/server-secrets";
 import type { NextRequest } from "next/server";
 import type { ChatMessage, ChatProvider } from "./types";
 import type { AiFailureStage } from "./gateway";
@@ -12,6 +13,7 @@ export type AiQuotaReason = "user_messages" | "ip_messages" | "user_tokens" | "i
 
 export interface AiQuotaDecision {
   allowed: boolean;
+  reservationId?: string;
   reason?: AiQuotaReason;
   retryAfterSeconds?: number;
   userRemainingMessages?: number;
@@ -35,6 +37,26 @@ export class AiQuotaUnavailableError extends Error {
   }
 }
 
+export class AiBudgetUnavailableError extends Error {
+  constructor() { super("El presupuesto de CoreX AI no está disponible."); }
+}
+
+export class AiConcurrencyUnavailableError extends Error {
+  constructor() { super("Los límites de concurrencia de CoreX AI no están disponibles."); }
+}
+
+export interface AiRequestLeaseDecision {
+  allowed: boolean;
+  leaseId?: string;
+  reason?: string;
+  retryAfterSeconds?: number;
+}
+
+export function getAnonymousSessionTtlHours(): number {
+  const value = Number(process.env.AI_ANONYMOUS_SESSION_TTL_HOURS ?? 24);
+  return Number.isInteger(value) && value >= 1 && value <= 168 ? value : 24;
+}
+
 export interface AiRequestTelemetry {
   userId: string;
   isAnonymous: boolean;
@@ -53,10 +75,15 @@ export interface AiRequestTelemetry {
 }
 
 function getForwardedIp(request: NextRequest): string | null {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const realIp = request.headers.get("x-real-ip");
-  const candidate = forwardedFor?.split(",")[0]?.trim() || realIp?.trim();
+  // Only the selected edge provider can attest its client-IP header.
+  const trustedProxy = process.env.TRUSTED_PROXY?.trim().toLowerCase();
+  const candidate = trustedProxy === "cloudflare"
+    ? request.headers.get("cf-connecting-ip")?.trim()
+    : trustedProxy === "vercel"
+      ? request.headers.get("x-vercel-forwarded-for")?.trim()
+      : null;
   if (!candidate || candidate.length > 128) return null;
+  if (candidate.includes(",")) return null;
 
   // Quita el puerto de una dirección IPv4 reenviada por algunos proxies.
   if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(candidate)) {
@@ -66,23 +93,42 @@ function getForwardedIp(request: NextRequest): string | null {
   return candidate;
 }
 
+export async function reserveOpenRouterBudget(supabase: AiSupabaseClient, requestId: string, model: string) {
+  const { data, error } = await supabase.rpc("reserve_openrouter_budget", {
+    p_request_id: requestId,
+    p_model: model,
+    p_input_tokens: 120_000,
+    p_output_tokens: 2_400,
+  });
+  if (error) throw new AiBudgetUnavailableError();
+  const result = toRecord(data);
+  return { allowed: result.allowed === true, reservationId: typeof result.reservation_id === "string" ? result.reservation_id : undefined };
+}
+
+export async function settleOpenRouterBudget(supabase: AiSupabaseClient, reservationId: string, inputTokens: number, outputTokens: number) {
+  const { error } = await supabase.rpc("settle_openrouter_budget", {
+    p_reservation_id: reservationId,
+    p_input_tokens: Math.max(0, Math.round(inputTokens)),
+    p_output_tokens: Math.max(0, Math.round(outputTokens)),
+  });
+  if (error) console.warn("AI budget settlement failed", { code: error.code || "unknown" });
+}
+
 /** Devuelve una huella estable de la IP sin persistir nunca la dirección original. */
 export function getClientIpHash(request: NextRequest): string | null {
   const ip = getForwardedIp(request);
   if (!ip) return null;
 
-  const secret = process.env.AI_IP_HASH_SECRET?.trim()
-    || process.env.SUPABASE_SECRET_KEY?.trim()
-    || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-    || process.env.GROQ_API_KEY?.trim()
-    || "corexscoring-development-ip-hash";
+  const secret = getRequiredServerSecret("AI_IP_HASH_SECRET");
 
   return createHmac("sha256", secret).update(ip).digest("hex");
 }
 
 export function estimateTokenBudget(messages: ChatMessage[]): number {
   const inputTokens = Math.ceil(messages.reduce((total, message) => total + message.content.length, 0) / 4);
-  return Math.min(MAX_ESTIMATED_TOKEN_BUDGET, inputTokens + AI_RESERVED_OUTPUT_TOKENS);
+  // Reserve room for the system policy, verified page context and tool schemas.
+  const promptOverhead = 5_000;
+  return Math.min(MAX_ESTIMATED_TOKEN_BUDGET, inputTokens + promptOverhead + AI_RESERVED_OUTPUT_TOKENS);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -127,14 +173,17 @@ export async function consumeAiQuota({
   ipHash,
   isAnonymous,
   estimatedTokens,
+  requestId,
 }: {
   supabase: AiSupabaseClient;
   userId: string;
   ipHash: string | null;
   isAnonymous: boolean;
   estimatedTokens: number;
+  requestId: string;
 }): Promise<AiQuotaDecision> {
-  const { data, error } = await supabase.rpc("consume_ai_quota", {
+  const { data, error } = await supabase.rpc("reserve_ai_quota", {
+    p_request_id: requestId,
     p_user_id: userId,
     p_ip_hash: ipHash,
     p_is_anonymous: isAnonymous,
@@ -149,6 +198,7 @@ export async function consumeAiQuota({
   const result = toRecord(data);
   return {
     allowed: result.allowed === true,
+    reservationId: typeof result.reservation_id === "string" ? result.reservation_id : undefined,
     reason: typeof result.reason === "string" ? result.reason as AiQuotaReason : undefined,
     retryAfterSeconds: toOptionalNumber(result.retry_after_seconds),
     userRemainingMessages: toOptionalNumber(result.user_remaining_messages),
@@ -191,22 +241,16 @@ export async function recordAiRequest(
 /** Sustituye la reserva temporal por el consumo real cuando el proveedor lo informa. */
 export async function settleAiQuota({
   supabase,
-  userId,
-  ipHash,
-  reservedTokens,
+  reservationId,
   actualTokens,
 }: {
   supabase: AiSupabaseClient;
-  userId: string;
-  ipHash: string | null;
-  reservedTokens: number;
+  reservationId: string;
   actualTokens: number;
 }): Promise<void> {
   try {
-    const { error } = await supabase.rpc("settle_ai_quota", {
-      p_user_id: userId,
-      p_ip_hash: ipHash,
-      p_reserved_tokens: Math.max(Math.round(reservedTokens), 0),
+    const { error } = await supabase.rpc("settle_ai_quota_reservation", {
+      p_reservation_id: reservationId,
       p_actual_tokens: Math.max(Math.round(actualTokens), 0),
     });
 
@@ -217,4 +261,82 @@ export async function settleAiQuota({
     // Si falla la liquidación, se conserva la reserva para evitar subestimar el consumo.
     console.warn("AI quota settlement failed", { code: "network_error" });
   }
+}
+
+export async function acquireAiRequestLease({
+  supabase,
+  requestId,
+  userId,
+  ipHash,
+  isAnonymous,
+  scope = "ai",
+}: {
+  supabase: AiSupabaseClient;
+  requestId: string;
+  userId: string;
+  ipHash: string | null;
+  isAnonymous: boolean;
+  scope?: string;
+}): Promise<AiRequestLeaseDecision> {
+  const { data, error } = await supabase.rpc("acquire_ai_request_lease", {
+    p_request_id: requestId,
+    p_user_id: userId,
+    p_ip_hash: ipHash,
+    p_is_anonymous: isAnonymous,
+    p_scope: scope,
+  });
+  if (error) {
+    console.error("AI concurrency lease failed", { code: error.code || "unknown" });
+    throw new AiConcurrencyUnavailableError();
+  }
+  const result = toRecord(data);
+  return {
+    allowed: result.allowed === true,
+    leaseId: typeof result.lease_id === "string" ? result.lease_id : undefined,
+    reason: typeof result.reason === "string" ? result.reason : undefined,
+    retryAfterSeconds: toOptionalNumber(result.retry_after_seconds),
+  };
+}
+
+export async function releaseAiRequestLease(supabase: AiSupabaseClient, leaseId: string): Promise<void> {
+  try {
+    const { error } = await supabase.rpc("release_ai_request_lease", { p_lease_id: leaseId });
+    if (error) console.warn("AI concurrency lease release failed", { code: error.code || "unknown" });
+  } catch {
+    console.warn("AI concurrency lease release failed", { code: "network_error" });
+  }
+}
+
+export interface AiProviderCircuit {
+  isAllowed(provider: string, model: string): Promise<boolean>;
+  recordSuccess(provider: string, model: string): Promise<void>;
+  recordFailure(provider: string, model: string, isTimeout: boolean): Promise<void>;
+}
+
+export function createAiProviderCircuit(supabase: AiSupabaseClient): AiProviderCircuit {
+  return {
+    async isAllowed(provider, model) {
+      const { data, error } = await supabase.rpc("check_ai_provider_circuit", {
+        p_provider: provider,
+        p_model: model,
+      });
+      if (error) throw new AiConcurrencyUnavailableError();
+      return toRecord(data).allowed === true;
+    },
+    async recordSuccess(provider, model) {
+      const { error } = await supabase.rpc("record_ai_provider_success", {
+        p_provider: provider,
+        p_model: model,
+      });
+      if (error) console.warn("AI provider circuit success update failed", { code: error.code || "unknown" });
+    },
+    async recordFailure(provider, model, isTimeout) {
+      const { error } = await supabase.rpc("record_ai_provider_failure", {
+        p_provider: provider,
+        p_model: model,
+        p_is_timeout: isTimeout,
+      });
+      if (error) console.warn("AI provider circuit failure update failed", { code: error.code || "unknown" });
+    },
+  };
 }

@@ -234,4 +234,29 @@ describe("AI gateway conversational protocol", () => {
       stage: "configuration",
     });
   });
+
+  it("rejects more than three tool calls in one provider round", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    vi.stubGlobal("fetch", vi.fn(async () => providerResponse({
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: ["search_components", "get_component", "get_game_fps", "compare_components"].map((name, index) => ({
+            id: `call-${index}`,
+            type: "function",
+            function: { name, arguments: "{}" },
+          })),
+        },
+      }],
+    })));
+
+    await expect(runChat([
+      { role: "user", content: "Busca y compara componentes." },
+    ], toolContext(), "gateway-tool-cap")).rejects.toMatchObject({
+      code: "tool_round_limit",
+      stage: "tool_loop",
+    });
+  });
 });

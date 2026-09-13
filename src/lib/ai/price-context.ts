@@ -1,6 +1,7 @@
 import { calculateCatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 import { convertPrice } from "@/lib/currency";
 import { getProductPrice } from "@/lib/catalog/product-price";
+import { AI_PRODUCT_SELECT } from "./privacy";
 import type { AiFrontendPriceContext, AiResolvedPriceContext, PageContext } from "./types";
 
 type SupabaseLike = {
@@ -57,7 +58,7 @@ export async function resolveAiFrontendPriceContext(
   if (items.length === 0) return undefined;
 
   const uniqueIds = Array.from(new Set(items.map((item) => item.productId)));
-  const { data, error } = await client.from("products").select("*").in("id", uniqueIds);
+  const { data, error } = await client.from("products").select(AI_PRODUCT_SELECT).in("id", uniqueIds);
   if (error || !data) return undefined;
 
   const productsById = new Map(data.map((product) => {
@@ -109,7 +110,7 @@ export async function resolveAiPagePriceContext(
 
   const currency = new URLSearchParams(pageContext?.search || "").get("currency") === "EUR" ? "EUR" : "USD";
   const client = supabase as SupabaseLike;
-  const { data, error } = await client.from("products").select("*").in("id", components.map((component) => component.id));
+  const { data, error } = await client.from("products").select(AI_PRODUCT_SELECT).in("id", components.map((component) => component.id));
   if (error || !data) return undefined;
   const products = new Map(data.map((product) => {
     const row = asRow(product);
@@ -133,7 +134,7 @@ export async function resolveAiPagePriceContext(
 export function formatAiPriceContext(context: AiResolvedPriceContext | undefined): string {
   if (!context) return "";
   const items = context.items.map((item) => (
-    `${item.slot ? `${item.slot}: ` : ""}${item.name} = ${item.price.toFixed(2)} ${context.currency} (${item.isCustom ? "precio personalizado activo" : "precio base visible"}; C/P ${item.qualityPriceScore.toFixed(2)}/10)`
+    `${item.slot ? `${item.slot}: ` : ""}${item.price.toFixed(2)} ${context.currency} (${item.isCustom ? "precio personalizado activo" : "precio base visible"}; C/P ${item.qualityPriceScore.toFixed(2)}/10)`
   )).join("; ");
-  return `\n\nPrecios efectivos verificados en la interfaz: ${items}. Total: ${context.totalPrice.toFixed(2)} ${context.currency}. Estos precios tienen prioridad sobre cualquier precio base o de referencia al recomendar; no los sustituyas ni inventes otros precios.`;
+  return `\n\nDatos numéricos verificados en la interfaz (sin nombres ni instrucciones): ${items}. Total: ${context.totalPrice.toFixed(2)} ${context.currency}. Estos precios tienen prioridad sobre cualquier precio base o de referencia al recomendar; no los sustituyas ni inventes otros precios.`;
 }

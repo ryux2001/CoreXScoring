@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAdminDb, getAdminUser } from '@/lib/admin/catalog';
+import { readLimitedJson } from '@/lib/api-security';
 import { optionalHomeText, parseHomeCatalogType, requiredHomeText } from '@/lib/admin/home';
 
 export const runtime = 'nodejs';
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
   let body: Record<string, unknown>;
   try {
-    body = await request.json() as Record<string, unknown>;
+    body = await readLimitedJson<Record<string, unknown>>(request, 64 * 1024);
   } catch {
     return NextResponse.json({ error: 'El cuerpo de la petición no es válido.' }, { status: 400 });
   }

@@ -7,11 +7,12 @@ import {
 } from "@/lib/ai/chat-settings";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import type { AiChatProvider, AiCredentialMode } from "@/lib/ai/types";
+import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
 function isProvider(value: unknown): value is AiChatProvider {
-  return value === "groq" || value === "openrouter";
+  return value === "groq" || value === "cerebras" || value === "openrouter";
 }
 
 function isMode(value: unknown): value is AiCredentialMode {
@@ -43,9 +44,19 @@ export async function PATCH(request: NextRequest) {
   if (!allowedOrigin(request)) return NextResponse.json({ error: "Origen no permitido." }, { status: 403 });
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Necesitas una cuenta registrada." }, { status: 401 });
+  try {
+    const rateLimitResponse = await requireApiRateLimit({ key: `ai-provider:update:user:${user.id}`, windowSeconds: 60, limit: 10 });
+    if (rateLimitResponse) return rateLimitResponse;
+  } catch (error) {
+    if (error instanceof ApiRateLimitUnavailableError) return NextResponse.json({ error: "El límite de seguridad no está disponible." }, { status: 503 });
+    throw error;
+  }
 
   let body: { credentialMode?: unknown; provider?: unknown; model?: unknown; apiKey?: unknown };
-  try { body = await request.json() as typeof body; } catch { return NextResponse.json({ error: "La solicitud no es válida." }, { status: 400 }); }
+  try { body = await readLimitedJson<typeof body>(request, 4 * 1024); } catch (error) {
+    const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
+    return NextResponse.json({ error: "La solicitud no es válida." }, { status });
+  }
   if (!isMode(body.credentialMode) || !isProvider(body.provider) || typeof body.model !== "string" || body.model.length > 200) {
     return NextResponse.json({ error: "La configuración de proveedor no es válida." }, { status: 400 });
   }
@@ -72,8 +83,18 @@ export async function DELETE(request: NextRequest) {
   if (!allowedOrigin(request)) return NextResponse.json({ error: "Origen no permitido." }, { status: 403 });
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Necesitas una cuenta registrada." }, { status: 401 });
+  try {
+    const rateLimitResponse = await requireApiRateLimit({ key: `ai-provider:update:user:${user.id}`, windowSeconds: 60, limit: 10 });
+    if (rateLimitResponse) return rateLimitResponse;
+  } catch (error) {
+    if (error instanceof ApiRateLimitUnavailableError) return NextResponse.json({ error: "El límite de seguridad no está disponible." }, { status: 503 });
+    throw error;
+  }
   let body: { provider?: unknown };
-  try { body = await request.json() as typeof body; } catch { return NextResponse.json({ error: "La solicitud no es válida." }, { status: 400 }); }
+  try { body = await readLimitedJson<typeof body>(request, 4 * 1024); } catch (error) {
+    const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
+    return NextResponse.json({ error: "La solicitud no es válida." }, { status });
+  }
   if (!isProvider(body.provider)) return NextResponse.json({ error: "Proveedor no permitido." }, { status: 400 });
   try {
     return NextResponse.json(await removeAiChatKey(user.id, body.provider), { headers: { "Cache-Control": "no-store" } });

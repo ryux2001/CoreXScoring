@@ -4,14 +4,17 @@ import { AlertCircle, CheckCircle2, Lock, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { isAcceptablePassword } from '@/lib/auth/password-policy';
 
 interface PasswordChangeFormProps {
   requireCurrentPassword?: boolean;
+  recovery?: boolean;
   successRedirect?: string;
 }
 
 export default function PasswordChangeForm({
   requireCurrentPassword = false,
+  recovery = false,
   successRedirect,
 }: PasswordChangeFormProps) {
   const router = useRouter();
@@ -39,10 +42,44 @@ export default function PasswordChangeForm({
 
     setLoading(true);
 
-    const { error } = await supabase.auth.updateUser({
-      password,
-      ...(requireCurrentPassword ? { current_password: currentPassword } : {}),
-    });
+    if (!isAcceptablePassword(password)) {
+      setErrorMsg('La contraseña debe tener entre 8 y 128 caracteres.');
+      setLoading(false);
+      return;
+    }
+
+    let error: { message?: string } | null = null;
+
+    if (recovery) {
+      const response = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      if (!response.ok) error = { message: 'No se pudo cambiar la contraseña.' };
+    } else {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const email = userData.user?.email;
+
+      if (userError || !email) {
+        error = userError ?? { message: 'Sesión no válida.' };
+      } else {
+        const { error: reauthenticationError } = await supabase.auth.signInWithPassword({
+          email,
+          password: currentPassword,
+        });
+
+        if (reauthenticationError) {
+          error = reauthenticationError;
+        } else {
+          const result = await supabase.auth.updateUser({ password });
+          error = result.error;
+
+          if (!error) await supabase.auth.signOut({ scope: 'others' });
+        }
+      }
+    }
 
     if (error) {
       setErrorMsg('No se pudo cambiar la contraseña. Revisa los datos e inténtalo de nuevo.');

@@ -41,7 +41,13 @@ function createCatalogContext() {
       rpc: vi.fn(async () => ({ data: { id: "pending-1" }, error: null })),
       builder: priorityBuilder,
     },
+    actionSupabase: {
+      from: vi.fn((table: string) => table === "products" ? productBuilder : priorityBuilder),
+      rpc: vi.fn(async () => ({ data: { id: "pending-1" }, error: null })),
+      builder: priorityBuilder,
+    },
     actor: { id: "user-1", isAnonymous: false },
+    requestId: "11111111-1111-4111-8111-111111111111",
   };
 }
 
@@ -94,7 +100,7 @@ describe("build and combo conversational flows", () => {
   });
 
   it("creates a pending build proposal only after an explicit title", async () => {
-    vi.stubEnv("AI_ACTION_SECRET", "test-action-secret");
+    vi.stubEnv("AI_ACTION_SECRET", "a".repeat(32));
     const context = createCatalogContext();
     const planned = await planBuild({ components: buildRequirements }, context as never);
     if (!planned.ok || !planned.buildDraft) throw new Error("Fixture de build no válida");
@@ -106,11 +112,11 @@ describe("build and combo conversational flows", () => {
 
     expect(pending.ok).toBe(true);
     if (pending.ok) expect(pending.pendingAction?.type).toBe("create_build");
-    expect(context.supabase.rpc).toHaveBeenCalledWith("create_ai_pending_action", expect.any(Object));
+    expect(context.actionSupabase.rpc).toHaveBeenCalledWith("create_ai_pending_action_server", expect.any(Object));
   });
 
   it("plans and prepares a combo without saving it automatically", async () => {
-    vi.stubEnv("AI_ACTION_SECRET", "test-action-secret");
+    vi.stubEnv("AI_ACTION_SECRET", "a".repeat(32));
     const context = createCatalogContext();
     const planned = await planCombo({ components: comboRequirements, currency: "EUR" }, context as never);
     expect(planned.ok).toBe(true);
@@ -123,7 +129,7 @@ describe("build and combo conversational flows", () => {
 
     expect(pending.ok).toBe(true);
     if (pending.ok) expect(pending.pendingAction?.type).toBe("create_combo");
-    expect(context.supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(context.actionSupabase.rpc).toHaveBeenCalledTimes(1);
   });
 
   it("asks for a title instead of inventing one", async () => {

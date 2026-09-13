@@ -8,6 +8,7 @@ import { convertPrice, isCurrency } from "@/lib/currency";
 import { resolveProductPrice } from "@/lib/catalog/product-price";
 import type { ComparisonUiAction, PageContext } from "../types";
 import type { AiToolContext, AiToolResult } from "./types";
+import { AI_PRODUCT_SELECT } from "../privacy";
 
 type Row = Record<string, unknown>;
 type Currency = "USD" | "EUR";
@@ -16,28 +17,6 @@ type GameResolution = "1080p" | "1440p" | "4k";
 const GAME_RESOLUTIONS: GameResolution[] = ["1080p", "1440p", "4k"];
 const GAME_PRESETS = new Set(["bajo", "medio", "alto", "ultra"]);
 const FPS_CONTEXT_ENTITY_TYPES = new Set(["combo", "build", "saved_combo", "saved_build"]);
-
-const PRODUCT_SELECT = [
-  "id",
-  "slug",
-  "market_segment",
-  "name",
-  "brand",
-  "type",
-  "category",
-  "description",
-  "price_base_usd",
-  "price_base_eur",
-  "price_usd",
-  "price_eur",
-  "release_date",
-  "release_year",
-  "compatibility",
-  "specs",
-  "technologies",
-  "benchmarks",
-  "tags",
-].join(", ");
 
 const COMBO_SELECT = [
   "id",
@@ -54,9 +33,9 @@ const COMBO_SELECT = [
   "custom_price_gpu_eur",
   "custom_price_ram_usd",
   "custom_price_ram_eur",
-  `cpu:products!cpu_id(${PRODUCT_SELECT})`,
-  `gpu:products!gpu_id(${PRODUCT_SELECT})`,
-  `ram:products!ram_id(${PRODUCT_SELECT})`,
+  `cpu:products!cpu_id(${AI_PRODUCT_SELECT})`,
+  `gpu:products!gpu_id(${AI_PRODUCT_SELECT})`,
+  `ram:products!ram_id(${AI_PRODUCT_SELECT})`,
 ].join(", ");
 
 const BUILD_SELECT = [
@@ -83,12 +62,12 @@ const BUILD_SELECT = [
   "custom_price_storage_eur",
   "custom_price_psu_usd",
   "custom_price_psu_eur",
-  `cpu:products!cpu_id(${PRODUCT_SELECT})`,
-  `gpu:products!gpu_id(${PRODUCT_SELECT})`,
-  `ram:products!ram_id(${PRODUCT_SELECT})`,
-  `motherboard:products!motherboard_id(${PRODUCT_SELECT})`,
-  `storage:products!storage_id(${PRODUCT_SELECT})`,
-  `psu:products!psu_id(${PRODUCT_SELECT})`,
+  `cpu:products!cpu_id(${AI_PRODUCT_SELECT})`,
+  `gpu:products!gpu_id(${AI_PRODUCT_SELECT})`,
+  `ram:products!ram_id(${AI_PRODUCT_SELECT})`,
+  `motherboard:products!motherboard_id(${AI_PRODUCT_SELECT})`,
+  `storage:products!storage_id(${AI_PRODUCT_SELECT})`,
+  `psu:products!psu_id(${AI_PRODUCT_SELECT})`,
 ].join(", ");
 
 const COMPONENT_TYPES = new Set(["cpu", "gpu", "ram", "storage", "motherboard", "psu"]);
@@ -427,7 +406,7 @@ function normalizePageRoute(pathname: string): Pick<PageContext, "route" | "iden
 }
 
 function getProductQuery(client: AiToolContext["supabase"]) {
-  return client.from("products").select(PRODUCT_SELECT);
+  return client.from("products").select(AI_PRODUCT_SELECT);
 }
 
 function getGameQuery(client: AiToolContext["supabase"]) {
@@ -510,7 +489,7 @@ export async function searchComponents(args: unknown, context: AiToolContext): P
 
   let query = context.supabase
     .from("products_with_priority")
-    .select(PRODUCT_SELECT)
+    .select(AI_PRODUCT_SELECT)
     .order("priority", { ascending: true })
     .order("release_date", { ascending: false })
     .limit(limit);
@@ -830,7 +809,7 @@ export async function recommendComponents(args: unknown, context: AiToolContext)
 
   let query = context.supabase
     .from("products_with_priority")
-    .select(PRODUCT_SELECT)
+    .select(AI_PRODUCT_SELECT)
     .eq("type", type)
     .order("priority", { ascending: true })
     .limit(40);
@@ -925,7 +904,7 @@ export async function proposeAddToComparison(args: unknown, context: AiToolConte
 
   const { data: product, error } = await context.supabase
     .from("products_with_priority")
-    .select("*")
+    .select(AI_PRODUCT_SELECT)
     .eq("id", itemId)
     .maybeSingle();
   if (error || !product) return getToolFailure("No encontré ese componente en el catálogo.");
@@ -1162,7 +1141,7 @@ export async function setCurrentCatalogPrice(args: unknown, context: AiToolConte
 
   const { data, error } = await context.supabase
     .from("products")
-    .select(PRODUCT_SELECT)
+    .select(AI_PRODUCT_SELECT)
     .eq("id", pageContext.entityId)
     .maybeSingle();
   if (error || !data) return { ok: false, error: "No pude validar el componente que estás viendo." };

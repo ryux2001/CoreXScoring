@@ -42,8 +42,19 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local tooling artifacts
+/.impeccable/
+/.playwright-mcp/
+/test-productivity*.js
+
 #Archivos propios
 explicaciones.md
 CLAUDE.md
 CODEX.md
 AGENTS.md
+docs/*
+!docs/etapa-12.md
+!docs/etapas-5-6.md
+!docs/despliegue-vercel.md
+!docs/runbooks/
+!docs/runbooks/**

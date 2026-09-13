@@ -29,3 +29,7 @@ export async function ensureAiSession(): Promise<Session> {
 
   return pendingAnonymousSession;
 }
+
+export async function resetExpiredAiSession(): Promise<void> {
+  await supabase.auth.signOut({ scope: "local" });
+}

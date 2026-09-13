@@ -7,7 +7,7 @@ export const MAX_SAVED_CHAT_MESSAGES = 150;
 export type ChatRole = "user" | "assistant";
 export type ChatProvider = "local" | "groq" | "cerebras" | "openrouter" | "guardrail";
 export type AiCredentialMode = "project" | "byok";
-export type AiChatProvider = "groq" | "openrouter";
+export type AiChatProvider = "groq" | "cerebras" | "openrouter";
 export type AiConversationMode = "temporary" | "saved";
 
 export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | "vault" | "other";
@@ -36,6 +36,8 @@ export interface PageContext {
   entitySlug?: string;
   entityTitle?: string;
   entitySummary?: string;
+  /** Internal marker set only after server-side entity resolution. */
+  serverResolved?: true;
   /** Campos añadidos únicamente por el servidor después de resolver la ruta. */
   entityComponents?: Array<{ id: string; slot: string; customPriceUsd?: number; customPriceEur?: number }>;
   comparison?: ComparisonContext;
@@ -212,6 +214,7 @@ export interface ChatRequest {
   comboDraft?: ComboDraft;
   catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
   frontendPriceContext?: AiFrontendPriceContext;
+  turnstileToken?: string;
   action?: AiActionRequest;
 }
 
@@ -258,6 +261,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (catalogPriceEvaluation !== undefined && !isCatalogPriceEvaluationRequest(catalogPriceEvaluation)) return false;
   const frontendPriceContext = (value as ChatRequest).frontendPriceContext;
   if (frontendPriceContext !== undefined && !isFrontendPriceContext(frontendPriceContext)) return false;
+  const turnstileToken = (value as ChatRequest).turnstileToken;
+  if (turnstileToken !== undefined && (typeof turnstileToken !== "string" || turnstileToken.length === 0 || turnstileToken.length > 2_048)) return false;
 
   const action = (value as ChatRequest).action;
   if (action !== undefined && (
@@ -409,8 +414,6 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
     entityType: context.entityType,
     entityId: context.entityId?.slice(0, 120),
     entitySlug: context.entitySlug?.slice(0, 120),
-    entityTitle: context.entityTitle?.slice(0, 200),
-    entitySummary: context.entitySummary?.slice(0, 500),
     ...(context.comparison && context.comparison.itemIds.length > 0
       ? {
           comparison: {

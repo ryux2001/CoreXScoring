@@ -8,7 +8,7 @@ export interface ResolvedProductPrice {
   msrpPrice: number | null;
 }
 
-type ProductPriceRow = Record<string, unknown> | null | undefined;
+type ProductPriceRow = object | null | undefined;
 
 function toPrice(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -22,8 +22,9 @@ function toPrice(value: unknown): number | null {
  */
 export function resolveProductPrice(product: ProductPriceRow, currency: string): ResolvedProductPrice {
   const suffix = currency === "EUR" ? "eur" : "usd";
-  const currentPrice = toPrice(product?.[`price_${suffix}`]);
-  const msrpPrice = toPrice(product?.[`price_base_${suffix}`]);
+  const row = product as Record<string, unknown> | null | undefined;
+  const currentPrice = toPrice(row?.[`price_${suffix}`]);
+  const msrpPrice = toPrice(row?.[`price_base_${suffix}`]);
 
   if (currentPrice !== null) {
     return {
