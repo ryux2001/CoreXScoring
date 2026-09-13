@@ -43,20 +43,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "La retención debe estar entre 30 y 730 días." }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc("cleanup_ai_telemetry", {
-    p_retention_days: retentionDays,
-  });
+  const [{ data: telemetry, error: telemetryError }, { data: conversations, error: conversationsError }] = await Promise.all([
+    supabase.rpc("cleanup_ai_telemetry", { p_retention_days: retentionDays }),
+    supabase.rpc("cleanup_ai_conversations"),
+  ]);
 
-  if (error) {
-    if (error.code === "42501") {
+  if (telemetryError || conversationsError) {
+    const error = telemetryError || conversationsError;
+    if (error?.code === "42501") {
       return NextResponse.json({ error: "No tienes permisos de administrador." }, { status: 403 });
     }
 
-    console.error("AI telemetry cleanup failed", { code: error.code || "unknown" });
-    return NextResponse.json({ error: "No se pudo ejecutar la limpieza de telemetría." }, { status: 503 });
+    console.error("AI privacy cleanup failed", { code: error?.code || "unknown" });
+    return NextResponse.json({ error: "No se pudo ejecutar la limpieza de privacidad." }, { status: 503 });
   }
 
-  return NextResponse.json(data, {
+  return NextResponse.json({ telemetry, conversations }, {
     headers: { "Cache-Control": "no-store" },
   });
 }
