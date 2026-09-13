@@ -1,6 +1,0 @@
-id,title,category,is_active,cpu_id,gpu_id,ram_id,custom_price_cpu_usd,custom_price_cpu_eur,custom_price_gpu_usd,custom_price_gpu_eur,custom_price_ram_usd,custom_price_ram_eur,created_at,slug
-6d117600-77bf-4fd1-a7b4-29efe4445407,Combo RTX 5060 + Ryzen 5 5600 + 16GB RAM,Calidad precio,true,cpu-amd-ryzen-5600,gpu-nvidia-rtx-5060,ram-generic-ddr4-16gb,,,,,,,2026-08-07 20:32:21.0318+00,combo-rtx-5060-ryzen-5-5600-16gb
-71578208-fc9f-46db-9de4-f87f3c9b2b07,Combo RTX 5070 + Ryzen 5 5600X + 16GB RAM,Lista por defecto,true,cpu-amd-ryzen-5600x,gpu-nvidia-rtx-5070,ram-generic-ddr4-16gb,150.00,150.00,,,,,2026-07-09 15:41:15.580971+00,combo-rtx-5070-ryzen-5600x-16gb
-8cf0bbaa-dd89-4d4d-ad26-eeb855c53130,Combo RX 9070 XT + Ryzen 7 7800X3D + 32GB RAM,Gaming,true,cpu-amd-ryzen-7800x3d,gpu-amd-rx-9070xt,ram-generic-ddr5-32gb,,,,,,,2026-08-07 20:32:21.0318+00,combo-rx-9070xt-ryzen-7-7800x3d-32gb
-bd093aa8-a233-4efd-af13-8fbdf7111c63,Combo RTX 5090 + Ryzen 7 9800X3D + 32GB RAM,Lo mejor de lo mejor,true,cpu-amd-ryzen-9800x3d,gpu-nvidia-rtx-5090,ram-generic-ddr5-32gb,,,,,,,2026-08-07 20:32:21.0318+00,combo-rtx-5090-ryzen-7-9800x3d-32gb
-d907c2c8-b381-4fd3-b610-fa7f8d9f11e7,Combo RX 9060 XT 16GB + Ryzen 5 7600 + 32GB RAM,Lista por defecto,true,cpu-amd-ryzen-7600,gpu-amd-rx-9060xt-16gb,ram-generic-ddr5-32gb,,,,,,,2026-08-07 15:28:40.755969+00,combo-rx-9060xt-16gb-ryzen-7600-32gb
