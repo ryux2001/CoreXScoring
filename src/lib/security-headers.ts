@@ -12,30 +12,13 @@ function getSupabaseOrigins(supabaseUrl: string | undefined) {
 }
 
 export function buildSecurityHeaders({
-  supabaseUrl,
   production = false,
   enableHsts = false,
 }: {
-  supabaseUrl?: string;
   production?: boolean;
   enableHsts?: boolean;
 } = {}) {
-  const connectSources = ["'self'", ...getSupabaseOrigins(supabaseUrl)].join(' ');
-  const contentSecurityPolicy = [
-    "default-src 'self'",
-    "base-uri 'self'",
-    "object-src 'none'",
-    "frame-ancestors 'none'",
-    "form-action 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
-    "font-src 'self' data:",
-    `connect-src ${connectSources}`,
-  ].join('; ');
-
   const headers = [
-    { key: 'Content-Security-Policy-Report-Only', value: contentSecurityPolicy },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
     {
@@ -56,4 +39,39 @@ export function buildSecurityHeaders({
   }
 
   return headers;
+}
+
+export function buildContentSecurityPolicy({
+  supabaseUrl,
+  nonce,
+  development = false,
+}: {
+  supabaseUrl?: string;
+  nonce?: string;
+  development?: boolean;
+} = {}) {
+  const connectSources = ["'self'", ...getSupabaseOrigins(supabaseUrl)].join(' ');
+  const scriptSources = ["'self'"];
+  const styleSources = ["'self'"];
+
+  if (nonce) {
+    scriptSources.push(`'nonce-${nonce}'`, "'strict-dynamic'");
+    styleSources.push(`'nonce-${nonce}'`);
+  }
+
+  if (development) scriptSources.push("'unsafe-eval'");
+
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    `script-src ${scriptSources.join(' ')}`,
+    `style-src ${styleSources.join(' ')}`,
+    "style-src-attr 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    `connect-src ${connectSources}`,
+  ].join('; ');
 }

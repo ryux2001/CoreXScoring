@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Courier_Prime, Geist, Geist_Mono, Rajdhani } from "next/font/google";
 import "./globals.css";
 
@@ -29,11 +30,13 @@ export const metadata: Metadata = {
   description: "Compara componentes y crea configuraciones de PC",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
+
   return (
     <html
       lang="es"

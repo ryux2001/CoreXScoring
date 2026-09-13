@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
     return [{
       source: "/(.*)",
       headers: buildSecurityHeaders({
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
         production: process.env.NODE_ENV === "production",
         enableHsts: process.env.SECURE_HEADERS_HSTS === "true",
       }),

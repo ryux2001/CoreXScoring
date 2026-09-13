@@ -2,14 +2,48 @@ import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { buildContentSecurityPolicy } from '@/lib/security-headers';
 
 export async function proxy(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const contentSecurityPolicy = buildContentSecurityPolicy({
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    nonce,
+    development: process.env.NODE_ENV === 'development',
+  });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
+
+  const addContentSecurityPolicies = (response: NextResponse) => {
+    response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+    response.headers.set('Content-Security-Policy-Report-Only', contentSecurityPolicy);
+    return response;
+  };
+
   if (isMutatingApiRequest(request)) {
     const apiRejection = rejectUnsafeApiRequest(request);
-    if (apiRejection) return apiRejection;
+    if (apiRejection) return addContentSecurityPolicies(apiRejection);
   }
 
-  let response = NextResponse.next({ request });
+  const createResponse = () => {
+    const nextResponse = NextResponse.next({ request: { headers: requestHeaders } });
+    return addContentSecurityPolicies(nextResponse);
+  };
+
+  let response = createResponse();
+
+  const protectedRoutes = ['/vault', '/dashboard', '/settings'];
+  const isProtectedRoute = protectedRoutes.some((route) => (
+    request.nextUrl.pathname.startsWith(route)
+  ));
+  const authFlowRoutes = ['/auth/confirm', '/auth/update-password'];
+  const isAuthFlowRoute = authFlowRoutes.includes(request.nextUrl.pathname);
+  const needsSessionHandling = isProtectedRoute
+    || (request.nextUrl.pathname.startsWith('/auth') && !isAuthFlowRoute)
+    || request.nextUrl.pathname === '/auth/update-password';
+
+  if (!needsSessionHandling) return response;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +59,7 @@ export async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
 
-          response = NextResponse.next({ request });
+          response = createResponse();
 
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
@@ -46,15 +80,8 @@ export async function proxy(request: NextRequest) {
 
   const isAnonymous = user?.is_anonymous === true;
   const authenticatedSession = Boolean(user && !isAnonymous);
-  const protectedRoutes = ['/vault', '/dashboard', '/settings'];
-  const isProtectedRoute = protectedRoutes.some((route) => (
-    request.nextUrl.pathname.startsWith(route)
-  ));
-  const authFlowRoutes = ['/auth/confirm', '/auth/update-password'];
-  const isAuthFlowRoute = authFlowRoutes.includes(request.nextUrl.pathname);
-
   const redirectWithSessionCookies = (url: URL) => {
-    const redirectResponse = NextResponse.redirect(url);
+    const redirectResponse = addContentSecurityPolicies(NextResponse.redirect(url));
     response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
     return redirectResponse;
   };
@@ -76,10 +103,14 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    {
+      source: '/((?!_next/static|_next/image|favicon.ico).*)',
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
     '/api/:path*',
-    '/vault/:path*',
-    '/dashboard/:path*',
-    '/auth/:path*',
   ],
 };
 
