@@ -412,15 +412,6 @@ export async function POST(request: NextRequest) {
       completionModel = userCredential.model;
     }
 
-    const projectOpenRouterModel = process.env.AI_OPENROUTER_MODELS?.split(",")[0]?.trim() || "openai/gpt-oss-20b";
-    if (!userCredential && !localProviderEnabled && process.env.OPENROUTER_API_KEY?.trim()) {
-      const budget = await reserveOpenRouterBudget(quotaAdmin, requestId, projectOpenRouterModel);
-      if (!budget.allowed || !budget.reservationId) {
-        return NextResponse.json({ error: "El presupuesto mensual de CoreX AI está agotado." }, { status: 429, headers: { "Cache-Control": "no-store" } });
-      }
-      budgetReservationId = budget.reservationId;
-    }
-
     const directVaultResponse = await resolveDirectVaultLookup(effectiveMessages, toolContext);
     if (directVaultResponse) {
       completionProvider = directVaultResponse.provider;
@@ -471,6 +462,15 @@ export async function POST(request: NextRequest) {
         providers: missingExternalConsents,
         retryable: false,
       }, { status: 428, headers: { "Cache-Control": "no-store" } }), requestId);
+    }
+
+    const projectOpenRouterModel = process.env.AI_OPENROUTER_MODELS?.split(",")[0]?.trim() || "openai/gpt-oss-20b";
+    if (!userCredential && !localProviderEnabled && process.env.OPENROUTER_API_KEY?.trim()) {
+      const budget = await reserveOpenRouterBudget(quotaAdmin, requestId, projectOpenRouterModel);
+      if (!budget.allowed || !budget.reservationId) {
+        return NextResponse.json({ error: "El presupuesto mensual de CoreX AI está agotado." }, { status: 429, headers: { "Cache-Control": "no-store" } });
+      }
+      budgetReservationId = budget.reservationId;
     }
 
     const completion = await runChat(effectiveMessages, toolContext, requestId, userCredential);
