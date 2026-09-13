@@ -7,7 +7,7 @@ import {
   RECOVERY_PROOF_COOKIE,
   RECOVERY_PROOF_TTL_SECONDS,
 } from '@/lib/auth/recovery-proof';
-import { getSafeAuthNextPath } from '@/lib/auth/safe-next-path';
+import { getSafeAuthNextPath, isRecoveryAuthNextPath } from '@/lib/auth/safe-next-path';
 
 function getAuthErrorResponse(request: NextRequest) {
   const url = new URL('/auth', request.url);
@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
   const nextPath = getSafeAuthNextPath(searchParams.get('next'));
+  // Supabase's PKCE callback supplies `code` but not the recovery type.
+  const isRecovery = type === 'recovery' || isRecoveryAuthNextPath(searchParams.get('next'));
   let response = NextResponse.redirect(new URL(nextPath, request.url));
 
   const supabase = createServerClient(
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
       return getAuthErrorResponse(request);
     }
 
-    if (type === 'recovery') {
+    if (isRecovery) {
       const { data: user } = await supabase.auth.getUser();
 
       if (!user.user) return getAuthErrorResponse(request);
@@ -91,7 +93,7 @@ export async function GET(request: NextRequest) {
       return getAuthErrorResponse(request);
     }
 
-    if (type === 'recovery') {
+    if (isRecovery) {
       const { data: user } = await supabase.auth.getUser();
 
       if (!user.user) return getAuthErrorResponse(request);
