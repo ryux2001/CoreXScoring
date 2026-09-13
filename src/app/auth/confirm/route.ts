@@ -7,14 +7,7 @@ import {
   RECOVERY_PROOF_COOKIE,
   RECOVERY_PROOF_TTL_SECONDS,
 } from '@/lib/auth/recovery-proof';
-
-function getSafeNextPath(value: string | null) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) {
-    return '/catalog';
-  }
-
-  return value;
-}
+import { getSafeAuthNextPath } from '@/lib/auth/safe-next-path';
 
 function getAuthErrorResponse(request: NextRequest) {
   const url = new URL('/auth', request.url);
@@ -43,7 +36,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
-  const nextPath = getSafeNextPath(searchParams.get('next'));
+  const nextPath = getSafeAuthNextPath(searchParams.get('next'));
   let response = NextResponse.redirect(new URL(nextPath, request.url));
 
   const supabase = createServerClient(

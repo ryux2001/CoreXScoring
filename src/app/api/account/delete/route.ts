@@ -1,27 +1,18 @@
 import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
-const CONFIRMATION_TEXT = 'ELIMINAR';
+import { createSupabaseAdminClient } from '@/lib/supabaseAdmin';
+import {
+  DELETE_CONFIRMATION_TEXT,
+  MAX_DELETE_REQUEST_BYTES,
+  parseDeleteAccountRequest,
+} from '@/lib/auth/delete-account-policy';
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
 
-  if (origin && origin !== request.nextUrl.origin) {
+  if (origin !== request.nextUrl.origin) {
     return NextResponse.json({ error: 'Origen no permitido.' }, { status: 403 });
-  }
-
-  let body: { confirmation?: string } = {};
-
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 });
-  }
-
-  if (body.confirmation?.trim().toUpperCase() !== CONFIRMATION_TEXT) {
-    return NextResponse.json({ error: 'Confirmación inválida.' }, { status: 400 });
   }
 
   const response = NextResponse.json({ success: true });
@@ -48,30 +39,40 @@ export async function POST(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user || user.is_anonymous || !user.email) {
     return NextResponse.json({ error: 'Sesión no válida.' }, { status: 401 });
   }
 
-  const adminKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!adminKey) {
-    return NextResponse.json(
-      { error: 'La eliminación de cuentas no está configurada en el servidor.' },
-      { status: 500 },
-    );
+  const contentType = request.headers.get('content-type')?.toLowerCase() || '';
+  if (!/^application\/json(?:\s*;|$)/.test(contentType)) {
+    return NextResponse.json({ error: 'Tipo de contenido no permitido.' }, { status: 415 });
   }
 
-  const adminSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    adminKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-    },
-  );
+  const contentLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > MAX_DELETE_REQUEST_BYTES) {
+    return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
+  }
+
+  const rawBody = await request.text();
+  if (new TextEncoder().encode(rawBody).byteLength > MAX_DELETE_REQUEST_BYTES) {
+    return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
+  }
+
+  const body = parseDeleteAccountRequest(rawBody);
+  if (!body) return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 });
+
+  if (body.confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_TEXT) {
+    return NextResponse.json({ error: 'Confirmación inválida.' }, { status: 400 });
+  }
+
+  const { data: reauthenticated, error: reauthenticationError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: body.password,
+  });
+
+  if (reauthenticationError || reauthenticated.user?.id !== user.id) {
+    return NextResponse.json({ error: 'No se pudo reautenticar la cuenta.' }, { status: 401 });
+  }
 
   const { error: signOutError } = await supabase.auth.signOut();
 
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(user.id);
+  const { error: deleteError } = await createSupabaseAdminClient().auth.admin.deleteUser(user.id);
 
   if (deleteError) {
     return NextResponse.json(
