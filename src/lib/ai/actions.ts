@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { getRequiredServerSecret } from "@/lib/server-secrets";
 import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot, PendingAction, PendingActionComponent } from "./types";
 import type { AiToolContext, AiToolResult } from "./tools/types";
@@ -326,9 +326,12 @@ async function createPendingAction(
   title: string,
   summary: PendingAction["summary"],
 ): Promise<PendingAction> {
+  if (!context.actionSupabase || !context.requestId) throw new Error("No se pudo crear la propuesta de acción de forma segura.");
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
   const digest = digestPayload(payload);
-  const { data, error } = await context.supabase.rpc("create_ai_pending_action", {
+  const { data, error } = await context.actionSupabase.rpc("create_ai_pending_action_server", {
+    p_request_id: context.requestId,
+    p_user_id: context.actor.id,
     p_action_type: type,
     p_payload: payload,
     p_payload_digest: digest,
@@ -927,6 +930,12 @@ export async function confirmPendingAction(
   if (!action) throw new Error("La propuesta de acción no es válida.");
 
   try {
+    const calculatedDigest = digestPayload(action.payload);
+    const suppliedDigest = digest.toLowerCase();
+    const digestMatches = suppliedDigest.length === calculatedDigest.length
+      && timingSafeEqual(Buffer.from(suppliedDigest, "ascii"), Buffer.from(calculatedDigest, "ascii"));
+    if (!digestMatches) throw new Error("La propuesta de acción no es válida.");
+
     if (action.actionType === "create_combo") {
       const title = await insertCreatedEntity(context, "combo", action.payload as CreateComboActionPayload);
       await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });

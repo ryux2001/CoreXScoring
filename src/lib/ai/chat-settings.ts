@@ -8,6 +8,7 @@ const DEFAULT_OPENROUTER_MODELS = [
   "z-ai/glm-4.5-air:free",
   "qwen/qwen3-next-80b-a3b-instruct:free",
 ];
+const DEFAULT_CEREBRAS_MODELS = ["gpt-oss-120b"];
 
 export interface AiChatSettingsPublic {
   credentialMode: AiCredentialMode;
@@ -15,6 +16,7 @@ export interface AiChatSettingsPublic {
   preferredModel: string;
   models: Record<AiChatProvider, string[]>;
   groq: { configured: boolean; hint: string | null };
+  cerebras: { configured: boolean; hint: string | null };
   openrouter: { configured: boolean; hint: string | null };
   localOnly: boolean;
 }
@@ -31,6 +33,8 @@ interface SettingsRow {
   preferred_model?: unknown;
   groq_api_key_ciphertext?: unknown;
   groq_key_hint?: unknown;
+  cerebras_api_key_ciphertext?: unknown;
+  cerebras_key_hint?: unknown;
   openrouter_api_key_ciphertext?: unknown;
   openrouter_key_hint?: unknown;
 }
@@ -46,12 +50,13 @@ function configuredModels(variableName: string, defaults: string[]): string[] {
 export function getAllowedAiChatModels(): Record<AiChatProvider, string[]> {
   return {
     groq: configuredModels("AI_BYOK_GROQ_MODELS", configuredModels("AI_GROQ_MODELS", DEFAULT_GROQ_MODELS)),
+    cerebras: configuredModels("AI_BYOK_CEREBRAS_MODELS", configuredModels("AI_CEREBRAS_MODELS", DEFAULT_CEREBRAS_MODELS)),
     openrouter: configuredModels("AI_BYOK_OPENROUTER_MODELS", configuredModels("AI_OPENROUTER_MODELS", DEFAULT_OPENROUTER_MODELS)),
   };
 }
 
 function asProvider(value: unknown): AiChatProvider {
-  return value === "groq" ? "groq" : "openrouter";
+  return value === "groq" || value === "cerebras" ? value : "openrouter";
 }
 
 function asMode(value: unknown): AiCredentialMode {
@@ -66,7 +71,7 @@ async function readSettings(userId: string): Promise<SettingsRow | null> {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from("user_ai_chat_settings")
-    .select("credential_mode,preferred_provider,preferred_model,groq_api_key_ciphertext,groq_key_hint,openrouter_api_key_ciphertext,openrouter_key_hint")
+    .select("credential_mode,preferred_provider,preferred_model,groq_api_key_ciphertext,groq_key_hint,cerebras_api_key_ciphertext,cerebras_key_hint,openrouter_api_key_ciphertext,openrouter_key_hint")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -91,6 +96,10 @@ export async function getAiChatSettingsPublic(userId: string): Promise<AiChatSet
       configured: typeof row?.groq_api_key_ciphertext === "string" && Boolean(row.groq_api_key_ciphertext),
       hint: typeof row?.groq_key_hint === "string" ? row.groq_key_hint : null,
     },
+    cerebras: {
+      configured: typeof row?.cerebras_api_key_ciphertext === "string" && Boolean(row.cerebras_api_key_ciphertext),
+      hint: typeof row?.cerebras_key_hint === "string" ? row.cerebras_key_hint : null,
+    },
     openrouter: {
       configured: typeof row?.openrouter_api_key_ciphertext === "string" && Boolean(row.openrouter_api_key_ciphertext),
       hint: typeof row?.openrouter_key_hint === "string" ? row.openrouter_key_hint : null,
@@ -112,7 +121,9 @@ export async function getAiChatCredential(userId: string): Promise<AiChatCredent
     : models[provider][0];
   if (!model) throw new Error("No hay modelos BYOK permitidos para el proveedor seleccionado.");
 
-  const ciphertext = provider === "groq" ? row?.groq_api_key_ciphertext : row?.openrouter_api_key_ciphertext;
+  const ciphertext = provider === "groq"
+    ? row?.groq_api_key_ciphertext
+    : provider === "cerebras" ? row?.cerebras_api_key_ciphertext : row?.openrouter_api_key_ciphertext;
   const apiKey = decryptProviderApiKey(ciphertext);
   if (!apiKey) throw new Error("La API key personalizada no está configurada o no se pudo descifrar.");
 
@@ -139,8 +150,12 @@ export async function saveAiChatSettings({
   }
 
   const current = await readSettings(userId);
-  const keyColumn = provider === "groq" ? "groq_api_key_ciphertext" : "openrouter_api_key_ciphertext";
-  const hintColumn = provider === "groq" ? "groq_key_hint" : "openrouter_key_hint";
+  const keyColumn = provider === "groq"
+    ? "groq_api_key_ciphertext"
+    : provider === "cerebras" ? "cerebras_api_key_ciphertext" : "openrouter_api_key_ciphertext";
+  const hintColumn = provider === "groq"
+    ? "groq_key_hint"
+    : provider === "cerebras" ? "cerebras_key_hint" : "openrouter_key_hint";
   const update: Record<string, unknown> = {
     user_id: userId,
     credential_mode: credentialMode,
@@ -165,8 +180,12 @@ export async function saveAiChatSettings({
 }
 
 export async function removeAiChatKey(userId: string, provider: AiChatProvider): Promise<AiChatSettingsPublic> {
-  const keyColumn = provider === "groq" ? "groq_api_key_ciphertext" : "openrouter_api_key_ciphertext";
-  const hintColumn = provider === "groq" ? "groq_key_hint" : "openrouter_key_hint";
+  const keyColumn = provider === "groq"
+    ? "groq_api_key_ciphertext"
+    : provider === "cerebras" ? "cerebras_api_key_ciphertext" : "openrouter_api_key_ciphertext";
+  const hintColumn = provider === "groq"
+    ? "groq_key_hint"
+    : provider === "cerebras" ? "cerebras_key_hint" : "openrouter_key_hint";
   const { error } = await createSupabaseAdminClient()
     .from("user_ai_chat_settings")
     .update({ [keyColumn]: null, [hintColumn]: null })
@@ -184,7 +203,9 @@ export async function testAiChatCredential(userId: string): Promise<{ provider: 
   try {
     const baseUrl = credential.provider === "groq"
       ? "https://api.groq.com/openai/v1/models"
-      : "https://openrouter.ai/api/v1/models";
+      : credential.provider === "cerebras"
+        ? "https://api.cerebras.ai/v1/models"
+        : "https://openrouter.ai/api/v1/models";
     const response = await fetch(baseUrl, {
       method: "GET",
       headers: { Authorization: `Bearer ${credential.apiKey}` },

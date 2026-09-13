@@ -1,8 +1,0 @@
-[     120ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
-[     141ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
-[   52135ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
-[   52147ms] [LOG] DEBUG POTENCIA: {timeSpy: 14665, portRoyal: 7066, speedWay: 2881, timeSpyPoints: 1173.2, rayTracingPoints: 371.89473684210526} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
-[   52154ms] [LOG] [Fast Refresh] done in 81ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
-[   52262ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
-[   52557ms] [LOG] [Fast Refresh] done in 395ms @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431
-[   52603ms] [LOG] DEBUG POTENCIA: {timeSpy: 14665, portRoyal: 7066, speedWay: 2881, timeSpyPoints: 1173.2, rayTracingPoints: 371.89473684210526} @ http://localhost:3000/_next/static/chunks/0im5_next_dist_0~_dl5p._.js:2431

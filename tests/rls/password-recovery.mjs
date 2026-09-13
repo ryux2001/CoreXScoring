@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-if (process.env.RUN_REMOTE_PASSWORD_RECOVERY_TESTS !== "1") {
-  throw new Error("Define RUN_REMOTE_PASSWORD_RECOVERY_TESTS=1 para ejecutar la prueba remota de recovery.");
+if (process.env.RUN_REMOTE_PASSWORD_RECOVERY_TESTS !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") {
+  throw new Error("Define RUN_REMOTE_PASSWORD_RECOVERY_TESTS=1 o RUN_LOCAL_SMOKES=1 para ejecutar la prueba de recovery.");
 }
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

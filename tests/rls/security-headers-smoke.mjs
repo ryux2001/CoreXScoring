@@ -1,5 +1,5 @@
-if (process.env.RUN_SECURITY_HEADERS_SMOKE !== "1") {
-  throw new Error("Define RUN_SECURITY_HEADERS_SMOKE=1 para ejecutar el smoke de cabeceras.");
+if (process.env.RUN_SECURITY_HEADERS_SMOKE !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") {
+  throw new Error("Define RUN_SECURITY_HEADERS_SMOKE=1 o RUN_LOCAL_SMOKES=1 para ejecutar el smoke de cabeceras.");
 }
 
 const appUrl = process.env.SECURITY_HEADERS_SMOKE_URL || "http://localhost:3000";

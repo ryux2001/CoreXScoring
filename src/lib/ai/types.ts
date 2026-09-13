@@ -7,7 +7,7 @@ export const MAX_SAVED_CHAT_MESSAGES = 150;
 export type ChatRole = "user" | "assistant";
 export type ChatProvider = "local" | "groq" | "cerebras" | "openrouter" | "guardrail";
 export type AiCredentialMode = "project" | "byok";
-export type AiChatProvider = "groq" | "openrouter";
+export type AiChatProvider = "groq" | "cerebras" | "openrouter";
 export type AiConversationMode = "temporary" | "saved";
 
 export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | "vault" | "other";
@@ -214,6 +214,7 @@ export interface ChatRequest {
   comboDraft?: ComboDraft;
   catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
   frontendPriceContext?: AiFrontendPriceContext;
+  turnstileToken?: string;
   action?: AiActionRequest;
 }
 
@@ -260,6 +261,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (catalogPriceEvaluation !== undefined && !isCatalogPriceEvaluationRequest(catalogPriceEvaluation)) return false;
   const frontendPriceContext = (value as ChatRequest).frontendPriceContext;
   if (frontendPriceContext !== undefined && !isFrontendPriceContext(frontendPriceContext)) return false;
+  const turnstileToken = (value as ChatRequest).turnstileToken;
+  if (turnstileToken !== undefined && (typeof turnstileToken !== "string" || turnstileToken.length === 0 || turnstileToken.length > 2_048)) return false;
 
   const action = (value as ChatRequest).action;
   if (action !== undefined && (

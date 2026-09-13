@@ -280,7 +280,8 @@ export default function CreatedComboWorkspace({
       return;
     }
 
-    if (modalPriceMode === 'custom' && (!modalPrice || Number(modalPrice) <= 0)) {
+    const customPrice = Number(modalPrice);
+    if (modalPriceMode === 'custom' && (!modalPrice || !Number.isFinite(customPrice) || customPrice <= 0)) {
       setNotification({ type: 'error', message: 'Introduce un precio personalizado válido.' });
       return;
     }
@@ -313,8 +314,9 @@ export default function CreatedComboWorkspace({
   };
 
   const saveDraft = async () => {
-    if (!draft.title.trim()) {
-      setNotification({ type: 'error', message: 'Escribe un nombre para el combo.' });
+    const title = draft.title.trim();
+    if (!title || title.length > 120) {
+      setNotification({ type: 'error', message: 'El nombre del combo debe tener entre 1 y 120 caracteres.' });
       return;
     }
     if (!isComplete) {
@@ -359,7 +361,7 @@ export default function CreatedComboWorkspace({
       };
       const payload = {
         user_id: user.id,
-        title: draft.title.trim(),
+        title,
         slug: draft.slug || `${slugify(draft.title)}-${crypto.randomUUID().slice(0, 8)}`,
         cpu_id: draft.cpu!.id,
         gpu_id: draft.gpu!.id,
@@ -525,6 +527,7 @@ function CreatedComboEditorCard({
         <input
           value={draft.title}
           onChange={(event) => onTitleChange(event.target.value)}
+          maxLength={120}
           placeholder="Escribe un nombre..."
           className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600"
         />

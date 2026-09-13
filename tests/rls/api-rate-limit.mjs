@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-if (process.env.RUN_REMOTE_API_RATE_LIMIT_TESTS !== "1") {
-  throw new Error("Define RUN_REMOTE_API_RATE_LIMIT_TESTS=1 para ejecutar la prueba remota de rate limiting.");
+if (process.env.RUN_REMOTE_API_RATE_LIMIT_TESTS !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") {
+  throw new Error("Define RUN_REMOTE_API_RATE_LIMIT_TESTS=1 o RUN_LOCAL_SMOKES=1 para ejecutar la prueba de rate limiting.");
 }
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

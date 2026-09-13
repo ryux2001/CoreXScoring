@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-if (process.env.RUN_REMOTE_ACTION_TESTS !== "1") {
-  throw new Error("Define RUN_REMOTE_ACTION_TESTS=1 para ejecutar pruebas remotas de acciones pendientes.");
+if (process.env.RUN_REMOTE_ACTION_TESTS !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") {
+  throw new Error("Define RUN_REMOTE_ACTION_TESTS=1 o RUN_LOCAL_SMOKES=1 para ejecutar la prueba de acciones pendientes.");
 }
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,7 +25,9 @@ function record(name, ok, error) {
 }
 
 async function createAction(client, suffix) {
-  const response = await client.rpc("create_ai_pending_action", {
+  const response = await client.rpc("create_ai_pending_action_server", {
+    p_request_id: crypto.randomUUID(),
+    p_user_id: userId,
     p_action_type: "create_combo",
     p_payload: { ...payload, suffix },
     p_payload_digest: digest,
@@ -41,13 +43,13 @@ try {
   const signedIn = await userClient.auth.signInWithPassword({ email, password });
   if (signedIn.error) throw signedIn.error;
 
-  const cancelled = await createAction(userClient, "cancel");
+  const cancelled = await createAction(admin, "cancel");
   const cancelledId = cancelled.data;
   const cancel = await userClient.rpc("cancel_ai_pending_action", { p_action_id: cancelledId });
   const cancelledClaim = await userClient.rpc("claim_ai_pending_action", { p_action_id: cancelledId, p_payload_digest: digest });
   record("cancelled-action-cannot-be-claimed", !cancel.error && Boolean(cancelledClaim.error) && cancelledClaim.error.code === "P0002", cancel.error || cancelledClaim.error);
 
-  const retryable = await createAction(userClient, "retry");
+  const retryable = await createAction(admin, "retry");
   const retryableId = retryable.data;
   const claimed = await userClient.rpc("claim_ai_pending_action", { p_action_id: retryableId, p_payload_digest: digest });
   const failed = await userClient.rpc("fail_ai_pending_action", { p_action_id: retryableId });
@@ -55,7 +57,7 @@ try {
   record("failed-action-can-be-retried", !claimed.error && !failed.error && !retried.error, claimed.error || failed.error || retried.error);
   if (!retried.error) await userClient.rpc("fail_ai_pending_action", { p_action_id: retryableId });
 
-  const concurrent = await createAction(userClient, "concurrent");
+  const concurrent = await createAction(admin, "concurrent");
   const concurrentId = concurrent.data;
   const attempts = await Promise.all([
     userClient.rpc("claim_ai_pending_action", { p_action_id: concurrentId, p_payload_digest: digest }),
@@ -64,7 +66,7 @@ try {
   record("concurrent-claim-allows-one-executor", attempts.filter((attempt) => !attempt.error).length === 1 && attempts.filter((attempt) => attempt.error?.code === "P0002").length === 1, attempts.find((attempt) => attempt.error)?.error);
   await userClient.rpc("fail_ai_pending_action", { p_action_id: concurrentId });
 
-  const altered = await createAction(userClient, "digest");
+  const altered = await createAction(admin, "digest");
   const alteredClaim = await userClient.rpc("claim_ai_pending_action", { p_action_id: altered.data, p_payload_digest: "b".repeat(64) });
   record("altered-digest-is-rejected", Boolean(alteredClaim.error) && alteredClaim.error.code === "P0002", alteredClaim.error);
 } finally {

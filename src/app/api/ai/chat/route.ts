@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AiGatewayError, getPotentialExternalProviders, getServerToolCapabilities, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
+import { AiGatewayError, getPotentialExternalProviders, getServerToolCapabilities, isManagedProviderEnabled, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
 import { AiActionExecutionError, confirmPendingAction } from "@/lib/ai/actions";
 import { resolveDirectVaultLookup } from "@/lib/ai/vault-direct";
 import { getAiChatCredential } from "@/lib/ai/chat-settings";
@@ -8,10 +8,16 @@ import { appendAiConversationTurn, getAiConversation, getConversationPromptMessa
 import {
   AiQuotaUnavailableError,
   AiBudgetUnavailableError,
+  AiConcurrencyUnavailableError,
+  acquireAiRequestLease,
   consumeAiQuota,
+  createAiProviderCircuit,
   estimateTokenBudget,
+  getAiQuotaStatus,
+  getAnonymousSessionTtlHours,
   getClientIpHash,
   recordAiRequest,
+  releaseAiRequestLease,
   settleAiQuota,
   reserveOpenRouterBudget,
   settleOpenRouterBudget,
@@ -25,6 +31,9 @@ import { resolveAiFrontendPriceContext, resolveAiPagePriceContext } from "@/lib/
 import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } from "@/lib/api-security";
 import { AI_PRODUCT_SELECT } from "@/lib/ai/privacy";
 import { getMissingExternalProviderConsents } from "@/lib/ai/provider-consent";
+import { isAiDisabled } from "@/lib/ai/kill-switch";
+import { shouldRequireAnonymousTurnstile, TurnstileUnavailableError, verifyTurnstileToken } from "@/lib/ai/turnstile";
+import { resolveServerDrafts } from "@/lib/ai/drafts";
 
 export const runtime = "nodejs";
 
@@ -146,6 +155,23 @@ export async function POST(request: NextRequest) {
     return withRequestId(NextResponse.json(
       { error: "No se pudo identificar tu sesión de CoreX AI. Recarga la página e inténtalo de nuevo." },
       { status: 401 },
+    ), requestId);
+  }
+  if (user.is_anonymous === true) {
+    const createdAt = Date.parse(user.created_at);
+    const ttlMs = getAnonymousSessionTtlHours() * 60 * 60 * 1_000;
+    if (Number.isFinite(createdAt) && Date.now() - createdAt > ttlMs) {
+      return withRequestId(NextResponse.json({
+        error: "Tu sesión de invitado ha caducado. Inicia una nueva sesión para continuar.",
+        code: "anonymous_session_expired",
+        retryable: false,
+      }, { status: 401, headers: { "Cache-Control": "no-store" } }), requestId);
+    }
+  }
+  if (isAiDisabled()) {
+    return withRequestId(NextResponse.json(
+      { error: "CoreX AI está temporalmente desactivado por mantenimiento.", code: "ai_disabled", retryable: false },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
     ), requestId);
   }
   try {
@@ -288,15 +314,56 @@ export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const reservedTokens = estimateTokenBudget(normalizedMessages);
   const localProviderEnabled = process.env.AI_LOCAL_ENABLED?.trim().toLowerCase() === "true";
-  let completionProvider: ChatProvider = localProviderEnabled ? "local" : "groq";
+  let completionProvider: ChatProvider = localProviderEnabled ? "local" : "openrouter";
   let completionModel = localProviderEnabled
     ? process.env.AI_LOCAL_MODEL?.trim() || "Qwen3.5-9B-UD-Q4_K_XL"
-    : process.env.AI_GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
+    : process.env.AI_OPENROUTER_MODELS?.split(",")[0]?.trim() || "openai/gpt-oss-20b";
   let userCredential: AiGatewayUserCredential | undefined;
   let reservationId: string | undefined;
   let budgetReservationId: string | undefined;
+  let leaseId: string | undefined;
 
   try {
+    if (isAnonymous) {
+      const quotaStatus = await getAiQuotaStatus(supabase);
+      if (shouldRequireAnonymousTurnstile(quotaStatus.messagesUsed)) {
+        try {
+          const verified = await verifyTurnstileToken(body.turnstileToken);
+          if (!verified) {
+            return withRequestId(NextResponse.json({
+              error: "Completa la verificación antiabuso para continuar como invitado.",
+              code: body.turnstileToken ? "turnstile_invalid" : "turnstile_required",
+              retryable: true,
+            }, { status: body.turnstileToken ? 403 : 428, headers: { "Cache-Control": "no-store" } }), requestId);
+          }
+        } catch (error) {
+          if (error instanceof TurnstileUnavailableError) {
+            return withRequestId(NextResponse.json({ error: "La verificación antiabuso no está disponible.", code: "turnstile_unavailable", retryable: true }, { status: 503, headers: { "Cache-Control": "no-store" } }), requestId);
+          }
+          throw error;
+        }
+      }
+    }
+    const lease = await acquireAiRequestLease({
+      supabase: quotaAdmin,
+      requestId,
+      userId: user.id,
+      ipHash,
+      isAnonymous,
+    });
+    if (!lease.allowed || !lease.leaseId) {
+      const retryAfterSeconds = Math.max(1, Math.round(lease.retryAfterSeconds || 5));
+      return withRequestId(NextResponse.json({
+        error: "CoreX AI está atendiendo otras solicitudes. Inténtalo en unos segundos.",
+        code: lease.reason || "ai_concurrency_limit",
+        retryable: true,
+        retryAfterSeconds,
+      }, {
+        status: 429,
+        headers: { "Cache-Control": "no-store", "Retry-After": String(retryAfterSeconds) },
+      }), requestId);
+    }
+    leaseId = lease.leaseId;
     const quota = await consumeAiQuota({
       supabase: quotaAdmin,
       userId: user.id,
@@ -352,8 +419,13 @@ export async function POST(request: NextRequest) {
     const effectiveMessages = (conversationMode === "saved"
       ? [...storedMessages, ...(isAlreadyStored ? [] : [latestUserMessage])]
       : normalizedMessages).slice(-12);
-    const effectiveBuildDraft = savedConversation?.state.buildDraft || body.buildDraft;
-    const effectiveComboDraft = savedConversation?.state.comboDraft || body.comboDraft;
+    const serverDrafts = await resolveServerDrafts(
+      supabase,
+      savedConversation?.state.buildDraft || body.buildDraft,
+      savedConversation?.state.comboDraft || body.comboDraft,
+    );
+    const effectiveBuildDraft = serverDrafts.buildDraft;
+    const effectiveComboDraft = serverDrafts.comboDraft;
 
     const normalizedPageContext = normalizePageContext(body.context);
     const resolvedPageContext = await resolvePageContext(supabase, normalizedPageContext, user.id, isAnonymous);
@@ -389,6 +461,8 @@ export async function POST(request: NextRequest) {
     const pagePriceContext = await resolveAiPagePriceContext(supabase, resolvedPageContext);
     const toolContext = {
       supabase,
+      actionSupabase: createSupabaseAdminClient() as unknown as typeof supabase,
+      requestId,
       actor: {
         id: user.id,
         isAnonymous,
@@ -465,7 +539,7 @@ export async function POST(request: NextRequest) {
     }
 
     const projectOpenRouterModel = process.env.AI_OPENROUTER_MODELS?.split(",")[0]?.trim() || "openai/gpt-oss-20b";
-    if (!userCredential && !localProviderEnabled && process.env.OPENROUTER_API_KEY?.trim()) {
+    if (!userCredential && !localProviderEnabled && isManagedProviderEnabled("openrouter") && process.env.OPENROUTER_API_KEY?.trim()) {
       const budget = await reserveOpenRouterBudget(quotaAdmin, requestId, projectOpenRouterModel);
       if (!budget.allowed || !budget.reservationId) {
         return NextResponse.json({ error: "El presupuesto mensual de CoreX AI está agotado." }, { status: 429, headers: { "Cache-Control": "no-store" } });
@@ -473,7 +547,14 @@ export async function POST(request: NextRequest) {
       budgetReservationId = budget.reservationId;
     }
 
-    const completion = await runChat(effectiveMessages, toolContext, requestId, userCredential);
+    const completion = await runChat(
+      effectiveMessages,
+      toolContext,
+      requestId,
+      userCredential,
+      createAiProviderCircuit(quotaAdmin),
+      request.signal,
+    );
 
     completionProvider = completion.provider;
     completionModel = completion.model;
@@ -523,6 +604,16 @@ export async function POST(request: NextRequest) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
+    if (reservationId) {
+      await settleAiQuota({
+        supabase: quotaAdmin,
+        reservationId,
+        actualTokens: reservedTokens,
+      });
+    }
+    if (budgetReservationId) {
+      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 120_000, 2_400);
+    }
     if (error instanceof AiQuotaUnavailableError) {
       return NextResponse.json(
         { error: "Las cuotas de CoreX AI no están disponibles. Inténtalo de nuevo más tarde." },
@@ -531,6 +622,9 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof AiBudgetUnavailableError) {
       return NextResponse.json({ error: "El presupuesto de CoreX AI no está disponible." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
+    if (error instanceof AiConcurrencyUnavailableError) {
+      return NextResponse.json({ error: "Los límites de seguridad de CoreX AI no están disponibles." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
 
     const gatewayError = error instanceof AiGatewayError ? error : null;
@@ -599,5 +693,7 @@ export async function POST(request: NextRequest) {
       { error: "El asistente no está disponible en este momento. Inténtalo de nuevo.", code: "unexpected_error", retryable: true, requestId },
       { status: 503 },
     ), requestId);
+  } finally {
+    if (leaseId) await releaseAiRequestLease(quotaAdmin, leaseId);
   }
 }

@@ -317,7 +317,8 @@ export default function CreatedBuildWorkspace({
       setNotification({ type: 'error', message: 'Selecciona un componente antes de aplicar.' });
       return;
     }
-    if (modalPriceMode === 'custom' && (!modalPrice || Number(modalPrice) <= 0)) {
+    const customPrice = Number(modalPrice);
+    if (modalPriceMode === 'custom' && (!modalPrice || !Number.isFinite(customPrice) || customPrice <= 0)) {
       setNotification({ type: 'error', message: 'Introduce un precio personalizado válido.' });
       return;
     }
@@ -346,8 +347,9 @@ export default function CreatedBuildWorkspace({
   };
 
   const saveDraft = async () => {
-    if (!draft.title.trim()) {
-      setNotification({ type: 'error', message: 'Escribe un nombre para la build.' });
+    const title = draft.title.trim();
+    if (!title || title.length > 120) {
+      setNotification({ type: 'error', message: 'El nombre de la build debe tener entre 1 y 120 caracteres.' });
       return;
     }
     if (!isComplete) {
@@ -391,10 +393,8 @@ export default function CreatedBuildWorkspace({
       };
       const payload = {
         user_id: user.id,
-        title: draft.title.trim(),
+        title,
         slug: draft.slug || `${slugify(draft.title)}-${crypto.randomUUID().slice(0, 8)}`,
-        category: initialBuild?.category || 'Personalizada',
-        is_active: true,
         cpu_id: draft.cpu!.id,
         gpu_id: draft.gpu!.id,
         ram_id: draft.ram!.id,
@@ -532,7 +532,7 @@ function CreatedBuildEditorCard({
           );
         })}
       </div>
-      <label className="mt-5 block"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Nombre de la build</span><input value={draft.title} onChange={(event) => onTitleChange(event.target.value)} placeholder="Escribe un nombre..." className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600" /></label>
+      <label className="mt-5 block"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Nombre de la build</span><input value={draft.title} onChange={(event) => onTitleChange(event.target.value)} maxLength={120} placeholder="Escribe un nombre..." className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600" /></label>
       <div className="mt-5 hidden items-center justify-between border-t border-zinc-900 pt-5 lg:flex"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio total</span><span className="mt-1 block text-xl font-black font-display text-white">{symbol}{totalPrice.toFixed(2)}</span></div><div className="flex gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button><button type="button" onClick={onSave} disabled={isSaving} className="rounded-xl bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">{isSaving ? 'Guardando' : 'Guardar'}</button></div></div>
     </div>
   );

@@ -8,6 +8,10 @@ Reducir los riesgos detectados en la auditoria de seguridad de CoreXScoring, con
 
 Este documento es un plan de trabajo. Su creacion no implica que las vulnerabilidades esten corregidas.
 
+## Progreso de implementacion
+
+Actualizado el 2026-09-13. SEC-005, SEC-006, SEC-007 y SEC-008 tienen implementación técnica y evidencia local documentadas en `docs/etapas-5-6.md`. El cierre formal sigue condicionado a configurar el entorno de producción, ejecutar una prueba dinámica autorizada y completar Etapa 13.
+
 ## Criterio de prioridad
 
 | Prioridad | Plazo recomendado | Criterio |

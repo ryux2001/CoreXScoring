@@ -41,6 +41,22 @@ export class AiBudgetUnavailableError extends Error {
   constructor() { super("El presupuesto de CoreX AI no está disponible."); }
 }
 
+export class AiConcurrencyUnavailableError extends Error {
+  constructor() { super("Los límites de concurrencia de CoreX AI no están disponibles."); }
+}
+
+export interface AiRequestLeaseDecision {
+  allowed: boolean;
+  leaseId?: string;
+  reason?: string;
+  retryAfterSeconds?: number;
+}
+
+export function getAnonymousSessionTtlHours(): number {
+  const value = Number(process.env.AI_ANONYMOUS_SESSION_TTL_HOURS ?? 24);
+  return Number.isInteger(value) && value >= 1 && value <= 168 ? value : 24;
+}
+
 export interface AiRequestTelemetry {
   userId: string;
   isAnonymous: boolean;
@@ -59,10 +75,15 @@ export interface AiRequestTelemetry {
 }
 
 function getForwardedIp(request: NextRequest): string | null {
-  // Only Cloudflare's origin-protected deployment can attest this header.
-  if (process.env.TRUSTED_PROXY?.trim().toLowerCase() !== "cloudflare") return null;
-  const candidate = request.headers.get("cf-connecting-ip")?.trim();
+  // Only the selected edge provider can attest its client-IP header.
+  const trustedProxy = process.env.TRUSTED_PROXY?.trim().toLowerCase();
+  const candidate = trustedProxy === "cloudflare"
+    ? request.headers.get("cf-connecting-ip")?.trim()
+    : trustedProxy === "vercel"
+      ? request.headers.get("x-vercel-forwarded-for")?.trim()
+      : null;
   if (!candidate || candidate.length > 128) return null;
+  if (candidate.includes(",")) return null;
 
   // Quita el puerto de una dirección IPv4 reenviada por algunos proxies.
   if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(candidate)) {
@@ -105,7 +126,9 @@ export function getClientIpHash(request: NextRequest): string | null {
 
 export function estimateTokenBudget(messages: ChatMessage[]): number {
   const inputTokens = Math.ceil(messages.reduce((total, message) => total + message.content.length, 0) / 4);
-  return Math.min(MAX_ESTIMATED_TOKEN_BUDGET, inputTokens + AI_RESERVED_OUTPUT_TOKENS);
+  // Reserve room for the system policy, verified page context and tool schemas.
+  const promptOverhead = 5_000;
+  return Math.min(MAX_ESTIMATED_TOKEN_BUDGET, inputTokens + promptOverhead + AI_RESERVED_OUTPUT_TOKENS);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -238,4 +261,82 @@ export async function settleAiQuota({
     // Si falla la liquidación, se conserva la reserva para evitar subestimar el consumo.
     console.warn("AI quota settlement failed", { code: "network_error" });
   }
+}
+
+export async function acquireAiRequestLease({
+  supabase,
+  requestId,
+  userId,
+  ipHash,
+  isAnonymous,
+  scope = "ai",
+}: {
+  supabase: AiSupabaseClient;
+  requestId: string;
+  userId: string;
+  ipHash: string | null;
+  isAnonymous: boolean;
+  scope?: string;
+}): Promise<AiRequestLeaseDecision> {
+  const { data, error } = await supabase.rpc("acquire_ai_request_lease", {
+    p_request_id: requestId,
+    p_user_id: userId,
+    p_ip_hash: ipHash,
+    p_is_anonymous: isAnonymous,
+    p_scope: scope,
+  });
+  if (error) {
+    console.error("AI concurrency lease failed", { code: error.code || "unknown" });
+    throw new AiConcurrencyUnavailableError();
+  }
+  const result = toRecord(data);
+  return {
+    allowed: result.allowed === true,
+    leaseId: typeof result.lease_id === "string" ? result.lease_id : undefined,
+    reason: typeof result.reason === "string" ? result.reason : undefined,
+    retryAfterSeconds: toOptionalNumber(result.retry_after_seconds),
+  };
+}
+
+export async function releaseAiRequestLease(supabase: AiSupabaseClient, leaseId: string): Promise<void> {
+  try {
+    const { error } = await supabase.rpc("release_ai_request_lease", { p_lease_id: leaseId });
+    if (error) console.warn("AI concurrency lease release failed", { code: error.code || "unknown" });
+  } catch {
+    console.warn("AI concurrency lease release failed", { code: "network_error" });
+  }
+}
+
+export interface AiProviderCircuit {
+  isAllowed(provider: string, model: string): Promise<boolean>;
+  recordSuccess(provider: string, model: string): Promise<void>;
+  recordFailure(provider: string, model: string, isTimeout: boolean): Promise<void>;
+}
+
+export function createAiProviderCircuit(supabase: AiSupabaseClient): AiProviderCircuit {
+  return {
+    async isAllowed(provider, model) {
+      const { data, error } = await supabase.rpc("check_ai_provider_circuit", {
+        p_provider: provider,
+        p_model: model,
+      });
+      if (error) throw new AiConcurrencyUnavailableError();
+      return toRecord(data).allowed === true;
+    },
+    async recordSuccess(provider, model) {
+      const { error } = await supabase.rpc("record_ai_provider_success", {
+        p_provider: provider,
+        p_model: model,
+      });
+      if (error) console.warn("AI provider circuit success update failed", { code: error.code || "unknown" });
+    },
+    async recordFailure(provider, model, isTimeout) {
+      const { error } = await supabase.rpc("record_ai_provider_failure", {
+        p_provider: provider,
+        p_model: model,
+        p_is_timeout: isTimeout,
+      });
+      if (error) console.warn("AI provider circuit failure update failed", { code: error.code || "unknown" });
+    },
+  };
 }

@@ -1,8 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
-if (process.env.RUN_REMOTE_AI_PRIVACY_SMOKE !== "1") {
-  throw new Error("Define RUN_REMOTE_AI_PRIVACY_SMOKE=1 para ejecutar el smoke remoto de privacidad.");
+if (process.env.RUN_REMOTE_AI_PRIVACY_SMOKE !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") {
+  throw new Error("Define RUN_REMOTE_AI_PRIVACY_SMOKE=1 o RUN_LOCAL_SMOKES=1 para ejecutar el smoke de privacidad.");
 }
 
 const appUrl = process.env.AI_PRIVACY_SMOKE_URL || "http://localhost:3000";

@@ -45,12 +45,14 @@ export function buildContentSecurityPolicy({
   supabaseUrl,
   nonce,
   development = false,
+  turnstile = false,
 }: {
   supabaseUrl?: string;
   nonce?: string;
   development?: boolean;
+  turnstile?: boolean;
 } = {}) {
-  const connectSources = ["'self'", ...getSupabaseOrigins(supabaseUrl)].join(' ');
+  const connectSources = ["'self'", ...getSupabaseOrigins(supabaseUrl), ...(turnstile ? ["https://challenges.cloudflare.com"] : [])].join(' ');
   const scriptSources = ["'self'"];
   const styleSources = ["'self'"];
 
@@ -60,6 +62,7 @@ export function buildContentSecurityPolicy({
   }
 
   if (development) scriptSources.push("'unsafe-eval'");
+  if (turnstile) scriptSources.push("https://challenges.cloudflare.com");
 
   return [
     "default-src 'self'",
@@ -73,5 +76,6 @@ export function buildContentSecurityPolicy({
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     `connect-src ${connectSources}`,
+    ...(turnstile ? ["frame-src 'self' https://challenges.cloudflare.com"] : []),
   ].join('; ');
 }

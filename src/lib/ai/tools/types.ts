@@ -11,6 +11,9 @@ export interface AiActor {
 
 export interface AiToolContext {
   supabase: AiSupabaseClient;
+  /** Privileged client used only by server-side action proposal RPCs. */
+  actionSupabase?: AiSupabaseClient;
+  requestId?: string;
   actor: AiActor;
   pageContext?: PageContext;
   ipHash?: string | null;

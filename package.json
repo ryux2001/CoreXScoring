@@ -15,6 +15,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:security": "eslint src/app/api/ai/chat/route.ts src/app/api/ai/admin/budget-alerts/route.ts src/lib/ai/gateway.ts src/lib/ai/kill-switch.ts src/lib/catalog/product-price.ts src/app/api/vault/admin/home/order/route.ts scripts/run-local-smokes.mjs tests/ai/kill-switches.test.ts",
     "test:ai": "vitest run tests/ai",
     "test:rls": "node --env-file=.env.local tests/rls/primary-vault.mjs",
     "test:quota": "node --env-file=.env.local tests/rls/ai-quota.mjs",
@@ -28,7 +29,10 @@
     "test:ai-privacy:remote": "node --env-file=.env.local tests/rls/ai-privacy-retention.mjs",
     "test:ai:watch": "vitest tests/ai",
     "test:ai:coverage": "vitest run --coverage tests/ai",
-    "test:ai:local-qwen": "node tests/ai/evals/run-local-qwen.mjs"
+    "test:ai:local-qwen": "node tests/ai/evals/run-local-qwen.mjs",
+    "ci:local-smokes": "node scripts/run-local-smokes.mjs",
+    "check:remote-migrations": "node scripts/check-remote-migrations.mjs",
+    "security:audit": "pnpm audit --prod --audit-level=high"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

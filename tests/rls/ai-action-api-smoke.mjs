@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
-if (process.env.RUN_REMOTE_ACTION_API_SMOKE !== "1") throw new Error("Define RUN_REMOTE_ACTION_API_SMOKE=1 para probar el endpoint de cancelacion.");
+if (process.env.RUN_REMOTE_ACTION_API_SMOKE !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") throw new Error("Define RUN_REMOTE_ACTION_API_SMOKE=1 o RUN_LOCAL_SMOKES=1 para probar el endpoint de cancelacion.");
 const appUrl = process.env.AI_CHAT_SMOKE_URL || "http://localhost:3000";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -30,7 +30,9 @@ try {
   });
   const signedIn = await sessionClient.auth.signInWithPassword({ email, password });
   if (signedIn.error) throw signedIn.error;
-  const action = await sessionClient.rpc("create_ai_pending_action", {
+  const action = await admin.rpc("create_ai_pending_action_server", {
+    p_request_id: crypto.randomUUID(),
+    p_user_id: userId,
     p_action_type: "create_combo",
     p_payload: { title: "API cancellation test" },
     p_payload_digest: digest,

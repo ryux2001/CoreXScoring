@@ -35,6 +35,7 @@ export async function PATCH(request: NextRequest) {
     if (!scope || !Array.isArray(body.ids) || body.ids.some((id) => typeof id !== 'string') || new Set(body.ids).size !== body.ids.length) {
       throw new Error('El orden recibido no es válido.');
     }
+    const ids = body.ids as string[];
     const requiresParent = scope !== 'sections';
     if (requiresParent && (typeof body.parent_id !== 'string' || !body.parent_id)) {
       throw new Error('Falta el contenedor de los elementos a ordenar.');
@@ -55,13 +56,13 @@ export async function PATCH(request: NextRequest) {
     const { data: existing, error: existingError } = await existingQuery;
     if (existingError) throw existingError;
     const existingIds = (existing || []).map((item) => item.id as string);
-    if (existingIds.length !== body.ids.length || existingIds.some((id) => !body.ids?.includes(id))) {
+    if (existingIds.length !== ids.length || existingIds.some((id) => !ids.includes(id))) {
       throw new Error('La lista cambió. Recarga la página e inténtalo de nuevo.');
     }
 
-    const { error: offsetError } = await db.from(configuration.table).update({ sort_order: 1_000_000 }).in('id', body.ids);
+    const { error: offsetError } = await db.from(configuration.table).update({ sort_order: 1_000_000 }).in('id', ids);
     if (offsetError) throw offsetError;
-    const results = await Promise.all(body.ids.map((id, index) => (
+    const results = await Promise.all(ids.map((id, index) => (
       db.from(configuration.table).update({ sort_order: index }).eq('id', id)
     )));
     const failed = results.find((result) => result.error);

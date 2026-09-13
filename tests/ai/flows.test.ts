@@ -41,7 +41,13 @@ function createCatalogContext() {
       rpc: vi.fn(async () => ({ data: { id: "pending-1" }, error: null })),
       builder: priorityBuilder,
     },
+    actionSupabase: {
+      from: vi.fn((table: string) => table === "products" ? productBuilder : priorityBuilder),
+      rpc: vi.fn(async () => ({ data: { id: "pending-1" }, error: null })),
+      builder: priorityBuilder,
+    },
     actor: { id: "user-1", isAnonymous: false },
+    requestId: "11111111-1111-4111-8111-111111111111",
   };
 }
 
@@ -106,7 +112,7 @@ describe("build and combo conversational flows", () => {
 
     expect(pending.ok).toBe(true);
     if (pending.ok) expect(pending.pendingAction?.type).toBe("create_build");
-    expect(context.supabase.rpc).toHaveBeenCalledWith("create_ai_pending_action", expect.any(Object));
+    expect(context.actionSupabase.rpc).toHaveBeenCalledWith("create_ai_pending_action_server", expect.any(Object));
   });
 
   it("plans and prepares a combo without saving it automatically", async () => {
@@ -123,7 +129,7 @@ describe("build and combo conversational flows", () => {
 
     expect(pending.ok).toBe(true);
     if (pending.ok) expect(pending.pendingAction?.type).toBe("create_combo");
-    expect(context.supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(context.actionSupabase.rpc).toHaveBeenCalledTimes(1);
   });
 
   it("asks for a title instead of inventing one", async () => {

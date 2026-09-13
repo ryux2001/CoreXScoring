@@ -12,7 +12,7 @@ import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } fr
 export const runtime = "nodejs";
 
 function isProvider(value: unknown): value is AiChatProvider {
-  return value === "groq" || value === "openrouter";
+  return value === "groq" || value === "cerebras" || value === "openrouter";
 }
 
 function isMode(value: unknown): value is AiCredentialMode {

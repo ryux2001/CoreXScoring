@@ -9,8 +9,9 @@ const EMPTY_SETTINGS: AiChatSettingsPublic = {
   credentialMode: "project",
   preferredProvider: "openrouter",
   preferredModel: "",
-  models: { groq: [], openrouter: [] },
+  models: { groq: [], cerebras: [], openrouter: [] },
   groq: { configured: false, hint: null },
+  cerebras: { configured: false, hint: null },
   openrouter: { configured: false, hint: null },
   localOnly: false,
 };
@@ -53,7 +54,7 @@ export default function AiChatProvidersCard() {
     if (models.length > 0 && !models.includes(model)) setModel(models[0]);
   }, [model, models]);
 
-  const providerLabel = useMemo(() => provider === "groq" ? "Groq" : "OpenRouter", [provider]);
+  const providerLabel = useMemo(() => provider === "groq" ? "Groq" : provider === "cerebras" ? "Cerebras" : "OpenRouter", [provider]);
 
   const save = async () => {
     if (!model || !canSave) return;
@@ -146,6 +147,7 @@ export default function AiChatProvidersCard() {
           <select value={provider} onChange={(event) => setProvider(event.target.value as AiChatProvider)} disabled={isLoading || isSaving || settings.localOnly} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40">
             <option value="openrouter">OpenRouter</option>
             <option value="groq">Groq</option>
+            <option value="cerebras">Cerebras</option>
           </select>
         </label>
         <label className="text-xs text-zinc-400">

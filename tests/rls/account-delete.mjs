@@ -1,8 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
-if (process.env.RUN_REMOTE_ACCOUNT_DELETE_TESTS !== "1") {
-  throw new Error("Define RUN_REMOTE_ACCOUNT_DELETE_TESTS=1 para ejecutar la prueba remota de borrado.");
+if (process.env.RUN_REMOTE_ACCOUNT_DELETE_TESTS !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") {
+  throw new Error("Define RUN_REMOTE_ACCOUNT_DELETE_TESTS=1 o RUN_LOCAL_SMOKES=1 para ejecutar la prueba de borrado.");
 }
 
 const appUrl = process.env.ACCOUNT_DELETE_SMOKE_URL || "http://localhost:3000";

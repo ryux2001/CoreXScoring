@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { readLimitedJson } from "@/lib/api-security";
 
 export const runtime = "nodejs";
@@ -43,13 +44,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "La retención debe estar entre 30 y 730 días." }, { status: 400 });
   }
 
-  const [{ data: telemetry, error: telemetryError }, { data: conversations, error: conversationsError }] = await Promise.all([
+  const cleanupAdmin = createSupabaseAdminClient();
+  const [{ data: telemetry, error: telemetryError }, { data: conversations, error: conversationsError }, { data: abuse, error: abuseError }] = await Promise.all([
     supabase.rpc("cleanup_ai_telemetry", { p_retention_days: retentionDays }),
     supabase.rpc("cleanup_ai_conversations"),
+    cleanupAdmin.rpc("cleanup_ai_abuse_state"),
   ]);
 
-  if (telemetryError || conversationsError) {
-    const error = telemetryError || conversationsError;
+  if (telemetryError || conversationsError || abuseError) {
+    const error = telemetryError || conversationsError || abuseError;
     if (error?.code === "42501") {
       return NextResponse.json({ error: "No tienes permisos de administrador." }, { status: 403 });
     }
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No se pudo ejecutar la limpieza de privacidad." }, { status: 503 });
   }
 
-  return NextResponse.json({ telemetry, conversations }, {
+  return NextResponse.json({ telemetry, conversations, abuse }, {
     headers: { "Cache-Control": "no-store" },
   });
 }

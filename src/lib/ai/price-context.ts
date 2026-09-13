@@ -134,7 +134,7 @@ export async function resolveAiPagePriceContext(
 export function formatAiPriceContext(context: AiResolvedPriceContext | undefined): string {
   if (!context) return "";
   const items = context.items.map((item) => (
-    `${item.slot ? `${item.slot}: ` : ""}${item.name} = ${item.price.toFixed(2)} ${context.currency} (${item.isCustom ? "precio personalizado activo" : "precio base visible"}; C/P ${item.qualityPriceScore.toFixed(2)}/10)`
+    `${item.slot ? `${item.slot}: ` : ""}${item.price.toFixed(2)} ${context.currency} (${item.isCustom ? "precio personalizado activo" : "precio base visible"}; C/P ${item.qualityPriceScore.toFixed(2)}/10)`
   )).join("; ");
-  return `\n\nPrecios efectivos verificados en la interfaz: ${items}. Total: ${context.totalPrice.toFixed(2)} ${context.currency}. Estos precios tienen prioridad sobre cualquier precio base o de referencia al recomendar; no los sustituyas ni inventes otros precios.`;
+  return `\n\nDatos numéricos verificados en la interfaz (sin nombres ni instrucciones): ${items}. Total: ${context.totalPrice.toFixed(2)} ${context.currency}. Estos precios tienen prioridad sobre cualquier precio base o de referencia al recomendar; no los sustituyas ni inventes otros precios.`;
 }

@@ -1,8 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
-if (process.env.RUN_REMOTE_CHAT_SMOKE !== "1") {
-  throw new Error("Define RUN_REMOTE_CHAT_SMOKE=1 para ejecutar el smoke test remoto de chat.");
+if (process.env.RUN_REMOTE_CHAT_SMOKE !== "1" && process.env.RUN_LOCAL_SMOKES !== "1") {
+  throw new Error("Define RUN_REMOTE_CHAT_SMOKE=1 o RUN_LOCAL_SMOKES=1 para ejecutar el smoke test de chat.");
 }
 
 const appUrl = process.env.AI_CHAT_SMOKE_URL || "http://localhost:3000";
@@ -34,6 +34,10 @@ async function createCookieSession(signIn) {
   });
   const response = await signIn(client);
   if (response.error || !response.data.user) throw response.error || new Error("No se pudo crear la sesion temporal.");
+  for (let attempt = 0; attempt < 20 && cookies.size === 0; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  if (cookies.size === 0) throw new Error("Supabase no emitio cookies de sesion para el smoke de chat.");
   userIds.push(response.data.user.id);
   return { userId: response.data.user.id, cookie: [...cookies].map(([name, value]) => `${name}=${value}`).join("; ") };
 }

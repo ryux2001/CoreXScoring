@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import {
   Bot,
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
-import { ensureAiSession } from "@/lib/ai/client-session";
+import { ensureAiSession, resetExpiredAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
 import ChatHistoryPanel from "./ChatHistoryPanel";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
@@ -25,6 +25,7 @@ import { useCompareStore, type CompareProduct } from "@/store/useCompareStore";
 import { useAiVisiblePriceStore } from "@/store/useAiVisiblePriceStore";
 import type { AiQuotaStatus } from "@/lib/ai/limits";
 import { sanitizeChatHref } from "@/lib/ai/privacy";
+import TurnstileChallenge from "./TurnstileChallenge";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
@@ -43,6 +44,7 @@ const INPUT_MAX_HEIGHT = 112;
 const DESKTOP_CHAT_MIN_WIDTH = 420;
 const DESKTOP_CHAT_MAX_WIDTH = 580;
 const DESKTOP_CHAT_INITIAL_WIDTH = 400;
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
 const markdownComponents: Components = {
   a: ({ children, href, title }) => {
@@ -221,6 +223,7 @@ interface ChatPanelProps {
   pageStatusMaxWidth?: number;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   expandButtonRef?: RefObject<HTMLButtonElement | null>;
+  challenge?: ReactNode;
 }
 
 function ChatPanel({
@@ -259,6 +262,7 @@ function ChatPanel({
   pageStatusMaxWidth,
   inputRef,
   expandButtonRef,
+  challenge,
 }: ChatPanelProps) {
   const hasActions = Boolean(onMinimize || onExpand || onReduce || onOpenHistory || onHideDesktop);
 
@@ -469,6 +473,8 @@ function ChatPanel({
           </div>
         )}
 
+        {challenge}
+
         {canContinue && !isSending && !pendingAction && (
           <button
             type="button"
@@ -587,6 +593,8 @@ export default function AISidebar() {
   const [desktopPanelWidth, setDesktopPanelWidth] = useState(DESKTOP_CHAT_INITIAL_WIDTH);
   const [isDesktopVisible, setIsDesktopVisible] = useState(true);
   const [isDesktopResizing, setIsDesktopResizing] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [isTurnstileRequired, setIsTurnstileRequired] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const desktopResizeStartRef = useRef<{ pointerId: number; clientX: number; width: number } | null>(null);
   const lastMessageRef = useRef("");
@@ -815,7 +823,7 @@ export default function AISidebar() {
     }
   };
 
-  const sendMessage = async (rawMessage = draft, isRetry = false) => {
+  const sendMessage = async (rawMessage = draft, isRetry = false, suppliedTurnstileToken?: string) => {
     const content = rawMessage.trim();
     if (!content || isSending) return;
 
@@ -844,6 +852,7 @@ export default function AISidebar() {
         evaluatedPrices,
         visibleEditorPriceContext,
       );
+      const tokenForRequest = suppliedTurnstileToken || turnstileToken;
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -853,6 +862,7 @@ export default function AISidebar() {
           ...(conversationId ? { conversationId } : {}),
           context: getCurrentClientPageContext(comparisonItems),
           ...(frontendPriceContext ? { frontendPriceContext } : {}),
+          ...(tokenForRequest ? { turnstileToken: tokenForRequest } : {}),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
           ...(catalogPriceEvaluation ? {
@@ -868,6 +878,7 @@ export default function AISidebar() {
         }),
         signal: controller.signal,
       });
+      if (tokenForRequest) setTurnstileToken(null);
       const payload = await response.json() as ChatResponse | ChatErrorPayload;
 
       if (!response.ok || !("message" in payload)) {
@@ -885,6 +896,13 @@ export default function AISidebar() {
         });
         if (errorPayload.code === "external_provider_consent_required" && Array.isArray(errorPayload.providers) && errorPayload.providers.length > 0) {
           setExternalConsent({ providers: errorPayload.providers });
+        }
+        if (errorPayload.code === "turnstile_required" || errorPayload.code === "turnstile_invalid") {
+          setIsTurnstileRequired(true);
+        }
+        if (errorPayload.code === "anonymous_session_expired") {
+          await resetExpiredAiSession();
+          setSessionKind("anonymous");
         }
         setError({
           message: errorPayload.error || "No se pudo obtener una respuesta.",
@@ -906,6 +924,7 @@ export default function AISidebar() {
       setMessages((currentMessages) => [...currentMessages, responseMessage]);
       setProvider(payload.provider);
       setModel(payload.model);
+      setIsTurnstileRequired(false);
       if (payload.conversationId) {
         setConversationId(payload.conversationId);
         setConversationMode("saved");
@@ -1152,6 +1171,27 @@ export default function AISidebar() {
     isQuotaOpen,
     onToggleQuota: toggleQuota,
     onRefreshQuota: () => void loadQuota(),
+    challenge: isTurnstileRequired ? (
+      TURNSTILE_SITE_KEY ? (
+        <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] p-3" role="status" aria-label="Verificación antiabuso requerida">
+          <p className="mb-3 text-xs leading-relaxed text-cyan-100">Completa la verificación para continuar usando CoreX AI como invitado.</p>
+          <TurnstileChallenge
+            siteKey={TURNSTILE_SITE_KEY}
+            onVerify={(token) => {
+              setTurnstileToken(token);
+              setError(null);
+              void sendMessage(lastMessageRef.current, true, token);
+            }}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setError({ message: "No se pudo cargar la verificación antiabuso.", retryable: true })}
+          />
+        </div>
+      ) : (
+        <div role="alert" className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-xs leading-relaxed text-red-100">
+          La verificación antiabuso está activada, pero falta su configuración pública.
+        </div>
+      )
+    ) : undefined,
   };
 
   const mobilePanelBottom = keyboardInset > 0
