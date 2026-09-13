@@ -4,3 +4,7 @@ export function getAuthConfirmUrl(next: string) {
 
   return url.toString();
 }
+
+export function getPasswordRecoveryConfirmUrl() {
+  return new URL('/auth/recovery/confirm', window.location.origin).toString();
+}

@@ -3,7 +3,7 @@
 import { AlertCircle, CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { getAuthConfirmUrl } from '@/lib/authRedirects';
+import { getPasswordRecoveryConfirmUrl } from '@/lib/authRedirects';
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
@@ -18,7 +18,7 @@ export default function ForgotPasswordForm() {
     setSuccessMsg(null);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: getAuthConfirmUrl('/auth/update-password'),
+      redirectTo: getPasswordRecoveryConfirmUrl(),
     });
 
     if (error) {
