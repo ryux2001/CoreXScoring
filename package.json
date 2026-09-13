@@ -16,6 +16,12 @@
     "start": "next start",
     "lint": "eslint",
     "test:ai": "vitest run tests/ai",
+    "test:rls": "node --env-file=.env.local tests/rls/primary-vault.mjs",
+    "test:quota": "node --env-file=.env.local tests/rls/ai-quota.mjs",
+    "test:chat-smoke": "node --env-file=.env.local tests/rls/ai-chat-smoke.mjs",
+    "test:actions:remote": "node --env-file=.env.local tests/rls/ai-pending-actions.mjs",
+    "test:actions:api": "node --env-file=.env.local tests/rls/ai-action-api-smoke.mjs",
+    "test:password-recovery:remote": "node --env-file=.env.local tests/rls/password-recovery.mjs",
     "test:ai:watch": "vitest tests/ai",
     "test:ai:coverage": "vitest run --coverage tests/ai",
     "test:ai:local-qwen": "node tests/ai/evals/run-local-qwen.mjs"
@@ -24,11 +30,12 @@
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.2",
     "lucide-react": "^1.8.0",
-    "next": "16.2.4",
+    "next": "16.3.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
+    "resend": "^6.27.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
@@ -39,7 +46,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"
