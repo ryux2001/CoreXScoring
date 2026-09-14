@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { connection } from "next/server";
 import { Courier_Prime, Geist, Geist_Mono, Rajdhani } from "next/font/google";
 import "./globals.css";
@@ -42,9 +43,10 @@ export default async function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} ${rajdhani.variable} ${courierPrime.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-black" cz-shortcut-listen="true">
+        <body className="min-h-full flex flex-col bg-black" cz-shortcut-listen="true">
           {children}
-      </body>
+          <Analytics />
+        </body>
     </html>
   );
 }

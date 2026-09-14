@@ -105,11 +105,22 @@ export async function reserveOpenRouterBudget(supabase: AiSupabaseClient, reques
   return { allowed: result.allowed === true, reservationId: typeof result.reservation_id === "string" ? result.reservation_id : undefined };
 }
 
-export async function settleOpenRouterBudget(supabase: AiSupabaseClient, reservationId: string, inputTokens: number, outputTokens: number) {
+export async function settleOpenRouterBudget(
+  supabase: AiSupabaseClient,
+  reservationId: string,
+  inputTokens: number,
+  outputTokens: number,
+  cachedInputTokens = 0,
+  cacheWriteTokens = 0,
+  actualModel = "openrouter/free",
+) {
   const { error } = await supabase.rpc("settle_openrouter_budget", {
     p_reservation_id: reservationId,
     p_input_tokens: Math.max(0, Math.round(inputTokens)),
     p_output_tokens: Math.max(0, Math.round(outputTokens)),
+    p_cached_input_tokens: Math.max(0, Math.round(cachedInputTokens)),
+    p_cache_write_tokens: Math.max(0, Math.round(cacheWriteTokens)),
+    p_actual_model: actualModel,
   });
   if (error) console.warn("AI budget settlement failed", { code: error.code || "unknown" });
 }

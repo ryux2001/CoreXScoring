@@ -1,6 +1,6 @@
 export const OPENROUTER_BUDGET_LIMITS = {
-  dailyMicrousd: 500_000,
-  monthlyMicrousd: 5_000_000,
+  dailyMicrousd: 200_000,
+  monthlyMicrousd: 2_000_000,
   alertThresholds: [70, 90] as const,
 };
 
@@ -8,16 +8,42 @@ export const OPENROUTER_MODEL_PRICES = {
   "openai/gpt-oss-20b": {
     inputMicrousdPerMillion: 30_000,
     outputMicrousdPerMillion: 130_000,
+    cachedInputMicrousdPerMillion: 30_000,
+    cacheWriteMicrousdPerMillion: 30_000,
+  },
+  "qwen/qwen3.7-flash": {
+    inputMicrousdPerMillion: 30_000,
+    outputMicrousdPerMillion: 130_000,
+    cachedInputMicrousdPerMillion: 6_000,
+    cacheWriteMicrousdPerMillion: 38_000,
+  },
+  // Reserva al precio del fallback de pago y se libera al liquidar un modelo :free.
+  "openrouter/free": {
+    inputMicrousdPerMillion: 30_000,
+    outputMicrousdPerMillion: 130_000,
+    cachedInputMicrousdPerMillion: 6_000,
+    cacheWriteMicrousdPerMillion: 38_000,
   },
 } as const;
 
 export type BudgetPeriod = "day" | "month";
 export type BudgetAlertThreshold = (typeof OPENROUTER_BUDGET_LIMITS.alertThresholds)[number];
 
-export function calculateOpenRouterCostMicrousd(model: string, inputTokens: number, outputTokens: number): number | null {
+export function calculateOpenRouterCostMicrousd(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  cachedInputTokens = 0,
+  cacheWriteTokens = 0,
+): number | null {
   const price = OPENROUTER_MODEL_PRICES[model as keyof typeof OPENROUTER_MODEL_PRICES];
-  if (!price || !Number.isFinite(inputTokens) || !Number.isFinite(outputTokens) || inputTokens < 0 || outputTokens < 0) return null;
-  return Math.ceil(inputTokens * price.inputMicrousdPerMillion / 1_000_000)
+  if (!price
+    || ![inputTokens, outputTokens, cachedInputTokens, cacheWriteTokens].every((value) => Number.isFinite(value) && value >= 0)
+    || cachedInputTokens + cacheWriteTokens > inputTokens) return null;
+  const uncachedInputTokens = inputTokens - cachedInputTokens - cacheWriteTokens;
+  return Math.ceil(uncachedInputTokens * price.inputMicrousdPerMillion / 1_000_000)
+    + Math.ceil(cachedInputTokens * price.cachedInputMicrousdPerMillion / 1_000_000)
+    + Math.ceil(cacheWriteTokens * price.cacheWriteMicrousdPerMillion / 1_000_000)
     + Math.ceil(outputTokens * price.outputMicrousdPerMillion / 1_000_000);
 }
 

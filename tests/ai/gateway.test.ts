@@ -51,6 +51,58 @@ describe("AI gateway conversational protocol", () => {
     expect(result.usage).toEqual({ inputTokens: 30, outputTokens: 16 });
   });
 
+  it("sends an opaque cache session only to OpenRouter and records cache usage", async () => {
+    vi.stubEnv("AI_MANAGED_PROVIDERS", "openrouter");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    vi.stubEnv("AI_OPENROUTER_MODELS", "qwen/qwen3.7-flash");
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "qwen/qwen3.7-flash",
+      choices: [{ message: { role: "assistant", content: "La RAM almacena datos temporales para la CPU." } }],
+      usage: {
+        prompt_tokens: 1_000,
+        completion_tokens: 20,
+        prompt_tokens_details: { cached_tokens: 700, cache_write_tokens: 100 },
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "¿Qué hace la RAM?" },
+    ], toolContext(), "gateway-cache", undefined, undefined, undefined, "550e8400-e29b-41d4-a716-446655440000");
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    const request = JSON.parse(String(init.body));
+    expect(request.session_id).toBe("550e8400-e29b-41d4-a716-446655440000");
+    expect(result.usage).toEqual({ inputTokens: 1_000, outputTokens: 20, cachedInputTokens: 700, cacheWriteTokens: 100 });
+  });
+
+  it("falls back from the free router to Qwen while retaining the cache session", async () => {
+    vi.stubEnv("AI_MANAGED_PROVIDERS", "openrouter");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    vi.stubEnv("AI_OPENROUTER_MODELS", "openrouter/free,qwen/qwen3.7-flash");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(providerResponse({ error: { code: "rate_limit_exceeded" } }, 429))
+      .mockResolvedValueOnce(providerResponse({
+        model: "qwen/qwen3.7-flash",
+        choices: [{ message: { role: "assistant", content: "Una fuente de alimentación estable protege los componentes." } }],
+        usage: { prompt_tokens: 90, completion_tokens: 18 },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "¿Para qué sirve la fuente de alimentación?" },
+    ], toolContext(), "gateway-free-fallback", undefined, undefined, undefined, "550e8400-e29b-41d4-a716-446655440001");
+
+    expect(result.model).toBe("qwen/qwen3.7-flash");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [, freeInit] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    const [, qwenInit] = fetchMock.mock.calls[1] as unknown as [RequestInfo | URL, RequestInit];
+    const freeRequest = JSON.parse(String(freeInit.body));
+    const qwenRequest = JSON.parse(String(qwenInit.body));
+    expect(freeRequest).toMatchObject({ model: "openrouter/free", session_id: "550e8400-e29b-41d4-a716-446655440001" });
+    expect(qwenRequest).toMatchObject({ model: "qwen/qwen3.7-flash", session_id: "550e8400-e29b-41d4-a716-446655440001" });
+  });
+
   it("executes a structured catalog tool call and then returns the final answer", async () => {
     vi.stubEnv("AI_LOCAL_ENABLED", "true");
     vi.stubEnv("AI_LOCAL_ONLY", "true");

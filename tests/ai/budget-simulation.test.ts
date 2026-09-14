@@ -11,9 +11,12 @@ import {
 describe("Stage 5 budget simulation", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("calculates the configured gpt-oss-20b cost without contacting OpenRouter", () => {
+  it("calculates configured OpenRouter costs without contacting OpenRouter", () => {
     expect(calculateOpenRouterCostMicrousd("openai/gpt-oss-20b", 120_000, 2_400)).toBe(3_912);
+    expect(calculateOpenRouterCostMicrousd("qwen/qwen3.7-flash", 1_000_000, 0, 600_000, 200_000)).toBe(17_200);
+    expect(calculateOpenRouterCostMicrousd("openrouter/free", 120_000, 2_400)).toBe(3_912);
     expect(calculateOpenRouterCostMicrousd("unbudgeted/model", 120_000, 2_400)).toBeNull();
+    expect(calculateOpenRouterCostMicrousd("qwen/qwen3.7-flash", 100, 0, 60, 60)).toBeNull();
   });
 
   it("blocks synthetic reservations at either budget boundary", () => {
@@ -23,12 +26,12 @@ describe("Stage 5 budget simulation", () => {
   });
 
   it("emits each 70/90 alert once for daily and monthly periods", () => {
-    expect(getTriggeredBudgetAlerts({ period: "day", usedMicrousd: 450_000 })).toEqual([
-      { period: "day", thresholdPercent: 70, usedMicrousd: 450_000, limitMicrousd: 500_000 },
-      { period: "day", thresholdPercent: 90, usedMicrousd: 450_000, limitMicrousd: 500_000 },
+    expect(getTriggeredBudgetAlerts({ period: "day", usedMicrousd: 180_000 })).toEqual([
+      { period: "day", thresholdPercent: 70, usedMicrousd: 180_000, limitMicrousd: 200_000 },
+      { period: "day", thresholdPercent: 90, usedMicrousd: 180_000, limitMicrousd: 200_000 },
     ]);
-    expect(getTriggeredBudgetAlerts({ period: "month", usedMicrousd: 4_500_000, emittedThresholds: [70] })).toEqual([
-      { period: "month", thresholdPercent: 90, usedMicrousd: 4_500_000, limitMicrousd: 5_000_000 },
+    expect(getTriggeredBudgetAlerts({ period: "month", usedMicrousd: 1_800_000, emittedThresholds: [70] })).toEqual([
+      { period: "month", thresholdPercent: 90, usedMicrousd: 1_800_000, limitMicrousd: 2_000_000 },
     ]);
   });
 

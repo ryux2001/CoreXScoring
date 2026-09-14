@@ -137,6 +137,8 @@ export interface ConversationRecord extends ConversationSummary {
 export interface ChatUsage {
   inputTokens: number;
   outputTokens: number;
+  cachedInputTokens?: number;
+  cacheWriteTokens?: number;
 }
 
 export type AiActionType = "create_combo" | "create_build" | "set_custom_price";
@@ -209,6 +211,8 @@ export interface ChatRequest {
   messages: ChatMessage[];
   conversationMode?: AiConversationMode;
   conversationId?: string;
+  /** UUID aleatorio del navegador usado solo para afinidad de caché del proveedor. */
+  cacheSessionId?: string;
   context?: PageContext;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
@@ -252,6 +256,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (conversationMode !== undefined && !["temporary", "saved"].includes(conversationMode)) return false;
   const conversationId = (value as ChatRequest).conversationId;
   if (conversationId !== undefined && (typeof conversationId !== "string" || conversationId.length > 80)) return false;
+  const cacheSessionId = (value as ChatRequest).cacheSessionId;
+  if (cacheSessionId !== undefined && (typeof cacheSessionId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(cacheSessionId))) return false;
 
   const buildDraft = (value as ChatRequest).buildDraft;
   if (buildDraft !== undefined && !isBuildDraft(buildDraft)) return false;

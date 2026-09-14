@@ -105,6 +105,10 @@ interface CompletionPayload {
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
+    prompt_tokens_details?: {
+      cached_tokens?: number;
+      cache_write_tokens?: number;
+    };
   };
 }
 
@@ -285,6 +289,7 @@ async function requestCompletion({
   model,
   messages,
   tools,
+  cacheSessionId,
   requestSignal,
 }: {
   provider: ProviderName;
@@ -293,6 +298,7 @@ async function requestCompletion({
   model: string;
   messages: ProviderMessage[];
   tools: AiToolDefinition[];
+  cacheSessionId?: string;
   requestSignal?: AbortSignal;
 }): Promise<CompletionPayload> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -311,6 +317,7 @@ async function requestCompletion({
         model,
         messages,
         tools,
+        ...(provider === "openrouter" && cacheSessionId ? { session_id: cacheSessionId } : {}),
         tool_choice: "auto",
         ...(provider === "openrouter" || provider === "cerebras" ? { parallel_tool_calls: false } : {}),
         temperature: 0.4,
@@ -598,6 +605,7 @@ async function runProviderConversation({
   messages,
   toolContext,
   requestId,
+  cacheSessionId,
   requestSignal,
 }: {
   provider: ProviderName;
@@ -607,6 +615,7 @@ async function runProviderConversation({
   messages: ChatMessage[];
   toolContext: AiToolContext;
   requestId?: string;
+  cacheSessionId?: string;
   requestSignal?: AbortSignal;
 }): Promise<ChatResponse> {
   const activeDraft = toolContext.buildDraft || toolContext.comboDraft;
@@ -646,6 +655,7 @@ async function runProviderConversation({
       model,
       messages: providerMessages,
       tools: toolDefinitions,
+      cacheSessionId,
       requestSignal,
     });
     if (payload.usage) {
@@ -653,6 +663,10 @@ async function runProviderConversation({
         || typeof payload.usage.completion_tokens === "number";
       usage.inputTokens += payload.usage.prompt_tokens || 0;
       usage.outputTokens += payload.usage.completion_tokens || 0;
+      const cachedInputTokens = payload.usage.prompt_tokens_details?.cached_tokens || 0;
+      const cacheWriteTokens = payload.usage.prompt_tokens_details?.cache_write_tokens || 0;
+      if (cachedInputTokens > 0) usage.cachedInputTokens = (usage.cachedInputTokens || 0) + cachedInputTokens;
+      if (cacheWriteTokens > 0) usage.cacheWriteTokens = (usage.cacheWriteTokens || 0) + cacheWriteTokens;
     }
     const choice = payload.choices?.[0];
     const assistantMessage = choice?.message;
@@ -839,6 +853,7 @@ export async function runChat(
   userCredential?: AiGatewayUserCredential,
   providerCircuit?: AiProviderCircuit,
   requestSignal?: AbortSignal,
+  cacheSessionId?: string,
 ): Promise<ChatResponse> {
   const guardrailDecision = evaluateChatGuardrails(messages);
   if (guardrailDecision.response) return guardrailDecision.response;
@@ -863,7 +878,7 @@ export async function runChat(
       if (providerCircuit && !(await providerCircuit.isAllowed(candidate.provider, candidate.model))) {
         throw new AiGatewayError(candidate.provider, 503, "provider_circuit_open", "provider");
       }
-      const response = await runProviderConversation({ ...candidate, messages, toolContext, requestId, requestSignal });
+      const response = await runProviderConversation({ ...candidate, messages, toolContext, requestId, requestSignal, cacheSessionId });
       if (providerCircuit) await providerCircuit.recordSuccess(candidate.provider, candidate.model);
       return response;
     } catch (error) {

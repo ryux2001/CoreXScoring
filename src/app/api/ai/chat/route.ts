@@ -554,12 +554,21 @@ export async function POST(request: NextRequest) {
       userCredential,
       createAiProviderCircuit(quotaAdmin),
       request.signal,
+      body.cacheSessionId,
     );
 
     completionProvider = completion.provider;
     completionModel = completion.model;
     if (budgetReservationId && completion.usage) {
-      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, completion.provider === "openrouter" ? completion.usage.inputTokens : 0, completion.provider === "openrouter" ? completion.usage.outputTokens : 0);
+      await settleOpenRouterBudget(
+        quotaAdmin,
+        budgetReservationId,
+        completion.provider === "openrouter" ? completion.usage.inputTokens : 0,
+        completion.provider === "openrouter" ? completion.usage.outputTokens : 0,
+        completion.provider === "openrouter" ? completion.usage.cachedInputTokens : 0,
+        completion.provider === "openrouter" ? completion.usage.cacheWriteTokens : 0,
+        completion.model,
+      );
     } else if (budgetReservationId && completion.provider === "guardrail") {
       await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 0, 0);
     }
@@ -612,7 +621,7 @@ export async function POST(request: NextRequest) {
       });
     }
     if (budgetReservationId) {
-      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 120_000, 2_400);
+      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 120_000, 2_400, 0, 0, completionModel);
     }
     if (error instanceof AiQuotaUnavailableError) {
       return NextResponse.json(

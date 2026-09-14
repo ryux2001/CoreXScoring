@@ -575,6 +575,7 @@ export default function AISidebar() {
   const [comboDraft, setComboDraft] = useState<ComboDraft | null>(null);
   const [conversationMode, setConversationMode] = useState<AiConversationMode>("temporary");
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [cacheSessionId, setCacheSessionId] = useState(() => crypto.randomUUID());
   const [conversationTitle, setConversationTitle] = useState<string | undefined>(undefined);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -689,6 +690,7 @@ export default function AISidebar() {
   const resetConversation = (mode: AiConversationMode) => {
     setConversationMode(mode);
     setConversationId(null);
+    setCacheSessionId(crypto.randomUUID());
     setConversationTitle(undefined);
     setMessages([]);
     setDraft("");
@@ -730,6 +732,7 @@ export default function AISidebar() {
       const selected = payload.conversation;
       setConversationMode("saved");
       setConversationId(selected.id);
+      setCacheSessionId(crypto.randomUUID());
       setConversationTitle(selected.title);
       setMessages(selected.messages.map(({ role, content }) => ({ role, content })));
       setBuildDraft(selected.state.buildDraft || null);
@@ -860,6 +863,7 @@ export default function AISidebar() {
           messages: nextMessages.slice(-12),
           conversationMode,
           ...(conversationId ? { conversationId } : {}),
+          cacheSessionId,
           context: getCurrentClientPageContext(comparisonItems),
           ...(frontendPriceContext ? { frontendPriceContext } : {}),
           ...(tokenForRequest ? { turnstileToken: tokenForRequest } : {}),
