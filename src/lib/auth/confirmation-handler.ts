@@ -82,7 +82,11 @@ export async function handleAuthConfirmation(request: NextRequest, recovery = fa
   try {
     const proof = await createRecoveryProof(user.user.id);
     return createRecoveryRedirect(request, response, proof);
-  } catch {
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : 'unknown';
+    console.error('Password recovery proof creation failed', { code });
     return getAuthErrorResponse(request);
   }
 }

@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => (
     request.nextUrl.pathname.startsWith(route)
   ));
-  const authFlowRoutes = ['/auth/confirm', '/auth/update-password'];
+  const authFlowRoutes = ['/auth/confirm', '/auth/recovery/confirm', '/auth/update-password'];
   const isAuthFlowRoute = authFlowRoutes.includes(request.nextUrl.pathname);
   const needsSessionHandling = isProtectedRoute
     || (request.nextUrl.pathname.startsWith('/auth') && !isAuthFlowRoute)
