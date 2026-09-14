@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Loader2, Lock, Mail, User } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -209,7 +210,16 @@ export default function RegisterForm() {
         {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Registrarse"}
       </button>
 
-      <p className="text-center text-xs text-zinc-500">Al registrarte aceptas nuestros términos de servicio</p>
+      <p className="text-center text-xs leading-relaxed text-zinc-500">
+        Al registrarte aceptas los{" "}
+        <Link href="/terms" className="text-zinc-300 underline underline-offset-4 hover:text-white">
+          términos de uso
+        </Link>{" "}
+        y confirmas haber leído la{" "}
+        <Link href="/privacy" className="text-zinc-300 underline underline-offset-4 hover:text-white">
+          política de privacidad
+        </Link>.
+      </p>
     </form>
   );
 }
