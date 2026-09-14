@@ -3,7 +3,7 @@ import AuthClientWrapper from "./AuthClientWrapper";
 
 export const metadata: Metadata = {
   title: "Autenticarse - CorexScoring",
-  description: "Inicia sesión o crea una cuenta en CorexScoring.",
+  description: "Inicia sesión con Google en CorexScoring.",
 };
 
 interface AuthPageProps {

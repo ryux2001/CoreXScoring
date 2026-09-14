@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import DeleteAccountForm from '@/app/auth/components/DeleteAccountForm';
 import NameChangeForm from '@/app/auth/components/NameChangeForm';
-import PasswordChangeForm from '@/app/auth/components/PasswordChangeForm';
 import AiChatProvidersCard from '@/app/auth/components/AiChatProvidersCard';
 import GoogleIdentityCard from '@/app/auth/components/GoogleIdentityCard';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
@@ -56,16 +55,6 @@ export default async function VaultAccountPage() {
         </section>
 
         <GoogleIdentityCard connected={hasGoogleIdentity} />
-
-        <section className="pt-6">
-          <h2 className="mb-2 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-            Cambiar contraseña
-          </h2>
-          <p className="mb-5 text-sm text-zinc-500">
-            Confirma tu contraseña actual antes de establecer una nueva.
-          </p>
-          <PasswordChangeForm requireCurrentPassword />
-        </section>
 
         <AiChatProvidersCard />
 
