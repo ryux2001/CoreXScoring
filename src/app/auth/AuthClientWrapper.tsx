@@ -3,6 +3,7 @@
 import { useState } from "react";
 import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
+import GoogleAuthButton from "./components/GoogleAuthButton";
 
 export default function AuthClientWrapper({ initialNotice }: { initialNotice?: string }) {
   const [showLogin, setShowLogin] = useState(true);
@@ -14,6 +15,14 @@ export default function AuthClientWrapper({ initialNotice }: { initialNotice?: s
           {initialNotice}
         </div>
       )}
+
+      <GoogleAuthButton />
+
+      <div className="my-6 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">
+        <span className="h-px flex-1 bg-zinc-800" />
+        o usa el acceso anterior durante la migración
+        <span className="h-px flex-1 bg-zinc-800" />
+      </div>
 
       {/* Botones superiores de cambio (Como en image_8.png) */}
       <div className="flex border border-white/10 rounded-xl overflow-hidden mb-8">

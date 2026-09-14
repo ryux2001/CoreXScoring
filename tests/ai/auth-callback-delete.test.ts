@@ -5,6 +5,7 @@ import { getSafeAuthNextPath } from '@/lib/auth/safe-next-path';
 describe('auth callback and account deletion policy', () => {
   it('allows only the canonical internal auth destination', () => {
     expect(getSafeAuthNextPath('/catalog')).toBe('/catalog');
+    expect(getSafeAuthNextPath('/vault/account')).toBe('/vault/account');
     expect(getSafeAuthNextPath('//evil.example')).toBe('/catalog');
     expect(getSafeAuthNextPath('/\\evil.example')).toBe('/catalog');
     expect(getSafeAuthNextPath('/%2f%2fevil.example')).toBe('/catalog');

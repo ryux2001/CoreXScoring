@@ -1,19 +1,18 @@
 "use client";
 
-import { AlertCircle, Loader2, Lock, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Loader2, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuthStore } from '@/store/useAuthStore';
 
 const CONFIRMATION_TEXT = 'ELIMINAR';
 
-export default function DeleteAccountForm() {
-  const router = useRouter();
-  const logout = useAuthStore((state) => state.logout);
+interface DeleteAccountFormProps {
+  googleConnected: boolean;
+}
+
+export default function DeleteAccountForm({ googleConnected }: DeleteAccountFormProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmation, setConfirmation] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -29,27 +28,35 @@ export default function DeleteAccountForm() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/account/delete', {
+      const response = await fetch('/api/account/delete/google-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmation, password }),
+        body: JSON.stringify({ confirmation }),
       });
 
       if (!response.ok) {
-        setErrorMsg('No se pudo eliminar la cuenta. Inténtalo de nuevo.');
+        setErrorMsg('No se pudo preparar la confirmación con Google.');
         return;
       }
 
-      await supabase.auth.signOut();
-      logout();
-      router.replace('/auth?deleted=1');
-      router.refresh();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: new URL('/auth/oauth/delete-confirm', window.location.origin).toString(),
+          queryParams: { prompt: 'login' },
+        },
+      });
+      if (error) setErrorMsg('No se pudo abrir la confirmación de Google.');
     } catch {
       setErrorMsg('No se pudo eliminar la cuenta. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!googleConnected) {
+    return <p className="text-sm text-zinc-500">Vincula Google para habilitar la eliminación segura de cuenta.</p>;
+  }
 
   if (!isConfirming) {
     return (
@@ -88,23 +95,7 @@ export default function DeleteAccountForm() {
         className="mt-2 w-full rounded-lg border border-red-500/30 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-red-400/50"
       />
 
-      <label htmlFor="delete_password" className="mt-4 block text-xs text-zinc-400">
-        Contraseña actual
-      </label>
-      <div className="relative mt-2">
-        <Lock className="absolute left-3 top-2.5 h-4 w-4 text-zinc-600" />
-        <input
-          id="delete_password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          maxLength={128}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="w-full rounded-lg border border-red-500/30 bg-zinc-950 py-2 pl-9 pr-3 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-red-400/50"
-        />
-      </div>
+      <p className="mt-4 text-xs text-zinc-500">Después continuarás con Google para confirmar tu identidad.</p>
 
       {errorMsg && (
         <div className="mt-3 flex items-center gap-2 text-xs text-red-400">
@@ -126,7 +117,6 @@ export default function DeleteAccountForm() {
           onClick={() => {
             setIsConfirming(false);
             setConfirmation('');
-            setPassword('');
             setErrorMsg(null);
           }}
           disabled={loading}

@@ -4,6 +4,7 @@ import DeleteAccountForm from '@/app/auth/components/DeleteAccountForm';
 import NameChangeForm from '@/app/auth/components/NameChangeForm';
 import PasswordChangeForm from '@/app/auth/components/PasswordChangeForm';
 import AiChatProvidersCard from '@/app/auth/components/AiChatProvidersCard';
+import GoogleIdentityCard from '@/app/auth/components/GoogleIdentityCard';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 export default async function VaultAccountPage() {
@@ -17,6 +18,7 @@ export default async function VaultAccountPage() {
   }
 
   const fullName = user.user_metadata.full_name || 'Usuario';
+  const hasGoogleIdentity = user.identities?.some((identity) => identity.provider === 'google') ?? false;
 
   return (
     <main className="vault-page font-technical min-h-screen bg-black p-3.5 sm:p-6 md:p-12 lg:p-16">
@@ -53,6 +55,8 @@ export default async function VaultAccountPage() {
           </div>
         </section>
 
+        <GoogleIdentityCard connected={hasGoogleIdentity} />
+
         <section className="pt-6">
           <h2 className="mb-2 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
             Cambiar contraseña
@@ -72,7 +76,7 @@ export default async function VaultAccountPage() {
           <p className="mb-5 mt-2 text-sm text-zinc-500">
             Eliminar tu cuenta borra tu acceso y tus datos personales de autenticación.
           </p>
-          <DeleteAccountForm />
+          <DeleteAccountForm googleConnected={hasGoogleIdentity} />
         </section>
       </div>
     </main>

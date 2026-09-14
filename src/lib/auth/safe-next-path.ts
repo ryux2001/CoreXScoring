@@ -1,4 +1,4 @@
-const ALLOWED_AUTH_NEXT_PATHS = new Set(['/catalog']);
+const ALLOWED_AUTH_NEXT_PATHS = new Set(['/catalog', '/vault/account']);
 
 export function getSafeAuthNextPath(value: string | null) {
   if (!value || /[\u0000-\u001f\u007f\\]/.test(value)) return '/catalog';
