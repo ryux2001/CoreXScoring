@@ -1,0 +1,11 @@
+{
+  "Metadata": {
+    "title": "CoreXScoring",
+    "description": "Compara componentes y crea configuraciones de PC"
+  },
+  "common": {
+    "english": "Inglés",
+    "spanish": "Español",
+    "loading": "Cargando..."
+  }
+}

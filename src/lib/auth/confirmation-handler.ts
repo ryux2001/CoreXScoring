@@ -9,15 +9,17 @@ import {
 } from '@/lib/auth/recovery-proof';
 import { getSafeAuthNextPath } from '@/lib/auth/safe-next-path';
 
-function getAuthErrorResponse(request: NextRequest) {
-  const url = new URL('/auth', request.url);
+function getAuthErrorResponse(request: NextRequest, nextPath = '/catalog') {
+  const authPath = nextPath.startsWith('/es/') ? '/es/auth' : '/auth';
+  const url = new URL(authPath, request.url);
   url.searchParams.set('error', 'invalid-link');
 
   return NextResponse.redirect(url);
 }
 
-function createRecoveryRedirect(request: NextRequest, authResponse: NextResponse, proof: string) {
-  const response = NextResponse.redirect(new URL('/auth/update-password', request.url));
+function createRecoveryRedirect(request: NextRequest, authResponse: NextResponse, proof: string, nextPath: string) {
+  const recoveryPath = nextPath === '/catalog' ? '/auth/update-password' : nextPath;
+  const response = NextResponse.redirect(new URL(recoveryPath, request.url));
 
   authResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
   response.cookies.set(RECOVERY_PROOF_COOKIE, proof, {
@@ -62,31 +64,31 @@ export async function handleAuthConfirmation(request: NextRequest, recovery = fa
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (error) return getAuthErrorResponse(request);
+    if (error) return getAuthErrorResponse(request, nextPath);
   } else if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({
       type,
       token_hash: tokenHash,
     });
 
-    if (error) return getAuthErrorResponse(request);
+    if (error) return getAuthErrorResponse(request, nextPath);
   } else {
-    return getAuthErrorResponse(request);
+    return getAuthErrorResponse(request, nextPath);
   }
 
   if (!isRecovery) return response;
 
   const { data: user } = await supabase.auth.getUser();
-  if (!user.user) return getAuthErrorResponse(request);
+  if (!user.user) return getAuthErrorResponse(request, nextPath);
 
   try {
     const proof = await createRecoveryProof(user.user.id);
-    return createRecoveryRedirect(request, response, proof);
+    return createRecoveryRedirect(request, response, proof, nextPath);
   } catch (error) {
     const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
       ? error.code
       : 'unknown';
     console.error('Password recovery proof creation failed', { code });
-    return getAuthErrorResponse(request);
+    return getAuthErrorResponse(request, nextPath);
   }
 }

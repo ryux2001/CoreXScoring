@@ -2,7 +2,7 @@
 
 import { AlertCircle, CheckCircle2, Lock, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { isAcceptablePassword } from '@/lib/auth/password-policy';
 

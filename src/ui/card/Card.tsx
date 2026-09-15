@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Bookmark, Eye } from "lucide-react"; // Importamos Bookmark
-import Link from "next/link"; // Importamos Link
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import CompareButton from "./CompareButton";
 import { supabase } from "@/lib/supabaseClient";
 import { formatReleaseDate } from "@/lib/formatReleaseDate";

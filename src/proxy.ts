@@ -1,8 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
+import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getLocalizedPathname, isLocale, routing } from '@/i18n/routing';
 import { buildContentSecurityPolicy } from '@/lib/security-headers';
+
+const handleI18nRouting = createMiddleware(routing);
+const authFlowRoutes = ['/auth/confirm', '/auth/oauth/callback', '/auth/oauth/delete-confirm', '/auth/recovery/confirm'];
 
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
@@ -27,22 +32,32 @@ export async function proxy(request: NextRequest) {
     if (apiRejection) return addContentSecurityPolicies(apiRejection);
   }
 
-  const createResponse = () => {
-    const nextResponse = NextResponse.next({ request: { headers: requestHeaders } });
+  const createResponse = (previousResponse?: NextResponse) => {
+    const rewrite = previousResponse?.headers.get('x-middleware-rewrite');
+    const nextResponse = rewrite
+      ? NextResponse.rewrite(new URL(rewrite, request.url), { request: { headers: requestHeaders } })
+      : NextResponse.next({ request: { headers: requestHeaders } });
+    previousResponse?.cookies.getAll().forEach((cookie) => nextResponse.cookies.set(cookie));
     return addContentSecurityPolicies(nextResponse);
   };
 
-  let response = createResponse();
+  const pathname = request.nextUrl.pathname;
+  const isApiRequest = pathname.startsWith('/api/');
+  const isAuthFlowRoute = authFlowRoutes.includes(pathname);
+  const isPublicAssetRequest = isKnownPublicAsset(pathname);
+  const intlResponse = !isApiRequest && !isAuthFlowRoute && !isPublicAssetRequest
+    ? createI18nResponse(handleI18nRouting(request), request, requestHeaders)
+    : null;
+  let response = intlResponse ?? createResponse();
+
+  if (intlResponse?.headers.has('location')) return addContentSecurityPolicies(intlResponse);
 
   const protectedRoutes = ['/vault', '/dashboard', '/settings'];
-  const isProtectedRoute = protectedRoutes.some((route) => (
-    request.nextUrl.pathname.startsWith(route)
-  ));
-  const authFlowRoutes = ['/auth/confirm', '/auth/oauth/callback', '/auth/oauth/delete-confirm', '/auth/recovery/confirm', '/auth/update-password'];
-  const isAuthFlowRoute = authFlowRoutes.includes(request.nextUrl.pathname);
+  const localizedPathname = getLocalizedPathname(pathname);
+  const isProtectedRoute = protectedRoutes.some((route) => localizedPathname.startsWith(route));
   const needsSessionHandling = isProtectedRoute
-    || (request.nextUrl.pathname.startsWith('/auth') && !isAuthFlowRoute)
-    || request.nextUrl.pathname === '/auth/update-password';
+    || (localizedPathname.startsWith('/auth') && !isAuthFlowRoute)
+    || localizedPathname === '/auth/update-password';
 
   if (!needsSessionHandling) return response;
 
@@ -60,7 +75,7 @@ export async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
 
-          response = createResponse();
+          response = createResponse(response);
 
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
@@ -88,18 +103,42 @@ export async function proxy(request: NextRequest) {
   };
 
   if (isProtectedRoute && !authenticatedSession) {
-    return redirectWithSessionCookies(new URL('/auth', request.url));
+    return redirectWithSessionCookies(getLocalizedUrl('/auth', request));
   }
 
-  if (request.nextUrl.pathname === '/auth/update-password' && !authenticatedSession) {
-    return redirectWithSessionCookies(new URL('/auth', request.url));
+  if (localizedPathname === '/auth/update-password' && !authenticatedSession) {
+    return redirectWithSessionCookies(getLocalizedUrl('/auth', request));
   }
 
-  if (request.nextUrl.pathname.startsWith('/auth') && authenticatedSession && !isAuthFlowRoute) {
-    return redirectWithSessionCookies(new URL('/', request.url));
+  if (localizedPathname.startsWith('/auth') && authenticatedSession && !isAuthFlowRoute && localizedPathname !== '/auth/update-password') {
+    return redirectWithSessionCookies(getLocalizedUrl('/', request));
   }
 
   return response;
+}
+
+function createI18nResponse(
+  intlResponse: NextResponse,
+  request: NextRequest,
+  requestHeaders: Headers,
+) {
+  if (intlResponse.headers.has('location')) return intlResponse;
+
+  const rewrite = intlResponse.headers.get('x-middleware-rewrite');
+  const response = rewrite
+    ? NextResponse.rewrite(new URL(rewrite, request.url), { request: { headers: requestHeaders } })
+    : NextResponse.next({ request: { headers: requestHeaders } });
+
+  intlResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+  return response;
+}
+
+function getLocalizedUrl(pathname: string, request: NextRequest) {
+  const [firstSegment] = request.nextUrl.pathname.split('/').filter(Boolean);
+  const localePrefix = isLocale(firstSegment) && firstSegment !== routing.defaultLocale
+    ? `/${firstSegment}`
+    : '';
+  return new URL(`${localePrefix}${pathname === '/' ? '/' : pathname}`, request.url);
 }
 
 export const config = {
@@ -114,6 +153,12 @@ export const config = {
     '/api/:path*',
   ],
 };
+
+function isKnownPublicAsset(pathname: string) {
+  return pathname === '/icon.png'
+    || pathname.startsWith('/images/')
+    || /^\/(?:window|vercel|next|globe|file)\.svg$/.test(pathname);
+}
 
 function isMutatingApiRequest(request: NextRequest) {
   return request.nextUrl.pathname.startsWith('/api/')

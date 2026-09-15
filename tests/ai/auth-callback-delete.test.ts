@@ -11,6 +11,9 @@ describe('auth callback and account deletion policy', () => {
     expect(getSafeAuthNextPath('/%2f%2fevil.example')).toBe('/catalog');
     expect(getSafeAuthNextPath('/catalog?next=https://evil.example')).toBe('/catalog');
     expect(getSafeAuthNextPath('/auth/update-password')).toBe('/catalog');
+    expect(getSafeAuthNextPath('/es/catalog')).toBe('/es/catalog');
+    expect(getSafeAuthNextPath('/es/vault/account')).toBe('/es/vault/account');
+    expect(getSafeAuthNextPath('/es/auth/update-password')).toBe('/es/auth/update-password');
   });
 
   it('requires exactly the confirmation and current password fields', () => {

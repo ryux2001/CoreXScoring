@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function AuthStatus({ isMobile = false }: { isMobile?: boolean }) {
   const user = useAuthStore((state) => state.user);

@@ -1,8 +1,9 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState, useRef, useEffect, useId } from "react";
+import { useRouter } from "@/i18n/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 interface SearchSuggestion {

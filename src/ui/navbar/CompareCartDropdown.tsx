@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, X, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useCompareStore } from "@/store/useCompareStore";
 
 interface CompareCartDropdownProps {

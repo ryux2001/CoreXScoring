@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { Search } from "lucide-react";
 import { useRef, useState } from "react";
 import MobileMenu from "./MobileMenu";

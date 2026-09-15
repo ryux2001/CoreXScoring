@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/i18n/navigation";
 import {
   Bot,
   ChevronDown,
@@ -25,6 +25,7 @@ import { useCompareStore, type CompareProduct } from "@/store/useCompareStore";
 import { useAiVisiblePriceStore } from "@/store/useAiVisiblePriceStore";
 import type { AiQuotaStatus } from "@/lib/ai/limits";
 import { sanitizeChatHref } from "@/lib/ai/privacy";
+import { getLocalizedPathname } from "@/i18n/routing";
 import TurnstileChallenge from "./TurnstileChallenge";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
@@ -87,7 +88,8 @@ function formatQuotaReset(value: string): string {
 
 function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageContext {
   const pathname = window.location.pathname;
-  const segments = pathname.split("/").filter(Boolean);
+  const localizedPathname = getLocalizedPathname(pathname);
+  const segments = localizedPathname.split("/").filter(Boolean);
   const root = segments[0];
   const route: PageContext["route"] = root === "catalog"
     ? "catalog"
@@ -119,7 +121,8 @@ function getFrontendPriceContext(
   evaluatedPrices: Record<string, number>,
   visibleEditorContext: AiFrontendPriceContext | null,
 ): AiFrontendPriceContext | undefined {
-  if (pathname.startsWith("/comparator")) {
+  const localizedPathname = getLocalizedPathname(pathname);
+  if (localizedPathname.startsWith("/comparator")) {
     const visibleIds = new Set(comparisonItems.map((item) => String(item.id)));
     const items = Object.entries(evaluatedPrices)
       .filter(([productId]) => visibleIds.has(productId))
@@ -129,7 +132,7 @@ function getFrontendPriceContext(
     }
   }
 
-  if (visibleEditorContext && pathname.startsWith("/vault/")) return visibleEditorContext;
+  if (visibleEditorContext && localizedPathname.startsWith("/vault/")) return visibleEditorContext;
 
   return undefined;
 }
@@ -150,7 +153,7 @@ function humanizePageIdentifier(value: string): string {
 }
 
 function getPageStatusLabel(pathname: string): string {
-  const segments = pathname.split("/").filter(Boolean);
+  const segments = getLocalizedPathname(pathname).split("/").filter(Boolean);
   const root = segments[0];
   const identifier = root === "vault" ? segments[2] : segments[1];
   if (root === "catalog" && identifier) return `${humanizePageIdentifier(identifier)}`;

@@ -42,7 +42,7 @@ export default function DeleteAccountForm({ googleConnected }: DeleteAccountForm
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: new URL('/auth/oauth/delete-confirm', window.location.origin).toString(),
+          redirectTo: getDeleteConfirmationUrl(),
           queryParams: { prompt: 'login' },
         },
       });
@@ -127,4 +127,11 @@ export default function DeleteAccountForm({ googleConnected }: DeleteAccountForm
       </div>
     </form>
   );
+}
+
+function getDeleteConfirmationUrl() {
+  const url = new URL('/auth/oauth/delete-confirm', window.location.origin);
+  const localePrefix = window.location.pathname.startsWith('/es/') ? '/es' : '';
+  url.searchParams.set('next', `${localePrefix}/vault/account`);
+  return url.toString();
 }

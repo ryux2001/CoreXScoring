@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/i18n/navigation';
 import { normalizeCurrency, setCurrencyPreference } from '@/lib/currency';
 
 /** Keep an explicit URL currency as the browser-wide preference after hydration. */

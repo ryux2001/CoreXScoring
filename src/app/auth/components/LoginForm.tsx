@@ -1,9 +1,9 @@
 "use client";
 
 import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthConfirmUrl } from "@/lib/authRedirects";
 import { useAuthStore } from "@/store/useAuthStore";
