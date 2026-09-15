@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   let body: { credentialMode?: unknown; provider?: unknown; model?: unknown; apiKey?: unknown };
-  try { body = await readLimitedJson<typeof body>(request, 4 * 1024); } catch (error) {
+  try { body = await readLimitedJson<typeof body>(request, 2 * 1024); } catch (error) {
     const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
     return NextResponse.json({ error: "La solicitud no es válida." }, { status });
   }
@@ -91,7 +91,7 @@ export async function DELETE(request: NextRequest) {
     throw error;
   }
   let body: { provider?: unknown };
-  try { body = await readLimitedJson<typeof body>(request, 4 * 1024); } catch (error) {
+  try { body = await readLimitedJson<typeof body>(request, 1 * 1024); } catch (error) {
     const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
     return NextResponse.json({ error: "La solicitud no es válida." }, { status });
   }

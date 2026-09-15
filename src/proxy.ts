@@ -6,14 +6,21 @@ import type { NextRequest } from 'next/server';
 import {
   getEnglishCanonicalPathname,
   getLocalizedPathname,
+  isPathWithinRoute,
   isLocale,
   isUnsupportedLocalePath,
   routing,
 } from '@/i18n/routing';
+import {
+  getApiBodyRejection,
+  getUnsafeApiRejection,
+  isMutatingApiRequest,
+} from '@/lib/security/api-request-policy';
 import { buildContentSecurityPolicy } from '@/lib/security-headers';
 
 const handleI18nRouting = createMiddleware(routing);
 const authFlowRoutes = ['/auth/confirm', '/auth/oauth/callback', '/auth/oauth/delete-confirm', '/auth/recovery/confirm'];
+const protectedRoutes = ['/vault', '/dashboard', '/settings'];
 
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
@@ -34,8 +41,21 @@ export async function proxy(request: NextRequest) {
   };
 
   if (isMutatingApiRequest(request)) {
-    const apiRejection = rejectUnsafeApiRequest(request);
-    if (apiRejection) return addContentSecurityPolicies(apiRejection);
+    const apiRejection = getUnsafeApiRejection(request);
+    if (apiRejection) {
+      return addContentSecurityPolicies(NextResponse.json(
+        { error: apiRejection.message },
+        { status: apiRejection.status },
+      ));
+    }
+
+    const bodyRejection = await getApiBodyRejection(request);
+    if (bodyRejection) {
+      return addContentSecurityPolicies(NextResponse.json(
+        { error: bodyRejection.message },
+        { status: bodyRejection.status },
+      ));
+    }
   }
 
   const createResponse = (previousResponse?: NextResponse) => {
@@ -48,6 +68,7 @@ export async function proxy(request: NextRequest) {
   };
 
   const pathname = request.nextUrl.pathname;
+  const localizedPathname = getLocalizedPathname(pathname);
   const englishCanonicalPathname = getEnglishCanonicalPathname(pathname);
   if (englishCanonicalPathname) {
     const redirectUrl = request.nextUrl.clone();
@@ -62,8 +83,14 @@ export async function proxy(request: NextRequest) {
     }));
   }
 
+  const isAuthFlowRoute = authFlowRoutes.includes(localizedPathname);
+  if (isAuthFlowRoute && localizedPathname !== pathname) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = localizedPathname;
+    return addContentSecurityPolicies(NextResponse.redirect(callbackUrl, 307));
+  }
+
   const isApiRequest = pathname.startsWith('/api/');
-  const isAuthFlowRoute = authFlowRoutes.includes(pathname);
   const isPublicAssetRequest = isKnownPublicAsset(pathname);
   const intlResponse = !isApiRequest && !isAuthFlowRoute && !isPublicAssetRequest
     ? createI18nResponse(handleI18nRouting(request), request, requestHeaders)
@@ -72,9 +99,7 @@ export async function proxy(request: NextRequest) {
 
   if (intlResponse?.headers.has('location')) return addContentSecurityPolicies(intlResponse);
 
-  const protectedRoutes = ['/vault', '/dashboard', '/settings'];
-  const localizedPathname = getLocalizedPathname(pathname);
-  const isProtectedRoute = protectedRoutes.some((route) => localizedPathname.startsWith(route));
+  const isProtectedRoute = protectedRoutes.some((route) => isPathWithinRoute(localizedPathname, route));
   const needsSessionHandling = isProtectedRoute
     || (localizedPathname.startsWith('/auth') && !isAuthFlowRoute)
     || localizedPathname === '/auth/update-password';
@@ -164,7 +189,7 @@ function getLocalizedUrl(pathname: string, request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: '/((?!_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!_next|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },
@@ -176,30 +201,10 @@ export const config = {
 
 function isKnownPublicAsset(pathname: string) {
   return pathname === '/icon.png'
+    || pathname === '/favicon.ico'
+    || pathname === '/robots.txt'
+    || pathname === '/sitemap.xml'
+    || pathname === '/manifest.webmanifest'
     || pathname.startsWith('/images/')
     || /^\/(?:window|vercel|next|globe|file)\.svg$/.test(pathname);
-}
-
-function isMutatingApiRequest(request: NextRequest) {
-  return request.nextUrl.pathname.startsWith('/api/')
-    && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
-}
-
-function rejectUnsafeApiRequest(request: NextRequest) {
-  const origin = request.headers.get('origin');
-  if (origin !== request.nextUrl.origin) {
-    return NextResponse.json({ error: 'Origen no permitido.' }, { status: 403 });
-  }
-
-  const fetchSite = request.headers.get('sec-fetch-site');
-  if (fetchSite && fetchSite !== 'same-origin') {
-    return NextResponse.json({ error: 'Solicitud cross-site no permitida.' }, { status: 403 });
-  }
-
-  const contentLength = Number(request.headers.get('content-length'));
-  if (Number.isFinite(contentLength) && contentLength > 128 * 1024) {
-    return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
-  }
-
-  return null;
 }

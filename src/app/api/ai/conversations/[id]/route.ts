@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
   const { id } = await context.params;
   let body: { title?: unknown };
-  try { body = await readLimitedJson<{ title?: unknown }>(request, 8 * 1024); } catch (error) {
+  try { body = await readLimitedJson<{ title?: unknown }>(request, 1 * 1024); } catch (error) {
     const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
     return NextResponse.json({ error: "La solicitud no es válida." }, { status });
   }

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   let body: { provider?: unknown };
   try {
-    body = await readLimitedJson<{ provider?: unknown }>(request, 2 * 1024);
+    body = await readLimitedJson<{ provider?: unknown }>(request, 1 * 1024);
   } catch {
     return NextResponse.json({ error: "La solicitud no es válida." }, { status: 400 });
   }

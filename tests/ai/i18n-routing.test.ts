@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getEnglishCanonicalPathname,
   getLocalizedPathname,
+  isPathWithinRoute,
   isUnsupportedLocalePath,
 } from "@/i18n/routing";
 
@@ -16,6 +17,11 @@ describe("localized pathname helpers", () => {
 
   it("maps a locale-only path to the localized home route", () => {
     expect(getLocalizedPathname("/es")).toBe("/");
+  });
+
+  it("normalizes localized auth callbacks to their canonical route", () => {
+    expect(getLocalizedPathname("/es/auth/confirm")).toBe("/auth/confirm");
+    expect(getLocalizedPathname("/es/auth/recovery/confirm")).toBe("/auth/recovery/confirm");
   });
 
   it("canonicalizes explicit English prefixes", () => {
@@ -36,5 +42,11 @@ describe("localized pathname helpers", () => {
     expect(isUnsupportedLocalePath("/fr-FR/catalog")).toBe(true);
     expect(isUnsupportedLocalePath("/catalog/fr")).toBe(false);
     expect(isUnsupportedLocalePath("/product-inexistente/catalog")).toBe(false);
+  });
+
+  it("matches protected routes by complete path segments", () => {
+    expect(isPathWithinRoute("/vault", "/vault")).toBe(true);
+    expect(isPathWithinRoute("/vault/account", "/vault")).toBe(true);
+    expect(isPathWithinRoute("/vaulted", "/vault")).toBe(false);
   });
 });

@@ -17,6 +17,10 @@ export function getLocalizedPathname(pathname: string): string {
   return isLocale(firstSegment) ? `/${rest.join("/")}` || "/" : pathname;
 }
 
+export function isPathWithinRoute(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
 export function getEnglishCanonicalPathname(pathname: string): string | null {
   if (pathname === "/en") return "/";
   if (pathname.startsWith("/en/")) return pathname.slice(3) || "/";

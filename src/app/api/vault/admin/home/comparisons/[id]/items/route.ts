@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
   if (!user) return NextResponse.json({ error: 'No tienes permisos de administrador.' }, { status: 403 });
   let body: { item_type?: unknown; ids?: unknown };
   try {
-    body = await readLimitedJson<{ item_type?: unknown; ids?: unknown }>(request, 64 * 1024);
+    body = await readLimitedJson<{ item_type?: unknown; ids?: unknown }>(request, 1 * 1024);
   } catch {
     return NextResponse.json({ error: 'El cuerpo de la petición no es válido.' }, { status: 400 });
   }

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   let body: Record<string, unknown>;
   try {
-    body = await readLimitedJson<Record<string, unknown>>(request, 64 * 1024);
+    body = await readLimitedJson<Record<string, unknown>>(request, 4 * 1024);
   } catch {
     return NextResponse.json({ error: 'El cuerpo de la petición no es válido.' }, { status: 400 });
   }

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   if (origin && origin !== request.nextUrl.origin) return NextResponse.json({ error: "Origen no permitido." }, { status: 403 });
 
   let body: { actionId?: unknown };
-  try { body = await readLimitedJson<{ actionId?: unknown }>(request, 8 * 1024); } catch (error) {
+  try { body = await readLimitedJson<{ actionId?: unknown }>(request, 1 * 1024); } catch (error) {
     const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
     return NextResponse.json({ error: "Solicitud inválida." }, { status });
   }
