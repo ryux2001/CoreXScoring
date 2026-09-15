@@ -16,3 +16,18 @@ export function getLocalizedPathname(pathname: string): string {
   const [firstSegment, ...rest] = pathname.split("/").filter(Boolean);
   return isLocale(firstSegment) ? `/${rest.join("/")}` || "/" : pathname;
 }
+
+export function getEnglishCanonicalPathname(pathname: string): string | null {
+  if (pathname === "/en") return "/";
+  if (pathname.startsWith("/en/")) return pathname.slice(3) || "/";
+  return null;
+}
+
+export function isUnsupportedLocalePath(pathname: string): boolean {
+  const [firstSegment] = pathname.split("/").filter(Boolean);
+  return Boolean(
+    firstSegment
+      && !isLocale(firstSegment)
+      && /^[a-z]{2}(?:-[a-z]{2})?$/i.test(firstSegment),
+  );
+}

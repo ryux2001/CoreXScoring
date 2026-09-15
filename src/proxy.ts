@@ -3,7 +3,13 @@ import type { User } from '@supabase/supabase-js';
 import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getLocalizedPathname, isLocale, routing } from '@/i18n/routing';
+import {
+  getEnglishCanonicalPathname,
+  getLocalizedPathname,
+  isLocale,
+  isUnsupportedLocalePath,
+  routing,
+} from '@/i18n/routing';
 import { buildContentSecurityPolicy } from '@/lib/security-headers';
 
 const handleI18nRouting = createMiddleware(routing);
@@ -42,6 +48,20 @@ export async function proxy(request: NextRequest) {
   };
 
   const pathname = request.nextUrl.pathname;
+  const englishCanonicalPathname = getEnglishCanonicalPathname(pathname);
+  if (englishCanonicalPathname) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = englishCanonicalPathname;
+    return addContentSecurityPolicies(NextResponse.redirect(redirectUrl, 308));
+  }
+
+  if (isUnsupportedLocalePath(pathname)) {
+    const notFoundUrl = new URL('/en/__invalid-locale', request.url);
+    return addContentSecurityPolicies(NextResponse.rewrite(notFoundUrl, {
+      request: { headers: requestHeaders },
+    }));
+  }
+
   const isApiRequest = pathname.startsWith('/api/');
   const isAuthFlowRoute = authFlowRoutes.includes(pathname);
   const isPublicAssetRequest = isKnownPublicAsset(pathname);
