@@ -1,8 +1,11 @@
 "use client";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { supabase } from "@/lib/supabaseClient";
+import { setLocaleCookie } from "@/i18n/locale-cookie";
+import { getValidLocale } from "@/i18n/routing";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function AuthStatus({ isMobile = false }: { isMobile?: boolean }) {
@@ -10,8 +13,24 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const language = getValidLocale(user?.user_metadata?.language);
+    if (!user || user.is_anonymous || !language) return;
+
+    setLocaleCookie(language);
+    const visiblePathname = window.location.pathname;
+    const hasExplicitSpanishLocale = visiblePathname === "/es" || visiblePathname.startsWith("/es/");
+    if (language === "es" && !hasExplicitSpanishLocale) {
+      const query = searchParams.toString();
+      const hash = window.location.hash;
+      router.replace(`${pathname}${query ? `?${query}` : ""}${hash}`, { locale: language, scroll: false });
+    }
+  }, [pathname, router, searchParams, user]);
 
   useEffect(() => {
     let isMounted = true;

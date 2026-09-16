@@ -1,12 +1,17 @@
 import { Link } from '@/i18n/navigation';
 import { redirect } from '@/i18n/server-navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
 import DeleteAccountForm from '@/app/auth/components/DeleteAccountForm';
 import NameChangeForm from '@/app/auth/components/NameChangeForm';
 import AiChatProvidersCard from '@/app/auth/components/AiChatProvidersCard';
 import GoogleIdentityCard from '@/app/auth/components/GoogleIdentityCard';
+import LanguagePreferenceForm from '@/app/auth/components/LanguagePreferenceForm';
+import { isLocale } from '@/i18n/routing';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 export default async function VaultAccountPage() {
+  const locale = await getLocale();
+  const t = await getTranslations({ locale, namespace: 'common' });
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -52,6 +57,15 @@ export default async function VaultAccountPage() {
               <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Email</p>
               <p className="mt-2 break-all text-sm font-medium text-zinc-200">{user.email}</p>
             </div>
+          </div>
+        </section>
+
+        <section className="border-b border-zinc-800 py-6">
+          <h2 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
+            {t('language')}
+          </h2>
+          <div className="mt-4">
+            <LanguagePreferenceForm initialLanguage={isLocale(user.user_metadata.language) ? user.user_metadata.language : undefined} />
           </div>
         </section>
 

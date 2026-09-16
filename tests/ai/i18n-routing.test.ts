@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   getEnglishCanonicalPathname,
+  getLocaleSwitchTarget,
+  getValidLocale,
   getLocalizedPathname,
   isPathWithinRoute,
   isUnsupportedLocalePath,
@@ -17,6 +19,26 @@ describe("localized pathname helpers", () => {
 
   it("maps a locale-only path to the localized home route", () => {
     expect(getLocalizedPathname("/es")).toBe("/");
+  });
+
+  it("creates unlocalized navigation targets for next-intl locale changes", () => {
+    expect(getLocaleSwitchTarget("/es/catalog/rtx-5090", "", "", "en")).toEqual({
+      href: "/catalog/rtx-5090",
+      locale: "en",
+    });
+    expect(getLocaleSwitchTarget("/catalog/rtx-5090", "", "", "es")).toEqual({
+      href: "/catalog/rtx-5090",
+      locale: "es",
+    });
+    expect(getLocaleSwitchTarget("/es", "", "", "en")).toEqual({ href: "/", locale: "en" });
+    expect(getLocaleSwitchTarget("/", "", "", "es")).toEqual({ href: "/", locale: "es" });
+  });
+
+  it("accepts only supported locale preferences", () => {
+    expect(getValidLocale("en")).toBe("en");
+    expect(getValidLocale("es")).toBe("es");
+    expect(getValidLocale("fr")).toBeNull();
+    expect(getValidLocale(null)).toBeNull();
   });
 
   it("normalizes localized auth callbacks to their canonical route", () => {

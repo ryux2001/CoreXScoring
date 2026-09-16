@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { ChevronRight, Menu } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import AuthStatus from "./AuthStatus"; // Importamos AuthStatus
+import LanguageSwitcher from "./LanguageSwitcher";
 
 interface Props {
   links: { name: string; href: string }[];
@@ -169,6 +170,10 @@ export default function MobileMenu({ links, onOpen }: Props) {
               </div>
 
               <div className="mt-auto border-t border-white/10 pt-4">
+                <LanguageSwitcher />
+              </div>
+
+              <div className="mt-4 border-t border-white/10 pt-4">
                 <AuthStatus isMobile={true} />
               </div>
             </nav>

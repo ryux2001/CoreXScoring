@@ -6,6 +6,14 @@
   "common": {
     "english": "English",
     "spanish": "Spanish",
+    "selectLanguage": "Select language",
+    "language": "Language",
+    "languageDescription": "Choose the language used by CoreXScoring.",
+    "saveLanguage": "Save language",
+    "languageSaved": "Your language preference was updated.",
+    "languageInvalid": "Select a supported language.",
+    "languageUpdateError": "The language preference could not be updated. Try again.",
+    "languageSignInRequired": "You must be signed in to update your language.",
     "loading": "Loading..."
   }
 }

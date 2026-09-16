@@ -8,6 +8,7 @@ import AuthStatus from "./AuthStatus";
 import SearchBar from "./SearchBar";
 
 import CompareCartDropdown from "./CompareCartDropdown";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const navLinks = [
   { name: "Inicio", href: "/" },
@@ -101,6 +102,8 @@ export default function Navbar() {
             </div>
 
             <CompareCartDropdown />
+
+            <LanguageSwitcher />
 
             <div className="hidden xl:block">
               <AuthStatus />

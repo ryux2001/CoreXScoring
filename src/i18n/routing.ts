@@ -12,9 +12,26 @@ export function isLocale(value: string | undefined): value is Locale {
   return value !== undefined && routing.locales.includes(value as Locale);
 }
 
+export function getValidLocale(value: unknown): Locale | null {
+  return typeof value === "string" && isLocale(value) ? value : null;
+}
+
 export function getLocalizedPathname(pathname: string): string {
   const [firstSegment, ...rest] = pathname.split("/").filter(Boolean);
   return isLocale(firstSegment) ? `/${rest.join("/")}` || "/" : pathname;
+}
+
+export function getLocaleSwitchTarget(
+  pathname: string,
+  query: string,
+  hash: string,
+  locale: Locale,
+) {
+  const unlocalizedPathname = getLocalizedPathname(pathname);
+  return {
+    href: `${unlocalizedPathname}${query ? `?${query}` : ""}${hash}`,
+    locale,
+  };
 }
 
 export function isPathWithinRoute(pathname: string, route: string): boolean {
