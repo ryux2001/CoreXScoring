@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 
 interface ComboPaginationProps {
   basePath: string;
@@ -15,6 +16,7 @@ export default function ComboPagination({
   currentPage,
   totalPages,
 }: ComboPaginationProps) {
+  const t = useTranslations('common');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -27,13 +29,13 @@ export default function ComboPagination({
   };
 
   return (
-    <nav className="mt-10 flex items-center justify-center gap-2" aria-label="Paginación">
+    <nav className="mt-10 flex items-center justify-center gap-2" aria-label={t('pagination')}>
       <button
         type="button"
         onClick={() => router.push(createPageUrl(currentPage - 1))}
         disabled={currentPage <= 1}
         className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-        aria-label="Página anterior"
+        aria-label={t('previousPage')}
       >
         <ChevronLeft size={16} />
       </button>
@@ -45,7 +47,7 @@ export default function ComboPagination({
         onClick={() => router.push(createPageUrl(currentPage + 1))}
         disabled={currentPage >= totalPages}
         className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-        aria-label="Página siguiente"
+        aria-label={t('nextPage')}
       >
         <ChevronRight size={16} />
       </button>

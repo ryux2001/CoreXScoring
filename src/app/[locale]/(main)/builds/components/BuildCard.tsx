@@ -6,8 +6,10 @@ import { Link } from '@/i18n/navigation';
 import { useRouter } from '@/i18n/navigation';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { getBuildPartPrice } from '@/lib/scoringBuilds';
+import { formatPrice } from '@/lib/formatPrice';
 import { supabase } from '@/lib/supabaseClient';
 import { useCompareStore } from '@/store/useCompareStore';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface BuildCardProps {
   build: any;
@@ -35,6 +37,8 @@ export default function BuildCard({
   wholeCardClickable = false,
   compactSave = false,
 }: BuildCardProps) {
+  const t = useTranslations('builds');
+  const locale = useLocale();
   const router = useRouter();
   const addItem = useCompareStore((state) => state.addItem);
   const removeItem = useCompareStore((state) => state.removeItem);
@@ -47,6 +51,7 @@ export default function BuildCard({
   const totalPrice = parts.reduce((total, part) => {
     return total + getBuildPartPrice(build, part.key, currency);
   }, 0);
+  const formattedTotalPrice = formatPrice(totalPrice, locale);
   const isInCompare = compareItems.some((item) => item.id === build.id);
 
   useEffect(() => {
@@ -102,7 +107,7 @@ export default function BuildCard({
     });
 
     if (!result.success) {
-      setCustomError(result.error || 'No se pudo anadir el build');
+       setCustomError(result.error || t('addError'));
     }
   };
 
@@ -202,9 +207,9 @@ export default function BuildCard({
       <div className="mt-4 border-t border-zinc-800/80 pt-2.5 sm:pt-3.5">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Precio</span>
+             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">{t('price')}</span>
             <span className="font-display mt-0.5 text-xl font-black text-white">
-              {symbol}{totalPrice.toFixed(2)}
+              {symbol}{formattedTotalPrice}
             </span>
           </div>
         </div>
@@ -226,15 +231,15 @@ export default function BuildCard({
                 }`}
           >
             <BarChart2 size={14} strokeWidth={wholeCardClickable ? 2.5 : undefined} />
-            {wholeCardClickable ? 'COMPARAR' : <span className="hidden sm:inline">Comparar</span>}
+             {wholeCardClickable ? t('compare') : <span className="hidden sm:inline">{t('compare')}</span>}
           </button>
           {showSave && (
             <button
               type="button"
               onClick={handleSaveClick}
               disabled={isSaving}
-              aria-label={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
-              title={isSaved ? 'Quitar build de guardados' : 'Guardar build'}
+               aria-label={isSaved ? t('removeSaved') : t('saveBuild')}
+               title={isSaved ? t('removeSaved') : t('saveBuild')}
               className={wholeCardClickable
                 ? `flex cursor-pointer items-center justify-center rounded-lg border ${compactSave ? 'px-2 py-2.5' : 'px-3 py-3'} transition-all hover:bg-zinc-900 hover:text-white active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
                     isSaved
@@ -260,7 +265,7 @@ export default function BuildCard({
           </div>
           <div className="flex min-w-0 flex-col">
             <span className="text-[9px] font-black uppercase tracking-[0.15em] text-red-500">
-              Sistema de comparacion
+               {t('comparisonSystem')}
             </span>
             <span className="mt-0.5 text-xs font-medium leading-tight tracking-tight text-zinc-300">
               {customError}
@@ -273,11 +278,13 @@ export default function BuildCard({
 }
 
 function BuildActionButton({ label, icon }: { label: string; icon: ReactNode }) {
+  const t = useTranslations('builds');
+
   return (
     <button
       type="button"
       disabled
-      title="Disponible próximamente"
+       title={t('availableSoon')}
       className="flex cursor-not-allowed items-center justify-center gap-1 rounded-lg border border-zinc-900 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-zinc-700"
     >
       {icon}

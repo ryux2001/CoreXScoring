@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useState } from "react";
+import { useTranslations } from 'next-intl';
 
 // 1. AÑADIMOS 'currency' A LA INTERFAZ
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 
 // 2. RECIBIMOS 'currency' EN LOS PARÁMETROS DEL COMPONENTE
 export default function FilterModal({ isOpen, onClose, availableBrands, availableTypes, currency }: Props) {
+  const t = useTranslations('catalog');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -94,14 +96,14 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
 
       <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl touch-pan-y animate-in fade-in zoom-in-95 duration-200 sm:max-h-none sm:overflow-visible sm:p-8">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="font-display text-xl font-bold uppercase tracking-tight text-white">Filtros</h2>
+          <h2 className="font-display text-xl font-bold uppercase tracking-tight text-white">{t('filters')}</h2>
           <button onClick={onClose} className="text-zinc-500 hover:text-white cursor-pointer"><X size={20} /></button>
         </div>
 
         <div className="space-y-10">
           {/* MARCA */}
           <div>
-            <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">Marca</span>
+            <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">{t('brand')}</span>
             <div className="flex flex-wrap gap-2">
               {availableBrands.map(brand => (
                 <button
@@ -121,7 +123,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
 
           {/* TIPO */}
           <div>
-            <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">Tipo de Componente</span>
+            <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">{t('componentType')}</span>
             <div className="grid grid-cols-3 gap-2">
               {availableTypes.map(type => (
                 <button
@@ -143,12 +145,12 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
           <div>
             {/* 3. MOSTRAMOS EL SÍMBOLO DINÁMICO EN EL TÍTULO */}
             <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Rango de Precio ({currency === 'EUR' ? '€' : '$'})
+              {t('priceRange', { symbol: currency === 'EUR' ? '€' : '$' })}
             </span>
             <div className="flex items-center gap-4">
               <input 
                 type="number" 
-                placeholder="Min" 
+                placeholder={t('min')}
                 value={priceRange.min}
                 onChange={handleMinChange}
                 className="font-technical w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -156,7 +158,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
               <div className="h-px w-8 bg-zinc-800" />
               <input 
                 type="number" 
-                placeholder="Max" 
+                placeholder={t('max')}
                 value={priceRange.max}
                 onChange={handleMaxChange}
                 onBlur={handleMaxBlur}
@@ -170,7 +172,7 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
             onClick={applyFilters}
             className="font-display mt-12 w-full rounded-2xl bg-white py-4 text-sm font-bold uppercase tracking-widest text-black transition-all hover:bg-zinc-200 cursor-pointer"
           >
-            Aplicar Filtros
+            {t('applyFilters')}
           </button>
       </div>
     </div>

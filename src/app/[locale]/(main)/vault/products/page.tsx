@@ -6,6 +6,7 @@ import { Card } from '@/ui/card/Card';
 import { resolveProductPrice } from '@/lib/catalog/product-price';
 import SavedProductsFilterBar from './components/SavedProductsFilterBar';
 import SavedProductsPagination from './components/SavedProductsPagination';
+import { getTranslations } from 'next-intl/server';
 
 interface VaultProductsPageProps {
   searchParams: Promise<{
@@ -63,6 +64,7 @@ async function createVaultClient() {
 export default async function VaultProductsPage({
   searchParams,
 }: VaultProductsPageProps) {
+  const t = await getTranslations('vault');
   const params = await searchParams;
   const currency = await resolveRequestCurrency(params.currency);
   const search = params.q?.trim().toLowerCase() || '';
@@ -99,7 +101,7 @@ export default async function VaultProductsPage({
     return (
       <main className="vault-page font-technical min-h-screen bg-black p-0 sm:p-6 md:p-12 lg:p-16">
         <div className="mx-auto max-w-7xl rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center text-sm text-zinc-500">
-          No se pudieron cargar tus productos guardados.
+          {t('products.loadError')}
         </div>
       </main>
     );
@@ -149,10 +151,10 @@ export default async function VaultProductsPage({
       <div className="mx-auto max-w-7xl rounded-[2rem] py-5 px-1.5 sm:p-5 shadow-2xl md:p-8">
         <header>
           <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
-            Bóveda
+            {t('title')}
           </span>
           <h1 className="mt-2 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            Productos guardados
+            {t('products.title')}
           </h1>
         </header>
 
@@ -165,7 +167,7 @@ export default async function VaultProductsPage({
 
         <section className="mt-8">
           <h2 className="mb-5 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-            Componentes favoritos
+            {t('products.favoriteComponents')}
           </h2>
 
           {visibleProducts.length > 0 ? (
@@ -192,8 +194,8 @@ export default async function VaultProductsPage({
             <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50 px-6 text-center">
               <p className="text-sm font-medium tracking-tight text-zinc-500">
                 {savedProducts.length === 0
-                  ? 'Aún no tienes productos guardados.'
-                  : 'No hay productos guardados que coincidan con estos filtros.'}
+                  ? t('products.empty')
+                  : t('products.noMatches')}
               </p>
             </div>
           )}

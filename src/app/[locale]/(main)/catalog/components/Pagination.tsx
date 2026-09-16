@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from 'next-intl';
 
 interface Props {
   currentPage: number;
@@ -32,6 +33,7 @@ function getPageItems(currentPage: number, totalPages: number, isMobile: boolean
 }
 
 export default function Pagination({ currentPage, totalPages }: Props) {
+  const t = useTranslations('catalog');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -56,17 +58,17 @@ export default function Pagination({ currentPage, totalPages }: Props) {
   return (
     <nav
       className="mt-16 flex flex-wrap items-center justify-center gap-1 px-1 pb-10 sm:gap-2"
-      aria-label="Paginación del catálogo"
+      aria-label={t('pagination')}
     >
       <button
         type="button"
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={isFirstPage}
-        aria-label="Página anterior"
+        aria-label={t('previousPage')}
         className="font-display flex h-10 w-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 text-xs font-semibold text-zinc-400 transition-all hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
       >
         <ChevronLeft size={16} />
-        <span className="hidden sm:inline">Anterior</span>
+        <span className="hidden sm:inline">{t('previous')}</span>
       </button>
 
       <div className="flex items-center gap-0 sm:mx-4 sm:gap-1">
@@ -86,7 +88,7 @@ export default function Pagination({ currentPage, totalPages }: Props) {
                 type="button"
                 onClick={() => handlePageChange(item)}
                 aria-current={currentPage === item ? "page" : undefined}
-                aria-label={`Ir a la página ${item}`}
+                aria-label={t('goToPage', { page: item })}
                 className={`font-display h-10 w-10 shrink-0 rounded-xl border text-xs font-semibold transition-all ${
                   currentPage === item
                     ? "border-white bg-white text-black"
@@ -115,7 +117,7 @@ export default function Pagination({ currentPage, totalPages }: Props) {
                 type="button"
                 onClick={() => handlePageChange(item)}
                 aria-current={currentPage === item ? "page" : undefined}
-                aria-label={`Ir a la página ${item}`}
+                aria-label={t('goToPage', { page: item })}
                 className={`font-display h-9 w-9 rounded-xl border text-xs font-semibold transition-all ${
                   currentPage === item
                     ? "border-white bg-white text-black"
@@ -133,10 +135,10 @@ export default function Pagination({ currentPage, totalPages }: Props) {
         type="button"
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={isLastPage}
-        aria-label="Página siguiente"
+        aria-label={t('nextPage')}
         className="font-display flex h-10 w-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 text-xs font-semibold text-zinc-400 transition-all hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
       >
-        <span className="hidden sm:inline">Siguiente</span>
+        <span className="hidden sm:inline">{t('next')}</span>
         <ChevronRight size={16} />
       </button>
     </nav>

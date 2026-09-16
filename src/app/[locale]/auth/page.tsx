@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import AuthClientWrapper from "./AuthClientWrapper";
 
-export const metadata: Metadata = {
-  title: "Autenticarse - CorexScoring",
-  description: "Inicia sesión con Google en CorexScoring.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth");
+  return { title: t("metadataTitle"), description: t("metadataDescription") };
+}
 
 interface AuthPageProps {
   searchParams: Promise<{ error?: string; deleted?: string }>;
 }
 
 export default async function AuthPage({ searchParams }: AuthPageProps) {
+  const t = await getTranslations("auth");
   const params = await searchParams;
   const initialNotice =
     params.deleted === "1"
-      ? "Tu cuenta se ha eliminado correctamente."
+      ? t("accountDeletedNotice")
       : params.error === "invalid-link"
-      ? "El enlace ya no es válido o ha caducado. Solicita uno nuevo para continuar."
+      ? t("invalidLinkNotice")
       : undefined;
 
   return (

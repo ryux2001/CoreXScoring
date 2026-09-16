@@ -10,6 +10,7 @@ import {
   getAvailableCreatedComboBrands,
   paginateCreatedCombos,
 } from './components/createdComboUtils';
+import { getTranslations } from 'next-intl/server';
 
 interface CreatedCombosPageProps {
   searchParams: Promise<{
@@ -52,6 +53,7 @@ async function createVaultClient() {
 export default async function CreatedCombosPage({
   searchParams,
 }: CreatedCombosPageProps) {
+  const t = await getTranslations('vault');
   const params = await searchParams;
   const currency = await resolveRequestCurrency(params.currency);
   const supabase = await createVaultClient();
@@ -79,7 +81,7 @@ export default async function CreatedCombosPage({
     return (
       <main className="vault-page font-technical min-h-screen bg-black p-0 sm:p-6 md:p-12 lg:p-16">
         <div className="mx-auto max-w-7xl rounded-[2rem] border border-zinc-800 bg-zinc-950 p-8 text-center text-sm text-zinc-500">
-          No se pudieron cargar tus combos creados.
+          {t('createdCombos.loadError')}
         </div>
       </main>
     );
@@ -105,10 +107,10 @@ export default async function CreatedCombosPage({
       <div className="mx-auto max-w-7xl rounded-[2rem] py-5 px-1.5 sm:p-5 shadow-2xl md:p-8">
         <header>
           <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
-            Bóveda
+            {t('title')}
           </span>
           <h1 className="mt-2 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            Combos creados
+            {t('createdCombos.title')}
           </h1>
         </header>
 
@@ -121,7 +123,7 @@ export default async function CreatedCombosPage({
 
         <section className="mt-8">
           <h2 className="mb-5 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-            Mis combos
+            {t('createdCombos.heading')}
           </h2>
 
           {visibleCombos.length > 0 ? (
@@ -140,8 +142,8 @@ export default async function CreatedCombosPage({
             <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50 px-6 text-center">
               <p className="text-sm font-medium tracking-tight text-zinc-500">
                 {createdCombos.length === 0
-                  ? 'Aún no tienes combos creados.'
-                  : 'No hay combos que coincidan con estos filtros.'}
+                  ? t('createdCombos.empty')
+                  : t('createdCombos.noMatches')}
               </p>
             </div>
           )}

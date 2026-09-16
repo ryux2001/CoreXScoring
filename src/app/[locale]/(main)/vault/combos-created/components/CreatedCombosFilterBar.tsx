@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/navigation';
 import { setCurrencyPreference } from '@/lib/currency';
+import { useTranslations } from 'next-intl';
 
 interface CreatedCombosFilterBarProps {
   count: number;
@@ -30,6 +31,7 @@ export default function CreatedCombosFilterBar({
   createLabel = 'Crear combo',
   createPath = '/vault/combos-created/new',
 }: CreatedCombosFilterBarProps) {
+  const t = useTranslations('vault.filters');
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,7 +100,7 @@ export default function CreatedCombosFilterBar({
             type="button"
             onClick={openFilters}
             className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:border-white hover:text-white"
-            aria-label="Abrir filtros"
+            aria-label={t('open')}
           >
             <Settings2 size={18} />
             {activeFilterCount > 0 && (
@@ -120,7 +122,7 @@ export default function CreatedCombosFilterBar({
             <button
               type="submit"
               className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center text-zinc-500 transition-colors hover:text-white"
-              aria-label="Buscar"
+                aria-label={t('search')}
             >
               <Search size={18} />
             </button>
@@ -147,7 +149,7 @@ export default function CreatedCombosFilterBar({
               navigateWithParams({ currency: nextCurrency });
             }}
             className="flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
-            title="Cambiar moneda"
+            title={t('changeCurrency')}
           >
             <ArrowRightLeft size={13} />
             {currency}
@@ -158,20 +160,20 @@ export default function CreatedCombosFilterBar({
       {(searchParams.get('q') || activeFilterCount > 0) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {searchParams.get('q') && (
-            <FilterChip label={`Búsqueda: ${searchParams.get('q')}`} onRemove={() => {
+            <FilterChip label={t('searchChip', { query: searchParams.get('q') ?? '' })} onRemove={() => {
               setSearchValue('');
               navigateWithParams({ q: null });
             }} />
           )}
           {searchParams.get('cpuBrand') && (
-            <FilterChip label={`CPU: ${searchParams.get('cpuBrand')}`} onRemove={() => navigateWithParams({ cpuBrand: null })} />
+            <FilterChip label={t('cpuChip', { brand: searchParams.get('cpuBrand') ?? '' })} onRemove={() => navigateWithParams({ cpuBrand: null })} />
           )}
           {searchParams.get('gpuBrand') && (
-            <FilterChip label={`GPU: ${searchParams.get('gpuBrand')}`} onRemove={() => navigateWithParams({ gpuBrand: null })} />
+            <FilterChip label={t('gpuChip', { brand: searchParams.get('gpuBrand') ?? '' })} onRemove={() => navigateWithParams({ gpuBrand: null })} />
           )}
           {(searchParams.get('minPrice') || searchParams.get('maxPrice')) && (
             <FilterChip
-              label={`Precio: ${searchParams.get('minPrice') || '0'} - ${searchParams.get('maxPrice') || '∞'}`}
+              label={t('priceChip', { min: searchParams.get('minPrice') || '0', max: searchParams.get('maxPrice') || '∞' })}
               onRemove={() => navigateWithParams({ minPrice: null, maxPrice: null })}
             />
           )}
@@ -180,7 +182,7 @@ export default function CreatedCombosFilterBar({
             onClick={clearFilters}
             className="px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-600 transition-colors hover:text-white"
           >
-            Limpiar filtros
+            {t('clearFilters')}
           </button>
         </div>
       )}
@@ -189,12 +191,12 @@ export default function CreatedCombosFilterBar({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-wider text-white">Filtros</h2>
+              <h2 className="text-sm font-black uppercase tracking-wider text-white">{t('title')}</h2>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="text-zinc-500 transition-colors hover:text-white"
-                aria-label="Cerrar filtros"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>
@@ -203,14 +205,14 @@ export default function CreatedCombosFilterBar({
             <div className="mt-6 space-y-6">
               <FilterSelect
                 id="created-combo-cpu-brand"
-                label="Marca de CPU"
+                label={t('cpuBrand')}
                 value={cpuBrand}
                 options={availableCpuBrands}
                 onChange={setCpuBrand}
               />
               <FilterSelect
                 id="created-combo-gpu-brand"
-                label="Marca de GPU"
+                label={t('gpuBrand')}
                 value={gpuBrand}
                 options={availableGpuBrands}
                 onChange={setGpuBrand}
@@ -218,7 +220,7 @@ export default function CreatedCombosFilterBar({
 
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                  Precio total
+                  {t('totalPrice')}
                 </span>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <input
@@ -226,7 +228,7 @@ export default function CreatedCombosFilterBar({
                     min="0"
                     value={minPrice}
                     onChange={(event) => setMinPrice(event.target.value)}
-                    placeholder="Mínimo"
+                    placeholder={t('minimum')}
                     className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-700 focus:border-zinc-500"
                   />
                   <input
@@ -234,7 +236,7 @@ export default function CreatedCombosFilterBar({
                     min="0"
                     value={maxPrice}
                     onChange={(event) => setMaxPrice(event.target.value)}
-                    placeholder="Máximo"
+                    placeholder={t('maximum')}
                     className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-700 focus:border-zinc-500"
                   />
                 </div>
@@ -247,14 +249,14 @@ export default function CreatedCombosFilterBar({
                 onClick={clearFilters}
                 className="rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:text-white"
               >
-                Limpiar
+                {t('clear')}
               </button>
               <button
                 type="button"
                 onClick={applyFilters}
                 className="rounded-lg bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-black transition-colors hover:bg-zinc-200"
               >
-                Aplicar filtros
+                {t('apply')}
               </button>
             </div>
           </div>
@@ -277,6 +279,7 @@ function FilterSelect({
   options: string[];
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations('vault.filters');
   return (
     <div>
       <label htmlFor={id} className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
@@ -288,7 +291,7 @@ function FilterSelect({
         onChange={(event) => onChange(event.target.value)}
         className="mt-3 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
       >
-        <option value="">Todas las marcas</option>
+        <option value="">{t('allBrands')}</option>
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </div>

@@ -3,8 +3,10 @@ import { redirect } from '@/i18n/server-navigation';
 import { Activity } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 import AdminPanelPlaceholder from '../components/AdminPanelPlaceholder';
+import { getTranslations } from 'next-intl/server';
 
 export default async function AdminMonitoringPage() {
+  const t = await getTranslations('admin.monitoring');
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -18,11 +20,11 @@ export default async function AdminMonitoringPage() {
 
   return (
     <AdminPanelPlaceholder
-      eyebrow="Administración / Seguimiento"
-      title="Seguimiento de plataforma"
-      description="Un espacio para consultar el uso de la plataforma, detectar errores y entender la actividad de los usuarios."
+      eyebrow={t('eyebrow')}
+      title={t('title')}
+      description={t('description')}
       icon={Activity}
-      features={['Uso de usuarios', 'Errores y alertas', 'Actividad de la plataforma', 'Métricas de rendimiento']}
+      features={[t('features.users'), t('features.errors'), t('features.activity'), t('features.performance')]}
     />
   );
 }

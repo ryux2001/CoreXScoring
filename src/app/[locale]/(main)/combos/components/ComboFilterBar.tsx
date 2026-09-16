@@ -5,6 +5,7 @@ import { ArrowRightLeft, Search, Settings2, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/navigation';
 import { setCurrencyPreference } from '@/lib/currency';
+import { useTranslations } from 'next-intl';
 
 interface ComboFilterBarProps {
   basePath: string;
@@ -25,6 +26,7 @@ export default function ComboFilterBar({
   entityLabel = 'combos',
   searchPlaceholder = 'Buscar combos',
 }: ComboFilterBarProps) {
+  const t = useTranslations('combos');
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,7 +79,7 @@ export default function ComboFilterBar({
             type="button"
             onClick={openFilters}
             className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:border-white hover:text-white"
-            aria-label="Abrir filtros"
+            aria-label={t('openFilters')}
           >
             <Settings2 size={18} />
             {hasCategoryFilter && (
@@ -99,7 +101,7 @@ export default function ComboFilterBar({
             <button
               type="submit"
               className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center text-zinc-500 transition-colors hover:text-white"
-              aria-label="Buscar"
+              aria-label={t('search')}
             >
               <Search size={18} />
             </button>
@@ -119,7 +121,7 @@ export default function ComboFilterBar({
                 navigateWithParams({ currency: nextCurrency });
               }}
               className="flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
-              title="Cambiar moneda"
+              title={t('changeCurrency')}
             >
               <ArrowRightLeft size={13} />
               {currency}
@@ -132,7 +134,7 @@ export default function ComboFilterBar({
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {searchParams.get('q') && (
             <FilterChip
-              label={`Búsqueda: ${searchParams.get('q')}`}
+              label={t('searchFilter', { query: searchParams.get('q') ?? '' })}
               onRemove={() => {
                 setSearchValue('');
                 navigateWithParams({ q: null });
@@ -153,7 +155,7 @@ export default function ComboFilterBar({
             onClick={clearCategory}
             className="px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-600 transition-colors hover:text-white"
           >
-            Limpiar filtros
+            {t('clearFilters')}
           </button>
         </div>
       )}
@@ -162,12 +164,12 @@ export default function ComboFilterBar({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-wider text-white">Filtros</h2>
+              <h2 className="text-sm font-black uppercase tracking-wider text-white">{t('filters')}</h2>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="text-zinc-500 transition-colors hover:text-white"
-                aria-label="Cerrar filtros"
+                aria-label={t('closeFilters')}
               >
                 <X size={18} />
               </button>
@@ -175,7 +177,7 @@ export default function ComboFilterBar({
 
             <div className="mt-6">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                Categoría
+                {t('category')}
               </span>
               <div className="mt-3 max-h-52 space-y-3 overflow-y-auto">
                 {availableCategories.length > 0 ? availableCategories.map((category) => (
@@ -190,7 +192,7 @@ export default function ComboFilterBar({
                     {category}
                   </label>
                 )) : (
-                  <p className="text-xs text-zinc-600">No hay categorías disponibles.</p>
+                  <p className="text-xs text-zinc-600">{t('noCategories')}</p>
                 )}
               </div>
             </div>
@@ -201,14 +203,14 @@ export default function ComboFilterBar({
                 onClick={clearCategory}
                 className="rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:text-white"
               >
-                Limpiar
+                {t('clear')}
               </button>
               <button
                 type="button"
                 onClick={applyFilters}
                 className="rounded-lg bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-black transition-colors hover:bg-zinc-200"
               >
-                Aplicar filtros
+                {t('applyFilters')}
               </button>
             </div>
           </div>

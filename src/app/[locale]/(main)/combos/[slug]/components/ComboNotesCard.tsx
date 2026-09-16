@@ -3,6 +3,7 @@
 import React from 'react';
 import { Info } from 'lucide-react';
 import { getComboNotes, getComboPartPrice } from '@/lib/scoringCombos';
+import { useLocale } from 'next-intl';
 
 interface ComboNotesCardProps {
   combo?: any;
@@ -11,6 +12,7 @@ interface ComboNotesCardProps {
 }
 
 export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }: ComboNotesCardProps) {
+  const locale = useLocale();
   const notes = getComboNotes(combo, currency);
 
   const isEUR = currency === 'EUR';
@@ -29,7 +31,7 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
     : 0;
 
   const formatPrice = (val: number) => {
-    return `${!isEUR ? symbol : ''}${Number(val).toLocaleString('es-ES')}${isEUR ? symbol : ''}`;
+    return `${!isEUR ? symbol : ''}${Number(val).toLocaleString(locale)}${isEUR ? symbol : ''}`;
   };
 
   // Agrupamos las 6 notas en un único array plano

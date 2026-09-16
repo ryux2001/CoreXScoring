@@ -1,19 +1,21 @@
 import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 const footerLinks = [
-  { name: "Inicio", href: "/" },
-  { name: "Tutorial", href: "/" },
-  { name: "Sobre nosotros", href: "#" },
-  { name: "Preguntas frecuentes", href: "#" },
-  { name: "Soporte técnico", href: "#" },
-  { name: "Política de privacidad", href: "/privacy" },
-  { name: "Términos de uso", href: "/terms" },
-  { name: "Política de cookies", href: "/cookies" },
+  { key: "home", href: "/" },
+  { key: "tutorial", href: "/" },
+  { key: "about", href: "#" },
+  { key: "faq", href: "#" },
+  { key: "support", href: "#" },
+  { key: "privacy", href: "/privacy" },
+  { key: "terms", href: "/terms" },
+  { key: "cookies", href: "/cookies" },
 ];
 
 const footerLinkColumns = [footerLinks.slice(0, 4), footerLinks.slice(4), ];
 
 export default function Footer() {
+  const t = useTranslations("footer");
   const currentYear = new Date().getFullYear();
 
   return (
@@ -32,7 +34,7 @@ export default function Footer() {
             CorexScoring
           </Link>
           <p className="mt-4 font-technical text-sm leading-relaxed text-zinc-500">
-            Compara hardware, entiende el rendimiento y elige con criterio.
+            {t("description")}
           </p>
         </div>
         
@@ -40,20 +42,20 @@ export default function Footer() {
         
         {/* Parte media */}
         
-        <nav aria-label="Enlaces de información">
+        <nav aria-label={t("informationLinks")}>
           <h2 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-zinc-300">
-            Explorar
+            {t("explore")}
           </h2>
           <div className="mt-5 grid gap-y-3 md:grid-cols-2 lg:grid-cols-2 md:gap-x-8 md:gap-y-0">
             {footerLinkColumns.map((links) => (
-              <ul key={links[0].name} className="space-y-3">
+              <ul key={links[0].key} className="space-y-3">
                 {links.map((link) => (
-                  <li key={link.name}>
+                  <li key={link.key}>
                     <Link
                       href={link.href}
                       className="font-technical text-sm text-zinc-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                     >
-                      {link.name}
+                      {t(`links.${link.key}`)}
                     </Link>
                   </li>
                 ))}
@@ -69,19 +71,19 @@ export default function Footer() {
         <div className="flex flex-col justify-between gap-8">
           <div>
             <h2 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-zinc-300">
-              Conecta
+              {t("connect")}
             </h2>
             <div className="mt-5 flex gap-3">
               <a
                 href="#"
-                aria-label="Email, próximamente"
+                aria-label={t("emailComingSoon")}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 text-zinc-500 transition-colors hover:border-zinc-600 hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               >
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-8"><g id="SVGRepo_bgCarrier" strokeWidth="0"></g><g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7" stroke="#52525c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path> <rect x="3" y="5" width="18" height="14" rx="2" stroke="#52525c" strokeWidth="2" strokeLinecap="round"></rect> </g></svg>
               </a>
               <a
                 href="#"
-                aria-label="X, próximamente"
+                aria-label={t("xComingSoon")}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 text-zinc-500 transition-colors hover:border-zinc-600 hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               >
                 <svg
@@ -127,7 +129,7 @@ export default function Footer() {
               </a>
               <a
                 href="#"
-                aria-label="TikTok, próximamente"
+                aria-label={t("tikTokComingSoon")}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 text-zinc-500 transition-colors hover:border-zinc-600 hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               >
                 <svg
@@ -147,7 +149,7 @@ export default function Footer() {
               </a>
               <a
                 href="#"
-                aria-label="YouTube, próximamente"
+                aria-label={t("youTubeComingSoon")}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 text-zinc-500 transition-colors hover:border-zinc-600 hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               >
                 <svg
@@ -182,7 +184,7 @@ export default function Footer() {
           </div>
 
           <p className="font-technical text-xs text-zinc-600">
-            © {currentYear} CorexScoring. Todos los derechos reservados.
+            {t("copyright", { year: currentYear })}
           </p>
         </div>
       </div>

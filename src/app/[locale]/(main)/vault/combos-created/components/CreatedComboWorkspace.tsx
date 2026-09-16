@@ -6,10 +6,12 @@ import { useRouter } from '@/i18n/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
 import { resolveProductPrice } from '@/lib/catalog/product-price';
+import { formatPrice } from '@/lib/formatPrice';
 import { useAiVisiblePriceStore } from '@/store/useAiVisiblePriceStore';
 import ComboEvaluationSection from '@/app/[locale]/(main)/combos/[slug]/components/ComboEvaluationSection';
 import FpsCard from '@/app/[locale]/(main)/combos/[slug]/components/FpsCard';
 import Metrics from '@/app/[locale]/(main)/combos/[slug]/components/Metrics';
+import { useLocale, useTranslations } from 'next-intl';
 
 type SlotKey = 'cpu' | 'gpu' | 'ram';
 type PriceMode = 'msrp' | 'custom';
@@ -45,12 +47,6 @@ interface DraftState {
   customPrices: Record<SlotKey, string>;
   priceModes: Record<SlotKey, PriceMode>;
 }
-
-const slotLabels: Record<SlotKey, string> = {
-  cpu: 'Procesador',
-  gpu: 'Gráfica',
-  ram: 'RAM',
-};
 
 function parseJson(value: any) {
   if (typeof value !== 'string') return value || {};
@@ -137,7 +133,7 @@ function normalizeRamType(value: any) {
   return String(value || '').toLowerCase().replace(/\s+/g, '');
 }
 
-function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: DraftState) {
+function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: DraftState, t: ReturnType<typeof useTranslations>) {
   const cpu = nextSlot === 'cpu' ? nextProduct : draft.cpu;
   const ram = nextSlot === 'ram' ? nextProduct : draft.ram;
 
@@ -149,13 +145,13 @@ function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: D
   const actualRamType = normalizeRamType(ramSpecs.technology || ramSpecs.memory_type);
 
   if (expectedRamType && actualRamType && !actualRamType.includes(expectedRamType) && !expectedRamType.includes(actualRamType)) {
-    return `${cpu.name} requiere memoria ${cpuCompatibility.ram_type}.`;
+    return t('workspace.compatibility.ramType', { cpu: cpu.name, type: cpuCompatibility.ram_type });
   }
 
   const maxRam = Number(cpuCompatibility.ram_max_support || 0);
   const ramCapacity = Number(ramSpecs.capacity || 0);
   if (maxRam > 0 && ramCapacity > maxRam) {
-    return `${cpu.name} admite un máximo de ${maxRam} GB de RAM.`;
+    return t('workspace.compatibility.ramCapacity', { cpu: cpu.name, max: maxRam });
   }
 
   return null;
@@ -166,6 +162,7 @@ export default function CreatedComboWorkspace({
   games,
   currency,
 }: CreatedComboWorkspaceProps) {
+  const t = useTranslations('vault');
   const router = useRouter();
   const [draft, setDraft] = useState<DraftState>(() => createInitialDraft(initialCombo, currency));
   const [activeSlot, setActiveSlot] = useState<SlotKey | null>(null);
@@ -217,7 +214,7 @@ export default function CreatedComboWorkspace({
 
       if (error) {
         setSuggestions([]);
-        setNotification({ type: 'error', message: 'No se pudieron buscar componentes.' });
+        setNotification({ type: 'error', message: t('workspace.searchError') });
       } else {
         setSuggestions((data || []) as Product[]);
       }
@@ -225,7 +222,7 @@ export default function CreatedComboWorkspace({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [activeSlot, isModalOpen, searchTerm]);
+  }, [activeSlot, isModalOpen, searchTerm, t]);
 
   const openSlotModal = (slot: SlotKey) => {
     setActiveSlot(slot);
@@ -245,7 +242,7 @@ export default function CreatedComboWorkspace({
 
   const selectProduct = (product: Product) => {
     if (!activeSlot) return;
-    const compatibilityError = validateCompatibility(activeSlot, product, draft);
+    const compatibilityError = validateCompatibility(activeSlot, product, draft, t);
     if (compatibilityError) {
       setNotification({ type: 'error', message: compatibilityError });
       return;
@@ -270,19 +267,19 @@ export default function CreatedComboWorkspace({
       customPrices: { ...current.customPrices, [activeSlot]: '' },
       priceModes: { ...current.priceModes, [activeSlot]: 'msrp' },
     }));
-    setNotification({ type: 'success', message: `${slotLabels[activeSlot]} limpiado.` });
+    setNotification({ type: 'success', message: t('workspace.slotCleared', { slot: t(`workspace.slots.${activeSlot}`) }) });
     closeModal();
   };
 
   const applyModal = () => {
     if (!activeSlot || !draft[activeSlot]) {
-      setNotification({ type: 'error', message: 'Selecciona un componente antes de aplicar.' });
+      setNotification({ type: 'error', message: t('workspace.selectComponent') });
       return;
     }
 
     const customPrice = Number(modalPrice);
     if (modalPriceMode === 'custom' && (!modalPrice || !Number.isFinite(customPrice) || customPrice <= 0)) {
-      setNotification({ type: 'error', message: 'Introduce un precio personalizado válido.' });
+      setNotification({ type: 'error', message: t('workspace.invalidCustomPrice') });
       return;
     }
 
@@ -310,17 +307,17 @@ export default function CreatedComboWorkspace({
       customPrices: { cpu: '', gpu: '', ram: '' },
       priceModes: { cpu: 'msrp', gpu: 'msrp', ram: 'msrp' },
     }));
-    setNotification({ type: 'success', message: 'Componentes limpiados.' });
+    setNotification({ type: 'success', message: t('workspace.componentsCleared') });
   };
 
   const saveDraft = async () => {
     const title = draft.title.trim();
     if (!title || title.length > 120) {
-      setNotification({ type: 'error', message: 'El nombre del combo debe tener entre 1 y 120 caracteres.' });
+      setNotification({ type: 'error', message: t('workspace.comboTitleInvalid') });
       return;
     }
     if (!isComplete) {
-      setNotification({ type: 'error', message: 'Selecciona CPU, GPU y RAM antes de guardar.' });
+      setNotification({ type: 'error', message: t('workspace.comboIncomplete') });
       return;
     }
 
@@ -380,11 +377,11 @@ export default function CreatedComboWorkspace({
 
       if (response.error) throw response.error;
 
-      setNotification({ type: 'success', message: 'Combo guardado exitosamente.' });
+      setNotification({ type: 'success', message: t('workspace.comboSaved') });
       setTimeout(() => router.push(`/vault/combos-created?currency=${currency}`), 700);
     } catch (error) {
       console.error('Error saving created combo:', error);
-      setNotification({ type: 'error', message: 'No se pudo guardar el combo.' });
+      setNotification({ type: 'error', message: t('workspace.comboSaveError') });
     } finally {
       setIsSaving(false);
     }
@@ -427,10 +424,10 @@ export default function CreatedComboWorkspace({
 
       <div className="fixed bottom-4 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/95 p-2 shadow-2xl backdrop-blur lg:hidden">
         <button type="button" onClick={clearDraft} className="flex-1 rounded-xl border border-zinc-800 px-4 py-3 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">
-          Limpiar
+          {t('workspace.clear')}
         </button>
         <button type="button" onClick={saveDraft} disabled={isSaving} className="flex-1 rounded-xl bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">
-          {isSaving ? 'Guardando' : 'Guardar'}
+          {isSaving ? t('workspace.saving') : t('workspace.save')}
         </button>
       </div>
 
@@ -483,14 +480,16 @@ function CreatedComboEditorCard({
   onSave: () => void;
   isSaving: boolean;
 }) {
+  const t = useTranslations('vault');
+  const locale = useLocale();
   const symbol = currency === 'EUR' ? '€' : '$';
 
   return (
     <div className="rounded-3xl border border-zinc-900 bg-zinc-950/50 p-5 shadow-2xl lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Combo personalizado</span>
-          <h1 className="mt-2 text-xl font-black tracking-tight text-white">Componentes</h1>
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">{t('workspace.customCombo')}</span>
+          <h1 className="mt-2 text-xl font-black tracking-tight text-white">{t('workspace.components')}</h1>
         </div>
         <CircleHelp size={17} className="text-zinc-600" />
       </div>
@@ -508,13 +507,13 @@ function CreatedComboEditorCard({
               className="flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-900 bg-black/50 p-3 text-left transition-colors hover:border-zinc-700"
             >
               <div className="min-w-0">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">{slotLabels[slot]}</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">{t(`workspace.slots.${slot}`)}</span>
                 <span className={`mt-1 block truncate text-xs font-bold ${product ? 'text-zinc-200' : 'text-zinc-700'}`}>
-                  {product?.name || 'Seleccionar componente'}
+                  {product?.name || t('workspace.selectComponent')}
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <span className="text-xs font-black text-zinc-300">{product ? `${symbol}${price.toFixed(2)}` : '0.00'}</span>
+                <span className="text-xs font-black text-zinc-300">{product ? `${symbol}${formatPrice(price, locale)}` : formatPrice(0, locale)}</span>
                 <Settings2 size={16} className="text-zinc-500" />
               </div>
             </button>
@@ -523,27 +522,27 @@ function CreatedComboEditorCard({
       </div>
 
       <label className="mt-5 block">
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Nombre del combo</span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">{t('workspace.comboName')}</span>
         <input
           value={draft.title}
           onChange={(event) => onTitleChange(event.target.value)}
           maxLength={120}
-          placeholder="Escribe un nombre..."
+          placeholder={t('workspace.namePlaceholder')}
           className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600"
         />
       </label>
 
       <div className="mt-5 hidden items-center justify-between border-t border-zinc-900 pt-5 lg:flex">
         <div>
-          <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio total</span>
-          <span className="mt-1 block text-xl font-black font-display text-white">{symbol}{totalPrice.toFixed(2)}</span>
+          <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t('workspace.totalPrice')}</span>
+          <span className="mt-1 block text-xl font-black font-display text-white">{symbol}{formatPrice(totalPrice, locale)}</span>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">
-            Limpiar
+            {t('workspace.clear')}
           </button>
           <button type="button" onClick={onSave} disabled={isSaving} className="rounded-xl bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">
-            {isSaving ? 'Guardando' : 'Guardar'}
+            {isSaving ? t('workspace.saving') : t('workspace.save')}
           </button>
         </div>
       </div>
@@ -584,6 +583,8 @@ function ComponentModal({
   onApply: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations('vault');
+  const locale = useLocale();
   const catalogPrice = product ? resolveProductPrice(product, currency) : null;
   const currentPrice = catalogPrice?.value || 0;
   const symbol = currency === 'EUR' ? '€' : '$';
@@ -593,10 +594,10 @@ function ComponentModal({
       <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
         <div className="flex items-center justify-between border-b border-zinc-900 pb-4">
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Componente elegido</span>
-            <h2 className="mt-1 text-sm font-black uppercase text-white">{slotLabels[slot]}</h2>
+            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t('workspace.selectedComponent')}</span>
+            <h2 className="mt-1 text-sm font-black uppercase text-white">{t(`workspace.slots.${slot}`)}</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white" aria-label="Cerrar">
+          <button type="button" onClick={onClose} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white" aria-label={t('workspace.close')}>
             <X size={15} />
           </button>
         </div>
@@ -605,7 +606,7 @@ function ComponentModal({
           <input
             value={searchTerm}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Buscar componente..."
+            placeholder={t('workspace.searchComponent')}
             className="w-full rounded-xl border border-zinc-900 bg-black px-4 py-3 pl-10 text-xs font-bold text-white outline-none placeholder:text-zinc-700 focus:border-zinc-700"
           />
           <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
@@ -619,20 +620,20 @@ function ComponentModal({
                 <span className="block truncate text-xs font-bold text-zinc-200">{suggestion.name}</span>
                 <span className="mt-1 block text-[8px] font-black uppercase tracking-widest text-zinc-600">{suggestion.brand}</span>
               </span>
-              <span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{resolveProductPrice(suggestion, currency).value.toFixed(0)}</span>
+              <span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{formatPrice(resolveProductPrice(suggestion, currency).value, locale, 0)}</span>
             </button>
           ))}
-          {!isSearching && searchTerm.trim().length >= 2 && suggestions.length === 0 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Sin resultados</p>}
-          {searchTerm.trim().length < 2 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Introduce al menos 2 letras</p>}
+          {!isSearching && searchTerm.trim().length >= 2 && suggestions.length === 0 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">{t('workspace.noResults')}</p>}
+          {searchTerm.trim().length < 2 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">{t('workspace.minimumSearch')}</p>}
         </div>
 
         {product && (
           <div className="mt-5 border-t border-zinc-900 pt-5">
-            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio del componente</label>
+            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t('workspace.componentPrice')}</label>
             <div className="mt-3 grid grid-cols-[1fr_110px] gap-2">
               <select value={priceMode} onChange={(event) => onPriceModeChange(event.target.value as PriceMode)} className="rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none focus:border-zinc-700">
-                <option value="msrp">{catalogPrice?.source === 'current' ? 'Precio actual' : 'MSRP'} ({symbol}{currentPrice.toFixed(2)})</option>
-                <option value="custom">Precio personalizado</option>
+                <option value="msrp">{catalogPrice?.source === 'current' ? t('workspace.currentPrice') : t('workspace.msrp')} ({symbol}{formatPrice(currentPrice, locale)})</option>
+                <option value="custom">{t('workspace.customPrice')}</option>
               </select>
               <input type="number" min="0" step="0.01" value={priceMode === 'custom' ? price : currentPrice} onChange={(event) => onPriceChange(event.target.value)} disabled={priceMode !== 'custom'} className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none disabled:text-zinc-700 focus:border-zinc-700" />
             </div>
@@ -640,8 +641,8 @@ function ComponentModal({
         )}
 
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button>
-          <button type="button" onClick={onApply} className="rounded-xl bg-white px-4 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200">Aplicar</button>
+          <button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">{t('workspace.clear')}</button>
+          <button type="button" onClick={onApply} className="rounded-xl bg-white px-4 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200">{t('workspace.apply')}</button>
         </div>
       </div>
     </div>
@@ -649,10 +650,11 @@ function ComponentModal({
 }
 
 function UnavailableAnalysis() {
+  const t = useTranslations('vault');
   return (
     <div className="lg:col-span-12 flex min-h-[400px] items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 p-8 text-center">
       <p className="max-w-sm text-xs font-black uppercase leading-relaxed tracking-[0.15em] text-zinc-600">
-        Disponible cuando todos los componentes hayan sido seleccionados
+        {t('workspace.analysisUnavailable')}
       </p>
     </div>
   );

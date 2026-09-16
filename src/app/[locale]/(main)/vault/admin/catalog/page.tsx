@@ -3,8 +3,10 @@ import { ArrowRight, Boxes, Hammer, Home, Settings2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { redirect } from '@/i18n/server-navigation';
 import { getAdminDb, getAdminUser, loadCatalogCounts } from '@/lib/admin/catalog';
+import { getTranslations } from 'next-intl/server';
 
 export default async function AdminCatalogPage() {
+  const t = await getTranslations('admin.catalog');
   const user = await getAdminUser();
 
   if (!user) {
@@ -22,46 +24,49 @@ export default async function AdminCatalogPage() {
           className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
         >
           <Settings2 aria-hidden="true" size={13} />
-          Volver a la bóveda
+          {t('backToVault')}
         </Link>
 
         <header className="mt-6 max-w-3xl">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200/70">Administración / Catálogo</p>
-          <h1 className="mt-2 font-display text-3xl font-black tracking-tight text-white md:text-5xl">Gestión de catálogo</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200/70">{t('eyebrow')}</p>
+          <h1 className="mt-2 font-display text-3xl font-black tracking-tight text-white md:text-5xl">{t('title')}</h1>
           <p className="mt-3 text-sm leading-relaxed text-zinc-400 md:text-base">
-            Edita las configuraciones predeterminadas que aparecen en el catálogo público sin tocar la base de datos manualmente.
+            {t('description')}
           </p>
         </header>
 
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           <CatalogTypeCard
             href="/vault/admin/catalog/home"
-            title="Inicio"
-            description="Banner, listas editoriales y comparaciones recomendadas de la página principal."
+            title={t('cards.home.title')}
+            description={t('cards.home.description')}
             count={null}
             icon={Home}
             accent="amber"
+            manageLabel={t('manage')}
           />
           <CatalogTypeCard
             href="/vault/admin/catalog/builds"
-            title="Builds"
-            description="Configuraciones completas con CPU, GPU, RAM, placa base, almacenamiento y fuente."
+            title={t('cards.builds.title')}
+            description={t('cards.builds.description')}
             count={counts.builds}
             icon={Hammer}
             accent="cyan"
+            manageLabel={t('manage')}
           />
           <CatalogTypeCard
             href="/vault/admin/catalog/combos"
-            title="Combos"
-            description="Combinaciones predeterminadas de CPU, GPU y RAM listas para comparar."
+            title={t('cards.combos.title')}
+            description={t('cards.combos.description')}
             count={counts.combos}
             icon={Boxes}
             accent="violet"
+            manageLabel={t('manage')}
           />
         </div>
 
         <p className="mt-6 text-xs text-zinc-600">
-          Los cambios se guardan directamente en Supabase y se reflejan en el catálogo después de actualizar la página.
+          {t('saveHint')}
         </p>
       </div>
     </main>
@@ -75,6 +80,7 @@ function CatalogTypeCard({
   count,
   icon: Icon,
   accent,
+  manageLabel,
 }: {
   href: string;
   title: string;
@@ -82,6 +88,7 @@ function CatalogTypeCard({
   count: number | null;
   icon: LucideIcon;
   accent: 'cyan' | 'violet' | 'amber';
+  manageLabel: string;
 }) {
   const colors = accent === 'cyan'
     ? 'border-cyan-200/20 bg-cyan-200/[0.04] text-cyan-200 group-hover:border-cyan-200/45'
@@ -103,7 +110,7 @@ function CatalogTypeCard({
       <h2 className="mt-10 font-display text-2xl font-black text-white">{title}</h2>
       <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">{description}</p>
       <span className="mt-7 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-300 transition-colors group-hover:text-white">
-        Gestionar {title.toLowerCase()}
+        {manageLabel} {title.toLowerCase()}
         <ArrowRight aria-hidden="true" size={14} />
       </span>
     </Link>

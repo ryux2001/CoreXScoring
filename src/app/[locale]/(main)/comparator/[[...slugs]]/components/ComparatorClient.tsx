@@ -29,6 +29,7 @@ import type {
   ComparisonMode,
   ComboPriceOverrides,
 } from './comparisonUtils';
+import { useTranslations } from 'next-intl';
 
 interface ComparatorClientProps {
   initialItems: CompareProduct[];
@@ -78,6 +79,7 @@ function getItemNotes(
 }
 
 export default function ComparatorClient({ initialItems, globalCurrency, games }: ComparatorClientProps) {
+  const t = useTranslations('comparator');
   const router = useRouter();
 
   const items = useCompareStore((state) => state.items);
@@ -399,7 +401,7 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
                 <Plus size={16} />
               </div>
               <span className="text-[9px] font-black uppercase tracking-[0.2em] mt-4">
-                Añadir {comparisonMode === 'combos' ? 'Combo' : comparisonMode === 'builds' ? 'Build' : 'Componente'}
+                {t('addItem', { type: comparisonMode === 'combos' ? t('combo') : comparisonMode === 'builds' ? t('build') : t('component') })}
               </span>
             </button>
           )}
@@ -424,7 +426,7 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
           }}
           className="rounded-xl border border-zinc-900 hover:border-red-900/20 bg-zinc-950/40 px-5 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-red-400 transition-all cursor-pointer active:scale-95"
         >
-          Limpiar Todo
+          {t('clearAll')}
         </button>
       </div>
 

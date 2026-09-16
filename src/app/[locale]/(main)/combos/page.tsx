@@ -9,6 +9,7 @@ import {
   filterCombos,
   getComboCategories,
 } from './components/comboListUtils';
+import { getTranslations } from 'next-intl/server';
 
 type ComboRecord = Record<string, unknown> & {
   category: string;
@@ -24,6 +25,7 @@ interface CombosPageProps {
 }
 
 export default async function CombosPage({ searchParams }: CombosPageProps) {
+  const t = await getTranslations('combos');
   const params = await searchParams;
   const currency = await resolveRequestCurrency(params.currency);
 
@@ -79,10 +81,10 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
         <div className="mb-8 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-black uppercase tracking-wider text-white">
-              Catálogo de Combos
+              {t('title')}
             </h1>
             <p className="mt-1 text-sm font-medium text-zinc-400">
-              Combos (CPU - GPU - RAM) pre-configurados optimizados.
+              {t('description')}
             </p>
           </div>
           <ComboCurrencyToggle currentCurrency={currency} />
@@ -99,7 +101,7 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
         {filteredCombos.length === 0 ? (
           <div className="mt-8 flex h-96 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 text-center">
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-600">
-              No hay combos que coincidan con estos filtros
+              {t('empty')}
             </p>
           </div>
         ) : (

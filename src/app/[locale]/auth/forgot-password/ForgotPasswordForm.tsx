@@ -2,10 +2,12 @@
 
 import { AlertCircle, CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabaseClient';
 import { getPasswordRecoveryConfirmUrl } from '@/lib/authRedirects';
 
 export default function ForgotPasswordForm() {
+  const t = useTranslations('auth');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -22,10 +24,10 @@ export default function ForgotPasswordForm() {
     });
 
     if (error) {
-      setErrorMsg('No se pudo enviar el email. Inténtalo de nuevo.');
+      setErrorMsg(t('sendRecoveryEmailError'));
     } else {
       setSuccessMsg(
-        'Si existe una cuenta con ese email, recibirás un enlace para cambiar la contraseña.',
+        t('recoveryEmailSent'),
       );
     }
 
@@ -36,10 +38,10 @@ export default function ForgotPasswordForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tighter text-white">
-          Recuperar contraseña
+          {t('forgotPassword')}
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-          Te enviaremos un enlace para establecer una nueva contraseña.
+          {t('forgotPasswordDescription')}
         </p>
       </div>
 
@@ -59,7 +61,7 @@ export default function ForgotPasswordForm() {
 
       <div>
         <label htmlFor="recovery_email" className="mb-2 block text-sm font-medium text-zinc-400">
-          Email
+          {t('email')}
         </label>
         <div className="relative">
           <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -69,7 +71,7 @@ export default function ForgotPasswordForm() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="juan@example.com"
+            placeholder={t('emailPlaceholder')}
             className="w-full rounded-xl border border-white/10 bg-zinc-900 px-12 py-3.5 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-white/20"
           />
         </div>
@@ -80,7 +82,7 @@ export default function ForgotPasswordForm() {
         type="submit"
         className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-4 text-lg font-bold text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Enviar enlace'}
+        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : t('sendRecoveryLink')}
       </button>
     </form>
   );

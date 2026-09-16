@@ -11,7 +11,7 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 export default async function VaultAccountPage() {
   const locale = await getLocale();
-  const t = await getTranslations({ locale, namespace: 'common' });
+  const t = await getTranslations({ locale, namespace: 'account' });
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -22,7 +22,7 @@ export default async function VaultAccountPage() {
     return null;
   }
 
-  const fullName = user.user_metadata.full_name || 'Usuario';
+  const fullName = user.user_metadata.full_name || t('defaultUser');
   const hasGoogleIdentity = user.identities?.some((identity) => identity.provider === 'google') ?? false;
 
   return (
@@ -32,29 +32,29 @@ export default async function VaultAccountPage() {
           href="/vault"
           className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-white"
         >
-          Volver a la bóveda
+          {t('backToVault')}
         </Link>
 
         <header className="mt-6 border-b border-zinc-800 pb-6">
           <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
-            Cuenta
+            {t('account')}
           </span>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-white md:text-3xl">
-            Gestionar cuenta
+            {t('manageAccount')}
           </h1>
           <p className="mt-2 text-sm text-zinc-500">
-            Administra tu acceso a CorexScoring.
+            {t('manageAccountDescription')}
           </p>
         </header>
 
         <section className="border-b border-zinc-800 py-6">
           <h2 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-            Datos de acceso
+            {t('accessDetails')}
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <NameChangeForm initialName={fullName} />
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Email</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">{t('email')}</p>
               <p className="mt-2 break-all text-sm font-medium text-zinc-200">{user.email}</p>
             </div>
           </div>
@@ -75,10 +75,10 @@ export default async function VaultAccountPage() {
 
         <section className="mt-8 border-t border-zinc-800 pt-6">
           <h2 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-red-400">
-            Zona peligrosa
+            {t('dangerZone')}
           </h2>
           <p className="mb-5 mt-2 text-sm text-zinc-500">
-            Eliminar tu cuenta borra tu acceso y tus datos personales de autenticación.
+            {t('deleteAccountDescription')}
           </p>
           <DeleteAccountForm googleConnected={hasGoogleIdentity} />
         </section>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'; // 🚀 Importamos useState y useEffect
 import { BarChart2, AlertCircle } from 'lucide-react'; // 🚀 Añadimos un icono de alerta si quieres
 import { useCompareStore } from '@/store/useCompareStore';
+import { useTranslations } from 'next-intl';
 
 interface CompareButtonProps {
   id: string | number;
@@ -18,6 +19,7 @@ interface CompareButtonProps {
 }
 
 export default function CompareButton(product: CompareButtonProps) {
+  const t = useTranslations('common');
   const addItem = useCompareStore((state) => state.addItem);
   const removeItem = useCompareStore((state) => state.removeItem);
   const items = useCompareStore((state) => state.items);
@@ -45,7 +47,7 @@ export default function CompareButton(product: CompareButtonProps) {
       const result = addItem(product);
       if (!result.success) {
         // 🚀 En lugar de alert(), guardamos el error en nuestro estado local
-        setCustomError(result.error || "Error al añadir el producto");
+        setCustomError(result.error || t('addProductError'));
       }
     }
   };
@@ -61,7 +63,7 @@ export default function CompareButton(product: CompareButtonProps) {
         }`}
       >
         <BarChart2 size={14} strokeWidth={2.5} />
-        COMPARAR
+        {t('compare')}
       </button>
 
       {/* 👑 TU NUEVA ALERTA PERSONALIZADA (ESTILO CYBERPUNK/TECHNICAL) */}
@@ -75,7 +77,7 @@ export default function CompareButton(product: CompareButtonProps) {
           {/* Mensaje de Error */}
           <div className="flex flex-col min-w-0">
             <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em] text-red-500">
-              SISTEMA DE COMPARACIÓN
+              {t('comparisonSystem')}
             </span>
             <span className="font-technical mt-0.5 text-xs font-medium leading-tight tracking-tight text-zinc-300">
               {customError}

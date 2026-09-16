@@ -11,6 +11,7 @@ import {
   getBuildCategories,
   paginateBuilds,
 } from './components/buildListUtils';
+import { getTranslations } from 'next-intl/server';
 
 interface BuildsPageProps {
   searchParams: Promise<{
@@ -22,6 +23,7 @@ interface BuildsPageProps {
 }
 
 export default async function BuildsPage({ searchParams }: BuildsPageProps) {
+  const t = await getTranslations('builds');
   const params = await searchParams;
   const currency = await resolveRequestCurrency(params.currency);
 
@@ -85,10 +87,10 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
         <div className="mb-8 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-black uppercase tracking-wider text-white">
-              Catálogo de Builds
+              {t('title')}
             </h1>
             <p className="mt-1 text-sm font-medium text-zinc-500">
-              Configuraciones completas para distintos objetivos.
+              {t('description')}
             </p>
           </div>
           <ComboCurrencyToggle currentCurrency={currency} />
@@ -100,14 +102,14 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
           availableCategories={availableCategories}
           currency={currency}
           showCurrencyToggle={false}
-          entityLabel="builds"
-          searchPlaceholder="Buscar builds"
+          entityLabel={t('countLabel')}
+          searchPlaceholder={t('searchPlaceholder')}
         />
 
         {visibleBuilds.length === 0 ? (
           <div className="mt-8 flex h-96 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 text-center">
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-600">
-              No hay builds que coincidan con estos filtros
+              {t('empty')}
             </p>
           </div>
         ) : (

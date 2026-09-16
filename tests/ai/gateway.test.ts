@@ -51,6 +51,29 @@ describe("AI gateway conversational protocol", () => {
     expect(result.usage).toEqual({ inputTokens: 30, outputTokens: 16 });
   });
 
+  it("keeps continuation instructions internal and disables tools", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    vi.stubEnv("AI_LOCAL_BASE_URL", "http://127.0.0.1:8080/v1");
+    vi.stubEnv("AI_LOCAL_MODEL", "Qwen3.5-9B-UD-Q4_K_XL");
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "Qwen3.5-9B-UD-Q4_K_XL",
+      choices: [{ message: { role: "assistant", content: "La continuación sigue aquí." } }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await runChat([
+      { role: "user", content: "Explica esta GPU." },
+      { role: "assistant", content: "La respuesta quedó incompleta." },
+    ], { ...toolContext(), allowedTools: [] }, "gateway-continuation", undefined, undefined, undefined, undefined, "Continue from the interruption without repeating content.");
+
+    const [, init] = (fetchMock.mock.calls[0] || []) as unknown as [RequestInfo | URL, RequestInit];
+    const request = JSON.parse(String(init.body));
+    expect(request.tools).toEqual([]);
+    expect(request.messages[0].content).toContain("Continue from the interruption");
+    expect(request.messages.slice(1).some((message: { content: string }) => message.content.includes("Continue from the interruption"))).toBe(false);
+  });
+
   it("sends an opaque cache session only to OpenRouter and records cache usage", async () => {
     vi.stubEnv("AI_MANAGED_PROVIDERS", "openrouter");
     vi.stubEnv("OPENROUTER_API_KEY", "test-key");

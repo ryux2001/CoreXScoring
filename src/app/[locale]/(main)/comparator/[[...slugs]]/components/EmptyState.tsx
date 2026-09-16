@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface EmptyStateProps {
   onOpenModal: () => void;
 }
 
 export default function EmptyState({ onOpenModal }: EmptyStateProps) {
+  const t = useTranslations('comparator');
   return (
     <div className="flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
       <button 
@@ -18,10 +20,10 @@ export default function EmptyState({ onOpenModal }: EmptyStateProps) {
       </button>
       
       <h2 className="mt-6 text-[14px] font-extrabold uppercase text-zinc-400">
-        Agregar producto
+        {t('addProduct')}
       </h2>
       <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold mt-1.5 max-w-xs leading-relaxed">
-        Comienza una nueva comparativa técnica de hardware indexando tu primer componente.
+        {t('emptyDescription')}
       </p>
     </div>
   );

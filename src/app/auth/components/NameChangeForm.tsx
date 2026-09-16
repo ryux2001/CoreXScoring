@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle2, Loader2, User } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabaseClient';
 
 interface NameChangeFormProps {
@@ -10,6 +11,7 @@ interface NameChangeFormProps {
 }
 
 export default function NameChangeForm({ initialName }: NameChangeFormProps) {
+  const t = useTranslations('account');
   const setUser = useAuthStore((state) => state.setUser);
   const [name, setName] = useState(initialName);
   const [loading, setLoading] = useState(false);
@@ -24,7 +26,7 @@ export default function NameChangeForm({ initialName }: NameChangeFormProps) {
     setSuccessMsg(null);
 
     if (!normalizedName) {
-      setErrorMsg('Introduce un nombre válido.');
+      setErrorMsg(t('invalidName'));
       return;
     }
 
@@ -35,11 +37,11 @@ export default function NameChangeForm({ initialName }: NameChangeFormProps) {
     });
 
     if (error || !data.user) {
-      setErrorMsg('No se pudo actualizar el nombre. Inténtalo de nuevo.');
+      setErrorMsg(t('updateNameError'));
     } else {
       setUser(data.user);
       setName(data.user.user_metadata.full_name || normalizedName);
-      setSuccessMsg('Tu nombre se ha actualizado correctamente.');
+      setSuccessMsg(t('nameUpdated'));
     }
 
     setLoading(false);
@@ -48,7 +50,7 @@ export default function NameChangeForm({ initialName }: NameChangeFormProps) {
   return (
     <form onSubmit={handleSubmit} className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
       <label htmlFor="account_name" className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
-        Nombre
+        {t('name')}
       </label>
       <div className="relative mt-3">
         <User className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -81,7 +83,7 @@ export default function NameChangeForm({ initialName }: NameChangeFormProps) {
         disabled={loading}
         className="mt-4 flex cursor-pointer items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-bold text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar nombre'}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('saveName')}
       </button>
     </form>
   );

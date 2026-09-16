@@ -3,6 +3,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { getComboPartPrice } from '@/lib/scoringCombos';
 import { getBuildPartPrice } from '@/lib/scoringBuilds';
 import type { HomeCatalogItem, HomeCatalogType } from '@/lib/admin/home';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 const COMBO_PARTS = [
   { key: 'cpu', label: 'CPU' },
@@ -21,15 +22,15 @@ function asRecord(item: HomeCatalogItem): Record<string, unknown> {
   return item as unknown as Record<string, unknown>;
 }
 
-function formatPrice(value: number, currency: string): string {
-  return new Intl.NumberFormat('es-ES', {
+function formatPrice(value: number, currency: string, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
 
-export default function HomeCollectionCard({
+export default async function HomeCollectionCard({
   item,
   itemType,
   currency,
@@ -38,6 +39,10 @@ export default function HomeCollectionCard({
   itemType: Extract<HomeCatalogType, 'combos' | 'builds'>;
   currency: string;
 }) {
+  const [locale, t] = await Promise.all([
+    getLocale(),
+    getTranslations('home'),
+  ]);
   const record = asRecord(item);
   const parts = itemType === 'combos' ? COMBO_PARTS : BUILD_PARTS;
   const total = parts.reduce((sum, part) => (
@@ -75,10 +80,10 @@ export default function HomeCollectionCard({
 
       <div className="mt-5 flex items-end justify-between gap-2 border-t border-zinc-800/80 pt-3 sm:mt-6 sm:gap-3 sm:pt-3.5">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-zinc-600 sm:text-[10px] sm:tracking-[0.16em]">Precio total</p>
-          <p className="mt-0.5 font-display text-xl font-black tracking-tight text-white sm:text-2xl">{formatPrice(total, currency)}</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-zinc-600 sm:text-[10px] sm:tracking-[0.16em]">{t('totalPrice')}</p>
+          <p className="mt-0.5 font-display text-xl font-black tracking-tight text-white sm:text-2xl">{formatPrice(total, currency, locale)}</p>
         </div>
-        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 transition-colors group-hover:text-cyan-100">Ver</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 transition-colors group-hover:text-cyan-100">{t('view')}</span>
       </div>
     </Link>
   );

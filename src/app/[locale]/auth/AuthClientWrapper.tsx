@@ -1,8 +1,10 @@
 "use client";
 
 import GoogleAuthButton from "@/app/auth/components/GoogleAuthButton";
+import { useTranslations } from "next-intl";
 
 export default function AuthClientWrapper({ initialNotice }: { initialNotice?: string }) {
+  const t = useTranslations("auth");
   return (
     <>
       {initialNotice && (
@@ -13,10 +15,10 @@ export default function AuthClientWrapper({ initialNotice }: { initialNotice?: s
 
       <div className="space-y-6 text-center">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">Acceso seguro</p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tighter text-white">Continúa con Google</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">{t("secureAccess")}</p>
+          <h1 className="mt-3 text-3xl font-bold tracking-tighter text-white">{t("continueWithGoogle")}</h1>
           <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-            Usa tu cuenta Google para acceder a CoreXScoring.
+            {t("googleAccessDescription")}
           </p>
         </div>
         <GoogleAuthButton />

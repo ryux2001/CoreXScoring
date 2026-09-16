@@ -11,6 +11,7 @@ import {
   normalizeCombo,
 } from './comparisonUtils';
 import type { ComparisonMode } from './comparisonUtils';
+import { useTranslations } from 'next-intl';
 
 type SearchSource = 'default' | 'saved' | 'created';
 
@@ -45,6 +46,7 @@ export default function SearchModal({
   setComparisonMode,
   globalCurrency,
 }: SearchModalProps) {
+  const t = useTranslations('comparator');
   const addItem = useCompareStore((state) => state.addItem);
   const componentType = useCompareStore((state) => state.componentType);
   const itemsCount = useCompareStore((state) => state.items.length);
@@ -265,7 +267,7 @@ export default function SearchModal({
       setSearchTerm('');
       setSuggestions([]);
     } else {
-      setErrorNotification(result.error || 'No se pudo anadir');
+       setErrorNotification(result.error || t('addError'));
     }
   };
 
@@ -281,11 +283,11 @@ export default function SearchModal({
         <div className="mb-4 flex items-center justify-between border-b border-zinc-900 pb-4">
           <div className="flex flex-col">
             <h3 className="text-[14px] font-extrabold uppercase tracking-widest text-white">
-              Buscar {isComboMode ? 'Combo' : isBuildMode ? 'Build' : 'Componente'}
+               {t('searchTitle', { type: isComboMode ? t('combo') : isBuildMode ? t('build') : t('component') })}
             </h3>
             {!isComboMode && !isBuildMode && componentType && (
               <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                Restringido a: <span className="text-zinc-400">{componentType}</span>
+                 {t('restrictedTo')} <span className="text-zinc-400">{componentType}</span>
               </span>
             )}
           </div>
@@ -296,7 +298,7 @@ export default function SearchModal({
 
         <label className="mb-3 flex flex-col gap-1.5">
           <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-            Comparar
+              {t('compare')}
           </span>
           <select
             value={comparisonMode}
@@ -308,16 +310,16 @@ export default function SearchModal({
             }}
             className="w-full rounded-xl border border-zinc-900 bg-black px-3 py-3 text-xs font-bold text-white outline-none transition-colors focus:border-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <option value="components" disabled={isCreatedSource}>Componentes</option>
-            <option value="combos">Combos</option>
-            <option value="builds">Builds</option>
+            <option value="components" disabled={isCreatedSource}>{t('components')}</option>
+            <option value="combos">{t('combos')}</option>
+            <option value="builds">{t('builds')}</option>
           </select>
         </label>
 
         {user && (
           <label className="mb-3 flex flex-col gap-1.5">
           <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-              Origen
+              {t('source')}
             </span>
             <select
               value={searchSource}
@@ -332,9 +334,9 @@ export default function SearchModal({
               }}
               className="w-full rounded-xl border border-zinc-900 bg-black px-3 py-3 text-xs font-bold text-white outline-none transition-colors focus:border-zinc-700"
             >
-              <option value="default">Predeterminado</option>
-              <option value="saved">Guardados</option>
-              <option value="created">Creados</option>
+              <option value="default">{t('defaultSource')}</option>
+              <option value="saved">{t('savedSource')}</option>
+              <option value="created">{t('createdSource')}</option>
             </select>
           </label>
         )}
@@ -345,7 +347,7 @@ export default function SearchModal({
             autoFocus
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder={isComboMode ? 'Escribe el nombre del combo...' : isBuildMode ? 'Escribe el nombre del build...' : 'Escribe el nombre del hardware...'}
+            placeholder={isComboMode ? t('comboSearchPlaceholder') : isBuildMode ? t('buildSearchPlaceholder') : t('componentSearchPlaceholder')}
             className="w-full rounded-xl border border-zinc-900 bg-black px-4 py-3 pl-10 text-xs font-bold text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-700"
           />
           <Search size={14} className="absolute left-4 text-zinc-600" />
@@ -371,9 +373,9 @@ export default function SearchModal({
               </button>
             ))
           ) : searchTerm.trim().length >= 2 && !loading ? (
-            <p className="py-6 text-center text-[9px] font-bold uppercase tracking-wider text-zinc-600">Sin resultados</p>
+            <p className="py-6 text-center text-[9px] font-bold uppercase tracking-wider text-zinc-600">{t('noResults')}</p>
           ) : (
-            <p className="py-6 text-center text-[9px] font-bold uppercase tracking-wider text-zinc-700">Introduce al menos 2 letras</p>
+            <p className="py-6 text-center text-[9px] font-bold uppercase tracking-wider text-zinc-700">{t('minimumSearchCharacters')}</p>
           )}
         </div>
       </div>
@@ -384,7 +386,7 @@ export default function SearchModal({
             <AlertCircle size={12} strokeWidth={3} />
           </div>
           <div className="flex min-w-0 flex-col">
-            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-red-500">Sistema de comparacion</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-red-500">{t('comparisonSystem')}</span>
             <span className="mt-0.5 text-xs font-medium leading-tight tracking-tight text-zinc-300">{errorNotification}</span>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import FilterModal from "./FilterModal";
 import { setCurrencyPreference } from '@/lib/currency';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   count: number;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function FilterBar({ count, availableBrands, availableTypes, currency }: Props) {
+  const t = useTranslations('catalog');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,7 +57,7 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
           </button>
           
           <span className="font-technical text-xs font-semibold uppercase tracking-tight text-zinc-500">
-            {count} Productos
+            {t('productCount', { count })}
           </span>
         </div>
 
@@ -99,7 +101,7 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
               onClick={() => {removeFilter("minPrice"); removeFilter("maxPrice")}} 
               className="font-display group flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase transition-colors hover:border-zinc-600 cursor-pointer"
             >
-              Precio <X size={12} className="text-zinc-600 group-hover:text-white" />
+              {t('price')} <X size={12} className="text-zinc-600 group-hover:text-white" />
             </button>
           )}
         </div>

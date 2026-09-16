@@ -5,6 +5,7 @@ import { Card } from '@/ui/card/Card'
 import { resolveProductPrice } from '@/lib/catalog/product-price'
 import FilterBar from './components/FilterBar'
 import Pagination from './components/Pagination' // Importamos el nuevo componente
+import { getTranslations } from 'next-intl/server'
 
 interface CatalogPageProps {
   searchParams: Promise<{
@@ -19,6 +20,7 @@ interface CatalogPageProps {
 }
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
+  const t = await getTranslations('catalog');
   const params = await searchParams;
   const { q, brand, type, minPrice, maxPrice, page = '1' } = params;
   const currency = await resolveRequestCurrency(params.currency);
@@ -69,7 +71,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const availableBrands = Array.from(new Set(brandsResponse.data?.map(p => p.brand))).filter(Boolean).sort() as string[];
   const availableTypes = Array.from(new Set(typesResponse.data?.map(p => p.type))).filter(Boolean).sort() as string[];
 
-  if (error) return <div className="font-technical p-20 text-center text-white">Error: {error.message}</div>;
+  if (error) return <div className="font-technical p-20 text-center text-white">{t('error', { message: error.message })}</div>;
 
   return (
     <main className="font-technical min-h-screen bg-black py-3 px-2.5 sm:p-6 md:p-12 lg:p-16">
@@ -110,7 +112,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         {products?.length === 0 && (
           <div className="flex h-96 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50">
             <p className="text-zinc-500 font-medium tracking-tight">
-              No hay productos que coincidan con estos filtros.
+              {t('empty')}
             </p>
           </div>
         )}

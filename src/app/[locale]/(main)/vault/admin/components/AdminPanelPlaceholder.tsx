@@ -1,6 +1,7 @@
 import { Link } from '@/i18n/navigation';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, Construction } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface AdminPanelPlaceholderProps {
   eyebrow: string;
@@ -17,6 +18,7 @@ export default function AdminPanelPlaceholder({
   icon: Icon,
   features,
 }: AdminPanelPlaceholderProps) {
+  const t = useTranslations('admin');
   return (
     <main className="vault-page min-h-screen bg-black px-3 py-6 font-technical sm:px-6 md:px-10 md:py-10 lg:px-16">
       <div className="mx-auto max-w-5xl">
@@ -25,7 +27,7 @@ export default function AdminPanelPlaceholder({
           className="mb-5 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
         >
           <ArrowLeft aria-hidden="true" size={13} />
-          Volver a la bóveda
+          {t('backToVault')}
         </Link>
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950/70 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-8 md:p-10">
@@ -40,9 +42,9 @@ export default function AdminPanelPlaceholder({
             <div className="flex items-start gap-3">
               <Construction aria-hidden="true" className="mt-0.5 shrink-0 text-amber-200/80" size={18} />
               <div>
-                <h2 className="text-sm font-bold text-zinc-200">Panel preparado para la siguiente fase</h2>
+                <h2 className="text-sm font-bold text-zinc-200">{t('placeholder.title')}</h2>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                  El acceso ya está disponible para administradores. Las herramientas de este panel todavía no están activas.
+                  {t('placeholder.description')}
                 </p>
               </div>
             </div>

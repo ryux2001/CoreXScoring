@@ -159,6 +159,28 @@ export async function appendAiConversationTurn({
   return data;
 }
 
+export async function appendAiConversationAssistantMessage({
+  userId,
+  conversationId,
+  assistantMessage,
+  buildDraft,
+  comboDraft,
+}: {
+  userId: string;
+  conversationId: string;
+  assistantMessage: ChatMessage;
+  buildDraft?: BuildDraft;
+  comboDraft?: ComboDraft;
+}): Promise<void> {
+  const { error } = await createSupabaseAdminClient().rpc("append_ai_conversation_assistant_message", {
+    p_user_id: userId,
+    p_conversation_id: conversationId,
+    p_assistant_content: assistantMessage.content,
+    p_state: compactState({ buildDraft, comboDraft }),
+  });
+  if (error) throw new Error("No se pudo guardar la continuación de la conversación.");
+}
+
 export function getConversationPromptMessages(conversation: ConversationRecord): ChatMessage[] {
   return conversation.messages.slice(-12).map(({ role, content }) => ({ role, content }));
 }

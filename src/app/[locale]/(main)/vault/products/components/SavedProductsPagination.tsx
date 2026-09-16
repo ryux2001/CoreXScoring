@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 
 interface SavedProductsPaginationProps {
   currentPage: number;
@@ -13,6 +14,7 @@ export default function SavedProductsPagination({
   currentPage,
   totalPages,
 }: SavedProductsPaginationProps) {
+  const t = useTranslations('vault.pagination');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -25,13 +27,13 @@ export default function SavedProductsPagination({
   };
 
   return (
-    <nav className="mt-10 flex items-center justify-center gap-2" aria-label="Paginación">
+    <nav className="mt-10 flex items-center justify-center gap-2" aria-label={t('label')}>
       <button
         type="button"
         onClick={() => router.push(createPageUrl(currentPage - 1))}
         disabled={currentPage <= 1}
         className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-        aria-label="Página anterior"
+        aria-label={t('previous')}
       >
         <ChevronLeft size={16} />
       </button>
@@ -45,7 +47,7 @@ export default function SavedProductsPagination({
         onClick={() => router.push(createPageUrl(currentPage + 1))}
         disabled={currentPage >= totalPages}
         className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-        aria-label="Página siguiente"
+        aria-label={t('next')}
       >
         <ChevronRight size={16} />
       </button>

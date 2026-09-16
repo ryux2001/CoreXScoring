@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronRight, Menu } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import AuthStatus from "./AuthStatus"; // Importamos AuthStatus
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function MobileMenu({ links, onOpen }: Props) {
+  const t = useTranslations("nav");
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
@@ -108,7 +110,7 @@ export default function MobileMenu({ links, onOpen }: Props) {
           ref={buttonRef}
           type="button"
           onClick={isOpen ? closeMenu : openMenu}
-          aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-label={isOpen ? t("closeMenu") : t("openMenu")}
           aria-expanded={isOpen}
           aria-controls="mobile-navigation"
           className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-xl p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
@@ -130,7 +132,7 @@ export default function MobileMenu({ links, onOpen }: Props) {
             <nav
               ref={navigationRef}
               id="mobile-navigation"
-              aria-label="Navegación móvil"
+              aria-label={t("mobileNavigation")}
               aria-hidden={!isOpen}
               inert={!isOpen}
               className={`fixed right-0 top-0 z-50 flex h-dvh w-[min(64vw,25rem)] flex-col border-l border-white/10 bg-black p-5 transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
@@ -143,7 +145,7 @@ export default function MobileMenu({ links, onOpen }: Props) {
                 <button
                   type="button"
                   onClick={closeMenu}
-                  aria-label="Cerrar menú"
+                  aria-label={t("closeMenu")}
                   className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   <ChevronRight className="h-6 w-6" />

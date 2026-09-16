@@ -11,47 +11,18 @@ import {
   UserRound,
 } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
-
-const vaultSections = [
-  {
-    title: 'Productos guardados',
-    description: 'Consulta los componentes que has guardado en tu bóveda.',
-    href: '/vault/products',
-    icon: Bookmark,
-  },
-  {
-    title: 'Combos guardados',
-    description: 'Revisa tus combinaciones favoritas de CPU, GPU y RAM.',
-    href: '/vault/combos',
-    icon: FolderHeart,
-  },
-  {
-    title: 'Combos creados',
-    description: 'Accede a los combos personalizados que has construido.',
-    href: '/vault/combos-created',
-    icon: Boxes,
-  },
-  {
-    title: 'Builds guardadas',
-    description: 'Encuentra tus presupuestos y configuraciones favoritas.',
-    href: '/vault/builds',
-    icon: Layers2,
-  },
-  {
-    title: 'Builds creadas',
-    description: 'Gestiona las builds completas creadas por ti.',
-    href: '/vault/builds-created',
-    icon: Hammer,
-  },
-  {
-    title: 'Gestionar cuenta',
-    description: 'Administra tu acceso y cambia tu contraseña.',
-    href: '/vault/account',
-    icon: UserRound,
-  },
-];
+import { getTranslations } from 'next-intl/server';
 
 export default async function VaultPage() {
+  const t = await getTranslations('vault');
+  const vaultSections = [
+    { title: t('sections.products.title'), description: t('sections.products.description'), href: '/vault/products', icon: Bookmark },
+    { title: t('sections.combos.title'), description: t('sections.combos.description'), href: '/vault/combos', icon: FolderHeart },
+    { title: t('sections.createdCombos.title'), description: t('sections.createdCombos.description'), href: '/vault/combos-created', icon: Boxes },
+    { title: t('sections.builds.title'), description: t('sections.builds.description'), href: '/vault/builds', icon: Layers2 },
+    { title: t('sections.createdBuilds.title'), description: t('sections.createdBuilds.description'), href: '/vault/builds-created', icon: Hammer },
+    { title: t('sections.account.title'), description: t('sections.account.description'), href: '/vault/account', icon: UserRound },
+  ];
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -60,20 +31,20 @@ export default async function VaultPage() {
     ? [
       ...vaultSections,
       {
-        title: 'Panel de IA',
-        description: 'Consulta cuotas, proveedores, errores y uso del asistente.',
+          title: t('sections.adminAi.title'),
+          description: t('sections.adminAi.description'),
         href: '/vault/admin/ai',
         icon: ShieldCheck,
       },
       {
-        title: 'Seguimiento',
-        description: 'Supervisa el uso de usuarios, errores y actividad de la plataforma.',
+          title: t('sections.adminMonitoring.title'),
+          description: t('sections.adminMonitoring.description'),
         href: '/vault/admin/monitoring',
         icon: Activity,
       },
       {
-        title: 'Gestión de catálogo',
-        description: 'Administra categorías, builds y combos destacados del catálogo.',
+          title: t('sections.adminCatalog.title'),
+          description: t('sections.adminCatalog.description'),
         href: '/vault/admin/catalog',
         icon: Settings2,
       },
@@ -85,13 +56,13 @@ export default async function VaultPage() {
       <div className="mx-auto max-w-5xl rounded-[2rem] py-4 px-2 sm:p-4 shadow-2xl md:p-7">
         <header className="rounded-2xl px-2 py-5 md:px-7 md:py-6">
           <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
-            Espacio personal
+            {t('eyebrow')}
           </span>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-white md:text-3xl">
-            Bóveda
+            {t('title')}
           </h1>
           <p className="mt-2 max-w-2xl text-xs leading-relaxed text-zinc-500 md:text-sm">
-            Tu centro de control para organizar productos, combos y builds.
+            {t('description')}
           </p>
         </header>
 

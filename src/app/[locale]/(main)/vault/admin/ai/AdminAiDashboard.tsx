@@ -21,22 +21,19 @@ import type {
   AiAdminProviderUsage,
   AiAdminUsageResponse,
 } from "@/lib/ai/admin-types";
+import { useLocale, useTranslations } from 'next-intl';
 
 const PERIODS = [7, 14, 30] as const;
 
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat("es-ES").format(Number.isFinite(value) ? value : 0);
+function formatNumber(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale).format(Number.isFinite(value) ? value : 0);
 }
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDate(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "short",
   }).format(new Date(`${value}T00:00:00Z`));
-}
-
-function formatDuration(value: number): string {
-  return `${formatNumber(Math.round(value))} ms`;
 }
 
 function getIpLabel(ipHash: string): string {
@@ -51,11 +48,19 @@ function QuotaCard({
   label,
   messages,
   tokens,
+  locale,
+  messagesDescription,
+  tokensLabel,
+  tokensDescription,
   icon: Icon,
 }: {
   label: string;
   messages: number;
   tokens: number;
+  locale: string;
+  messagesDescription: string;
+  tokensLabel: string;
+  tokensDescription: string;
   icon: typeof Users;
 }) {
   return (
@@ -64,11 +69,11 @@ function QuotaCard({
         <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">{label}</p>
         <Icon aria-hidden="true" size={17} className="text-cyan-200/80" />
       </div>
-      <p className="mt-4 font-display text-2xl font-black text-white">{formatNumber(messages)}</p>
-      <p className="mt-1 text-[11px] text-zinc-500">mensajes por usuario / día</p>
+      <p className="mt-4 font-display text-2xl font-black text-white">{formatNumber(messages, locale)}</p>
+      <p className="mt-1 text-[11px] text-zinc-500">{messagesDescription}</p>
       <div className="mt-4 border-t border-zinc-800 pt-3">
-        <p className="font-technical text-xs text-zinc-300">{formatNumber(tokens)} tokens</p>
-        <p className="mt-1 text-[10px] text-zinc-600">límite diario configurado</p>
+        <p className="font-technical text-xs text-zinc-300">{tokensLabel}</p>
+        <p className="mt-1 text-[10px] text-zinc-600">{tokensDescription}</p>
       </div>
     </article>
   );
@@ -101,6 +106,8 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export default function AdminAiDashboard() {
+  const t = useTranslations('admin.ai');
+  const locale = useLocale();
   const [period, setPeriod] = useState<number>(7);
   const [data, setData] = useState<AiAdminUsageResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -121,21 +128,19 @@ export default function AdminAiDashboard() {
       const payload = await response.json() as AiAdminUsageResponse | { error?: string };
 
       if (!response.ok || !("days" in payload)) {
-        throw new Error("error" in payload && payload.error
-          ? payload.error
-          : "No se pudieron cargar las métricas.");
+        throw new Error('REQUEST_FAILED');
       }
 
       setData(payload);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar las métricas.");
+      setError(t('errors.loadMetrics'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const runCleanup = useCallback(async () => {
-    if (!window.confirm(`Se eliminará la telemetría anterior a ${retentionDays} días. Esta acción no se puede deshacer. ¿Continuar?`)) return;
+    if (!window.confirm(t('cleanup.confirm', { days: retentionDays }))) return;
 
     setIsCleaning(true);
     setCleanupState(null);
@@ -151,22 +156,22 @@ export default function AdminAiDashboard() {
         error?: string;
       };
 
-      if (!response.ok) throw new Error(payload.error ?? "No se pudo ejecutar la limpieza.");
+      if (!response.ok) throw new Error('REQUEST_FAILED');
 
       setCleanupState({
         type: "success",
-        message: `Limpieza completada: ${formatNumber(payload.deleted_action_logs ?? 0)} logs y ${formatNumber(payload.deleted_usage_daily ?? 0)} buckets eliminados.`,
+        message: t('cleanup.success', { logs: formatNumber(payload.deleted_action_logs ?? 0, locale), buckets: formatNumber(payload.deleted_usage_daily ?? 0, locale) }),
       });
       await loadUsage(period);
     } catch (requestError) {
       setCleanupState({
         type: "error",
-        message: requestError instanceof Error ? requestError.message : "No se pudo ejecutar la limpieza.",
+        message: t('errors.cleanup'),
       });
     } finally {
       setIsCleaning(false);
     }
-  }, [loadUsage, period, retentionDays]);
+  }, [loadUsage, locale, period, retentionDays, t]);
 
   useEffect(() => {
     void loadUsage(period);
@@ -189,37 +194,37 @@ export default function AdminAiDashboard() {
     if (summary.errors > 0 || (data?.errors.length ?? 0) > 0) {
       items.push({
         tone: "danger",
-        title: "Hay errores de proveedor registrados",
-        description: "Revisa la tabla de errores y los logs del servidor antes de aumentar las cuotas.",
+        title: t('alerts.providerErrors.title'),
+        description: t('alerts.providerErrors.description'),
       });
     }
 
     if (providers.some((item) => item.provider === "groq" && item.status === "rate_limited")) {
       items.push({
         tone: "warning",
-        title: "Groq alcanzó un límite",
-        description: "El gateway debe usar OpenRouter como fallback cuando el error esté clasificado como rate limit.",
+        title: t('alerts.groqRateLimit.title'),
+        description: t('alerts.groqRateLimit.description'),
       });
     }
 
     if (summary.blocked > 0) {
       items.push({
         tone: "warning",
-        title: "Se bloquearon peticiones por cuota",
-        description: "Comprueba si los límites están evitando abuso o si están afectando a usuarios legítimos.",
+        title: t('alerts.quotaBlocked.title'),
+        description: t('alerts.quotaBlocked.description'),
       });
     }
 
     if (items.length === 0 && summary.requests > 0) {
       items.push({
         tone: "info",
-        title: "Operación normal",
-        description: "No se detectaron errores ni bloqueos en el período seleccionado.",
+        title: t('alerts.normal.title'),
+        description: t('alerts.normal.description'),
       });
     }
 
     return items;
-  }, [data, summary.blocked, summary.errors, summary.requests]);
+  }, [data, summary.blocked, summary.errors, summary.requests, t]);
 
   const config: AiAdminConfig | undefined = data?.config;
   const dailyUsage: AiAdminDailyUsage[] = data?.daily_usage ?? [];
@@ -238,24 +243,24 @@ export default function AdminAiDashboard() {
                 className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
                 <ArrowLeft aria-hidden="true" size={13} />
-                Volver a la bóveda
+                {t('backToVault')}
               </Link>
               <div className="mt-6 flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-200/20 bg-cyan-300/10 text-cyan-100">
                   <ShieldCheck aria-hidden="true" size={19} />
                 </span>
                 <div>
-                  <p className="font-display text-[10px] font-black uppercase tracking-[0.25em] text-cyan-200/70">Control operativo</p>
-                  <h1 className="mt-1 font-display text-3xl font-black tracking-tight text-white">CoreX AI</h1>
+                  <p className="font-display text-[10px] font-black uppercase tracking-[0.25em] text-cyan-200/70">{t('header.eyebrow')}</p>
+                  <h1 className="mt-1 font-display text-3xl font-black tracking-tight text-white">{t('header.title')}</h1>
                 </div>
               </div>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                Consumo, proveedores y límites de uso. Esta vista no muestra conversaciones ni credenciales.
+                {t('header.description')}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-xl border border-zinc-800 bg-black p-1" aria-label="Período de métricas">
+              <div className="flex rounded-xl border border-zinc-800 bg-black p-1" aria-label={t('metricPeriod')}>
                 {PERIODS.map((value) => (
                   <button
                     key={value}
@@ -266,7 +271,7 @@ export default function AdminAiDashboard() {
                       period === value ? "bg-white text-black" : "text-zinc-500 hover:text-white"
                     }`}
                   >
-                    {value} días
+                    {t('days', { count: value })}
                   </button>
                 ))}
               </div>
@@ -277,7 +282,7 @@ export default function AdminAiDashboard() {
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 text-xs font-bold text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-50"
               >
                 <RefreshCw aria-hidden="true" size={15} className={isLoading ? "animate-spin" : undefined} />
-                Actualizar
+                 {t('refresh')}
               </button>
             </div>
           </div>
@@ -288,7 +293,7 @@ export default function AdminAiDashboard() {
             <div className="flex items-start gap-3">
               <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0 text-red-300" size={17} />
               <div>
-                <p className="font-bold">No se pudo cargar el panel</p>
+                <p className="font-bold">{t('errors.panelLoad')}</p>
                 <p className="mt-1 text-xs text-red-100/75">{error}</p>
               </div>
             </div>
@@ -296,31 +301,31 @@ export default function AdminAiDashboard() {
         )}
 
         {isLoading && !data ? (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Cargando métricas">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('loadingMetrics')}>
             {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-40 animate-pulse rounded-2xl border border-zinc-900 bg-zinc-950" />)}
           </div>
         ) : (
           <>
-            <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen del período">
+            <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('periodSummary')}>
               <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">Solicitudes</span><Activity aria-hidden="true" size={17} className="text-cyan-200/80" /></div>
-                <p className="mt-4 font-display text-3xl font-black text-white">{formatNumber(summary.requests)}</p>
-                <p className="mt-1 text-xs text-zinc-600">registradas en el período</p>
+                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">{t('summary.requests.label')}</span><Activity aria-hidden="true" size={17} className="text-cyan-200/80" /></div>
+                <p className="mt-4 font-display text-3xl font-black text-white">{formatNumber(summary.requests, locale)}</p>
+                <p className="mt-1 text-xs text-zinc-600">{t('summary.requests.description')}</p>
               </article>
               <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">Tokens reales</span><Clock3 aria-hidden="true" size={17} className="text-cyan-200/80" /></div>
-                <p className="mt-4 font-display text-3xl font-black text-white">{formatNumber(summary.tokens)}</p>
-                <p className="mt-1 text-xs text-zinc-600">uso informado por proveedores</p>
+                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">{t('summary.tokens.label')}</span><Clock3 aria-hidden="true" size={17} className="text-cyan-200/80" /></div>
+                <p className="mt-4 font-display text-3xl font-black text-white">{formatNumber(summary.tokens, locale)}</p>
+                <p className="mt-1 text-xs text-zinc-600">{t('summary.tokens.description')}</p>
               </article>
               <article className="rounded-2xl border border-amber-300/15 bg-amber-300/[0.04] p-4">
-                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">Bloqueadas</span><ShieldCheck aria-hidden="true" size={17} className="text-amber-200/80" /></div>
-                <p className="mt-4 font-display text-3xl font-black text-amber-100">{formatNumber(summary.blocked)}</p>
-                <p className="mt-1 text-xs text-zinc-600">por cuota o límite</p>
+                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">{t('summary.blocked.label')}</span><ShieldCheck aria-hidden="true" size={17} className="text-amber-200/80" /></div>
+                <p className="mt-4 font-display text-3xl font-black text-amber-100">{formatNumber(summary.blocked, locale)}</p>
+                <p className="mt-1 text-xs text-zinc-600">{t('summary.blocked.description')}</p>
               </article>
               <article className="rounded-2xl border border-red-300/15 bg-red-300/[0.04] p-4">
-                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">Errores</span><AlertTriangle aria-hidden="true" size={17} className="text-red-200/80" /></div>
-                <p className="mt-4 font-display text-3xl font-black text-red-100">{formatNumber(summary.errors)}</p>
-                <p className="mt-1 text-xs text-zinc-600">respuestas fallidas</p>
+                <div className="flex items-center justify-between text-zinc-500"><span className="text-[10px] font-bold uppercase tracking-[0.18em]">{t('summary.errors.label')}</span><AlertTriangle aria-hidden="true" size={17} className="text-red-200/80" /></div>
+                <p className="mt-4 font-display text-3xl font-black text-red-100">{formatNumber(summary.errors, locale)}</p>
+                <p className="mt-1 text-xs text-zinc-600">{t('summary.errors.description')}</p>
               </article>
             </section>
 
@@ -328,10 +333,10 @@ export default function AdminAiDashboard() {
               <section className="mt-6" aria-labelledby="ai-alerts-title">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-display text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200/70">Señales operativas</p>
-                    <h2 id="ai-alerts-title" className="mt-1 font-display text-xl font-black tracking-tight text-white">Alertas</h2>
+                    <p className="font-display text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200/70">{t('alerts.eyebrow')}</p>
+                    <h2 id="ai-alerts-title" className="mt-1 font-display text-xl font-black tracking-tight text-white">{t('alerts.title')}</h2>
                   </div>
-                  <span className="rounded-full border border-zinc-800 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">{alerts.length} activa{alerts.length === 1 ? "" : "s"}</span>
+                  <span className="rounded-full border border-zinc-800 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">{t('alerts.activeCount', { count: alerts.length })}</span>
                 </div>
                 <div className="grid gap-3 lg:grid-cols-3">
                   {alerts.map((alert) => {
@@ -357,28 +362,28 @@ export default function AdminAiDashboard() {
             )}
 
             <section className="mt-8">
-              <SectionTitle eyebrow="Configuración activa" title="Cuotas" description="Límites actuales por tipo de actor. Se aplican en la próxima petición." />
+              <SectionTitle eyebrow={t('quotas.eyebrow')} title={t('quotas.title')} description={t('quotas.description')} />
               {config ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <QuotaCard label="Invitado" messages={config.anonymous_daily_messages} tokens={config.anonymous_daily_tokens} icon={Users} />
-                  <QuotaCard label="Registrado" messages={config.authenticated_daily_messages} tokens={config.authenticated_daily_tokens} icon={Users} />
-                  <QuotaCard label="IP · invitado" messages={config.anonymous_ip_daily_messages} tokens={config.anonymous_ip_daily_tokens} icon={Wifi} />
-                  <QuotaCard label="IP · registrado" messages={config.authenticated_ip_daily_messages} tokens={config.authenticated_ip_daily_tokens} icon={Wifi} />
+                  <QuotaCard label={t('quotas.anonymous')} messages={config.anonymous_daily_messages} tokens={config.anonymous_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.anonymous_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Users} />
+                  <QuotaCard label={t('quotas.authenticated')} messages={config.authenticated_daily_messages} tokens={config.authenticated_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.authenticated_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Users} />
+                  <QuotaCard label={t('quotas.anonymousIp')} messages={config.anonymous_ip_daily_messages} tokens={config.anonymous_ip_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.anonymous_ip_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Wifi} />
+                  <QuotaCard label={t('quotas.authenticatedIp')} messages={config.authenticated_ip_daily_messages} tokens={config.authenticated_ip_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.authenticated_ip_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Wifi} />
                 </div>
-              ) : <EmptyState message="No hay configuración de cuotas disponible." />}
+              ) : <EmptyState message={t('quotas.empty')} />}
             </section>
 
             <section className="mt-8 grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
               <div>
-                <SectionTitle eyebrow="Actividad" title="Uso diario" description="Los tokens combinan uso real liquidado y reservas pendientes." />
-                {dailyUsage.length === 0 ? <EmptyState message="Sin actividad registrada en este período." /> : (
+                <SectionTitle eyebrow={t('dailyUsage.eyebrow')} title={t('dailyUsage.title')} description={t('dailyUsage.description')} />
+                {dailyUsage.length === 0 ? <EmptyState message={t('dailyUsage.empty')} /> : (
                   <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70">
                     <table className="w-full min-w-[560px] text-left text-xs">
                       <thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600">
-                        <tr><th className="px-4 py-3 font-bold">Día</th><th className="px-4 py-3 font-bold">Mensajes</th><th className="px-4 py-3 font-bold">Tokens</th><th className="px-4 py-3 font-bold">Buckets IP</th></tr>
+                        <tr><th className="px-4 py-3 font-bold">{t('dailyUsage.table.day')}</th><th className="px-4 py-3 font-bold">{t('dailyUsage.table.messages')}</th><th className="px-4 py-3 font-bold">{t('dailyUsage.table.tokens')}</th><th className="px-4 py-3 font-bold">{t('dailyUsage.table.ipBuckets')}</th></tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-900">
-                        {dailyUsage.map((item) => <tr key={item.usage_date} className="text-zinc-300"><td className="px-4 py-3 font-bold text-white">{formatDate(item.usage_date)}</td><td className="px-4 py-3">{formatNumber(item.user_messages)}</td><td className="px-4 py-3">{formatNumber(item.user_reserved_tokens)}</td><td className="px-4 py-3">{formatNumber(item.ip_buckets)}</td></tr>)}
+                        {dailyUsage.map((item) => <tr key={item.usage_date} className="text-zinc-300"><td className="px-4 py-3 font-bold text-white">{formatDate(item.usage_date, locale)}</td><td className="px-4 py-3">{formatNumber(item.user_messages, locale)}</td><td className="px-4 py-3">{formatNumber(item.user_reserved_tokens, locale)}</td><td className="px-4 py-3">{formatNumber(item.ip_buckets, locale)}</td></tr>)}
                       </tbody>
                     </table>
                   </div>
@@ -386,13 +391,13 @@ export default function AdminAiDashboard() {
               </div>
 
               <div>
-                <SectionTitle eyebrow="Distribución" title="Proveedores" description="Incluye respuestas exitosas, guardrails y bloqueos." />
-                {providers.length === 0 ? <EmptyState message="Sin llamadas a proveedores en este período." /> : (
+                <SectionTitle eyebrow={t('providers.eyebrow')} title={t('providers.title')} description={t('providers.description')} />
+                {providers.length === 0 ? <EmptyState message={t('providers.empty')} /> : (
                   <div className="space-y-3">
                     {providers.map((item) => (
                       <div key={`${item.provider}-${item.status}`} className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
                         <div className="flex items-center justify-between gap-3"><span className="font-display text-sm font-bold text-white">{item.provider}</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${item.status === "success" ? "bg-emerald-300/10 text-emerald-200" : item.status === "rate_limited" ? "bg-amber-300/10 text-amber-200" : "bg-red-300/10 text-red-200"}`}>{item.status}</span></div>
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-zinc-500"><span><strong className="block text-sm text-zinc-200">{formatNumber(item.requests)}</strong>solicitudes</span><span><strong className="block text-sm text-zinc-200">{formatNumber(item.tokens)}</strong>tokens</span><span><strong className="block text-sm text-zinc-200">{formatDuration(item.average_duration_ms)}</strong>media</span></div>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-zinc-500"><span><strong className="block text-sm text-zinc-200">{formatNumber(item.requests, locale)}</strong>{t('providers.metrics.requests')}</span><span><strong className="block text-sm text-zinc-200">{formatNumber(item.tokens, locale)}</strong>{t('providers.metrics.tokens')}</span><span><strong className="block text-sm text-zinc-200">{t('providers.metrics.milliseconds', { value: formatNumber(Math.round(item.average_duration_ms), locale) })}</strong>{t('providers.metrics.average')}</span></div>
                       </div>
                     ))}
                   </div>
@@ -402,24 +407,24 @@ export default function AdminAiDashboard() {
 
             <section className="mt-8 grid gap-8 lg:grid-cols-2">
               <div>
-                <SectionTitle eyebrow="Protección" title="Errores" />
-                {errors.length === 0 ? <EmptyState message="No hay errores registrados en este período." /> : (
-                  <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70"><table className="w-full text-left text-xs"><thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600"><tr><th className="px-4 py-3 font-bold">Código</th><th className="px-4 py-3 font-bold">Ocurrencias</th></tr></thead><tbody className="divide-y divide-zinc-900">{errors.map((item) => <tr key={item.error_code} className="text-zinc-300"><td className="px-4 py-3 font-technical text-red-200">{item.error_code}</td><td className="px-4 py-3">{formatNumber(item.failures)}</td></tr>)}</tbody></table></div>
+                <SectionTitle eyebrow={t('errorsSection.eyebrow')} title={t('errorsSection.title')} />
+                {errors.length === 0 ? <EmptyState message={t('errorsSection.empty')} /> : (
+                  <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70"><table className="w-full text-left text-xs"><thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600"><tr><th className="px-4 py-3 font-bold">{t('errorsSection.table.code')}</th><th className="px-4 py-3 font-bold">{t('errorsSection.table.occurrences')}</th></tr></thead><tbody className="divide-y divide-zinc-900">{errors.map((item) => <tr key={item.error_code} className="text-zinc-300"><td className="px-4 py-3 font-technical text-red-200">{item.error_code}</td><td className="px-4 py-3">{formatNumber(item.failures, locale)}</td></tr>)}</tbody></table></div>
                 )}
               </div>
               <div>
-                <SectionTitle eyebrow="Antiabuso" title="Buckets de IP" description="Se muestra solo el sufijo del HMAC, nunca la IP original." />
-                {ipBuckets.length === 0 ? <EmptyState message="No hay actividad por IP en este período." /> : (
-                  <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70"><table className="w-full text-left text-xs"><thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600"><tr><th className="px-4 py-3 font-bold">Huella</th><th className="px-4 py-3 font-bold">Solicitudes</th></tr></thead><tbody className="divide-y divide-zinc-900">{ipBuckets.map((item) => <tr key={item.ip_hash} className="text-zinc-300"><td className="px-4 py-3 font-technical text-cyan-100">{getIpLabel(item.ip_hash)}</td><td className="px-4 py-3">{formatNumber(item.requests)}</td></tr>)}</tbody></table></div>
+                <SectionTitle eyebrow={t('ipBuckets.eyebrow')} title={t('ipBuckets.title')} description={t('ipBuckets.description')} />
+                {ipBuckets.length === 0 ? <EmptyState message={t('ipBuckets.empty')} /> : (
+                  <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70"><table className="w-full text-left text-xs"><thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600"><tr><th className="px-4 py-3 font-bold">{t('ipBuckets.table.fingerprint')}</th><th className="px-4 py-3 font-bold">{t('ipBuckets.table.requests')}</th></tr></thead><tbody className="divide-y divide-zinc-900">{ipBuckets.map((item) => <tr key={item.ip_hash} className="text-zinc-300"><td className="px-4 py-3 font-technical text-cyan-100">{getIpLabel(item.ip_hash)}</td><td className="px-4 py-3">{formatNumber(item.requests, locale)}</td></tr>)}</tbody></table></div>
                 )}
               </div>
             </section>
 
             <section className="mt-8" aria-labelledby="ai-maintenance-title">
               <SectionTitle
-                eyebrow="Mantenimiento"
-                title="Retención de telemetría"
-                description="Elimina logs y buckets diarios antiguos. La operación está protegida por rol admin y requiere confirmación explícita."
+                eyebrow={t('maintenance.eyebrow')}
+                title={t('maintenance.title')}
+                description={t('maintenance.description')}
               />
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 sm:flex sm:items-center sm:justify-between sm:gap-6">
                 <div className="flex items-start gap-3">
@@ -427,19 +432,19 @@ export default function AdminAiDashboard() {
                     <Trash2 aria-hidden="true" size={16} />
                   </span>
                   <div>
-                    <h3 id="ai-maintenance-title" className="text-sm font-bold text-white">Limpieza manual</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">El mínimo permitido es 30 días para conservar una ventana útil de diagnóstico.</p>
+                    <h3 id="ai-maintenance-title" className="text-sm font-bold text-white">{t('maintenance.manualCleanup')}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">{t('maintenance.minimumRetention')}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-0">
-                  <label htmlFor="ai-retention-days" className="sr-only">Retener telemetría durante</label>
+                  <label htmlFor="ai-retention-days" className="sr-only">{t('maintenance.retentionLabel')}</label>
                   <select
                     id="ai-retention-days"
                     value={retentionDays}
                     onChange={(event) => setRetentionDays(Number(event.target.value))}
                     className="min-h-11 rounded-xl border border-zinc-800 bg-black px-3 text-xs font-bold text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
                   >
-                    {[30, 90, 180, 365].map((days) => <option key={days} value={days}>{days} días</option>)}
+                    {[30, 90, 180, 365].map((days) => <option key={days} value={days}>{t('days', { count: days })}</option>)}
                   </select>
                   <button
                     type="button"
@@ -448,7 +453,7 @@ export default function AdminAiDashboard() {
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-amber-200/20 bg-amber-200/[0.06] px-4 text-xs font-bold text-amber-100 transition-colors hover:border-amber-200/40 hover:bg-amber-200/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 disabled:cursor-wait disabled:opacity-50"
                   >
                     <Trash2 aria-hidden="true" size={15} />
-                    {isCleaning ? "Limpiando…" : "Ejecutar limpieza"}
+                    {isCleaning ? t('maintenance.cleaning') : t('maintenance.runCleanup')}
                   </button>
                 </div>
               </div>

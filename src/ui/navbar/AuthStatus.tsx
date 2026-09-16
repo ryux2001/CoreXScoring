@@ -6,9 +6,11 @@ import { supabase } from "@/lib/supabaseClient";
 import { setLocaleCookie } from "@/i18n/locale-cookie";
 import { getValidLocale } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 export default function AuthStatus({ isMobile = false }: { isMobile?: boolean }) {
+  const t = useTranslations("auth");
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
@@ -54,14 +56,14 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
   if (user?.is_anonymous) {
     return (
       <div className={`flex items-center gap-3 ${isMobile ? "w-full flex-col items-start" : ""}`}>
-        <span className="font-display text-sm font-semibold text-zinc-400">Modo invitado</span>
+        <span className="font-display text-sm font-semibold text-zinc-400">{t("guestMode")}</span>
         <Link
           href="/auth"
           className={`font-display rounded-lg text-xs font-bold text-white transition-colors hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
             isMobile ? "min-h-11 w-full border border-white/10 px-3 py-3 hover:bg-white/5" : "px-2"
           }`}
         >
-          Crear cuenta
+          {t("createAccount")}
         </Link>
       </div>
     );
@@ -71,7 +73,7 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
     return (
       <div className={`flex items-center gap-4 ${isMobile ? "w-full flex-col items-start gap-3" : ""}`}>
         <span className="font-display text-sm font-semibold text-white">
-          Hola, {user.user_metadata.full_name || "Usuario"}
+          {t("greeting", { name: user.user_metadata.full_name || t("defaultUser") })}
         </span>
         <button
           type="button"
@@ -82,7 +84,7 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
 
             const { error } = await supabase.auth.signOut();
             if (error) {
-              setAuthError("No se pudo cerrar la sesión. Inténtalo de nuevo.");
+              setAuthError(t("signOutError"));
               setIsSigningOut(false);
               return;
             }
@@ -95,7 +97,7 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
             isMobile ? "w-full border border-white/10 px-3 text-left hover:bg-white/5" : "px-2"
           }`}
         >
-          {isSigningOut ? "Cerrando sesión..." : "Cerrar sesión"}
+          {isSigningOut ? t("signingOut") : t("signOut")}
         </button>
         {authError && (
           <p role="alert" className="text-[10px] text-red-400">
@@ -115,7 +117,7 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
           : "font-display hidden rounded-lg bg-white px-4 py-1.5 text-sm font-bold text-black hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 xl:block"
       } transition-colors cursor-pointer`}
     >
-      Iniciar sesión
+      {t("signIn")}
     </Link>
   );
 }

@@ -7,6 +7,7 @@ import CompareButton from "./CompareButton";
 import { supabase } from "@/lib/supabaseClient";
 import { formatReleaseDate } from "@/lib/formatReleaseDate";
 import { getProductImage } from "@/lib/catalog/product-images";
+import { useLocale, useTranslations } from 'next-intl';
 
 interface ProductProps {
   id: string; // Añadimos el ID
@@ -41,6 +42,8 @@ export const Card = ({
   imageUrl,
   wholeCardClickable = false,
 }: ProductProps) => {
+  const t = useTranslations('catalog');
+  const locale = useLocale();
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -119,16 +122,16 @@ export const Card = ({
   const finalImageUrl = imageUrl || getProductImage({ type, brand, specs });
 
   const getTechnicalDetails = () => {
-    const date = formatReleaseDate(release_date);
+    const date = formatReleaseDate(release_date, locale, t('releaseUnavailable'));
     switch (type.toLowerCase()) {
       case "cpu":
         return [
-          { label: "Socket", value: compatibility?.socket || "N/A" },
+          { label: t('socket'), value: compatibility?.socket || "N/A" },
           {
-            label: "Núcleos/Hilos",
+            label: t("coresThreads"),
             value: `${specs?.cores || 0}/${specs?.threads || 0}`,
           },
-          { label: "Lanzamiento", value: date },
+          { label: t('release'), value: date },
         ];
       case "gpu":
         return [
@@ -136,43 +139,43 @@ export const Card = ({
             label: "VRAM",
             value: `${specs?.vram_capacity || 0}GB ${specs?.vram_type || ""}`,
           },
-          { label: "Bus", value: `${specs?.bus_width || 0}-bit` },
-          { label: "Lanzamiento", value: date },
+          { label: t('bus'), value: `${specs?.bus_width || 0}-bit` },
+          { label: t('release'), value: date },
         ];
       case "ram":
         return [
-          { label: "Tipo", value: specs?.technology || "DDR" },
-          { label: "Frecuencia", value: `${specs?.speed || 0}MHz` },
-          { label: "Lanzamiento", value: date },
+          { label: t('type'), value: specs?.technology || "DDR" },
+          { label: t('frequency'), value: `${specs?.speed || 0}MHz` },
+          { label: t('release'), value: date },
         ];
       case "storage":
         return [
           {
-            label: "Interfaz",
+            label: t('interface'),
             value: `PCIe ${compatibility?.pcie_generation || ""}`,
           },
-          { label: "Lectura", value: `${specs?.read_speed || 0}MB/s` },
-          { label: "Lanzamiento", value: date },
+          { label: t('readSpeed'), value: `${specs?.read_speed || 0}MB/s` },
+          { label: t('release'), value: date },
         ];
       case "motherboard":
         return [
-          { label: "Socket", value: compatibility?.socket?.[0] || "N/A" },
+          { label: t('socket'), value: compatibility?.socket?.[0] || "N/A" },
           {
-            label: "RAM Max",
+            label: t('maxRam'),
             value: compatibility?.ram_support?.[0] || "DDR5",
           },
-          { label: "Lanzamiento", value: date },
+          { label: t('release'), value: date },
         ];
       case "psu":
         return [
-          { label: "Potencia", value: `${specs?.wattage || 0}W` },
-          { label: "Certificación", value: specs?.efficiency || "N/A" },
-          { label: "Lanzamiento", value: date },
+          { label: t('wattage'), value: `${specs?.wattage || 0}W` },
+          { label: t('efficiency'), value: specs?.efficiency || "N/A" },
+          { label: t('release'), value: date },
         ];
       default:
         return [
-          { label: "Tipo", value: type },
-          { label: "Lanzamiento", value: date },
+          { label: t('type'), value: type },
+          { label: t('release'), value: date },
         ];
     }
   };
@@ -221,7 +224,7 @@ export const Card = ({
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800" />
             <span className="font-technical text-[10px] uppercase tracking-[0.2em] text-zinc-700">
-              No Image Available
+              {t('imageUnavailable')}
             </span>
           </div>
         )}
@@ -253,7 +256,7 @@ export const Card = ({
         <div className="mt-3 flex items-baseline gap-2 sm:mt-3">
           <span className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">
             {currencySymbol}
-            {Number(price).toLocaleString("es-ES")}
+            {Number(price).toLocaleString(locale)}
           </span>
           {showMsrpBadge && priceSource === 'msrp' ? (
             <span className="rounded border border-zinc-800 px-1.5 py-0.5 font-technical text-[8px] font-black uppercase tracking-widest text-zinc-500">
@@ -270,7 +273,7 @@ export const Card = ({
               className="font-display hidden w-19 flex-none items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold text-black transition-all hover:bg-zinc-200 active:scale-95 sm:flex"
             >
               <Eye size={14} strokeWidth={2.5} />
-              VER
+              {t('view')}
             </Link>
           )}
           <div className="flex min-w-0 flex-1">
@@ -293,8 +296,8 @@ export const Card = ({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            aria-label={isSaved ? "Quitar de guardados" : "Guardar producto"}
-            title={isSaved ? "Quitar de guardados" : "Guardar producto"}
+            aria-label={isSaved ? t('removeSaved') : t('saveProduct')}
+            title={isSaved ? t('removeSaved') : t('saveProduct')}
             className={`flex shrink-0 items-center justify-center rounded-lg border px-2 py-2 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95 disabled:cursor-wait disabled:opacity-60 sm:px-3 sm:py-3 ${
               isSaved
                 ? "border-white bg-zinc-900 text-white"

@@ -4,23 +4,13 @@ import { AlertCircle, CheckCircle2, Loader2, Lock, Mail, User } from "lucide-rea
 import { Link } from "@/i18n/navigation";
 import { useState } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthConfirmUrl } from "@/lib/authRedirects";
 import { useAuthStore } from "@/store/useAuthStore";
 
-function getRegisterErrorMessage(error: { status?: number; message?: string }) {
-  if (error.status === 400) {
-    return "El email o la contraseña no son válidos.";
-  }
-
-  if (error.status === 409) {
-    return "Este email ya está registrado.";
-  }
-
-  return error.message || "No se pudo crear la cuenta. Inténtalo de nuevo.";
-}
-
 export default function RegisterForm() {
+  const t = useTranslations("auth");
   const setUser = useAuthStore((state) => state.setUser);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,6 +23,13 @@ export default function RegisterForm() {
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const router = useRouter();
 
+  const getRegisterErrorMessage = (error: { status?: number; message?: string }) => {
+    if (error.status === 400) return t("invalidEmailOrPassword");
+    if (error.status === 409) return t("emailAlreadyRegistered");
+
+    return error.message || t("createAccountError");
+  };
+
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMsg(null);
@@ -40,7 +37,7 @@ export default function RegisterForm() {
     setResendMsg(null);
 
     if (password !== confirmPassword) {
-      setErrorMsg("Las contraseñas no coinciden.");
+      setErrorMsg(t("passwordsDoNotMatch"));
       return;
     }
 
@@ -71,7 +68,7 @@ export default function RegisterForm() {
       setUser(data.user);
       router.push("/");
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "No se pudo crear la cuenta.");
+      setErrorMsg(error instanceof Error ? error.message : t("createAccountError"));
     } finally {
       setLoading(false);
     }
@@ -91,15 +88,15 @@ export default function RegisterForm() {
 
     setResendMsg(
       error
-        ? "No se pudo reenviar el email. Inténtalo de nuevo."
-        : "Hemos reenviado el email de confirmación.",
+        ? t("resendConfirmationError")
+        : t("confirmationEmailResent"),
     );
     setResending(false);
   };
 
   return (
     <form onSubmit={handleRegister} className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tighter text-white">Crear una cuenta</h1>
+      <h1 className="text-3xl font-bold tracking-tighter text-white">{t("createAccount")}</h1>
 
       {errorMsg && (
         <div className="flex items-center gap-3 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-400">
@@ -113,7 +110,10 @@ export default function RegisterForm() {
           <div className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              Revisa <span className="font-semibold">{confirmationEmail}</span> para confirmar tu cuenta.
+              {t.rich("checkEmailToConfirmAccount", {
+                email: confirmationEmail,
+                strong: (chunks) => <span className="font-semibold">{chunks}</span>,
+              })}
             </p>
           </div>
           <button
@@ -122,7 +122,7 @@ export default function RegisterForm() {
             disabled={resending}
             className="mt-3 text-xs font-semibold text-white underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {resending ? "Reenviando..." : "Reenviar email de confirmación"}
+            {resending ? t("resending") : t("resendConfirmationEmail")}
           </button>
           {resendMsg && <p className="mt-2 text-xs text-zinc-300">{resendMsg}</p>}
         </div>
@@ -131,7 +131,7 @@ export default function RegisterForm() {
       <div className="space-y-4">
         <div>
           <label htmlFor="name" className="mb-2 block text-sm font-medium text-zinc-400">
-            Nombre
+            {t("name")}
           </label>
           <div className="relative">
             <User className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -141,7 +141,7 @@ export default function RegisterForm() {
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Juan"
+              placeholder={t("namePlaceholder")}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-12 py-3.5 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
           </div>
@@ -149,7 +149,7 @@ export default function RegisterForm() {
 
         <div>
           <label htmlFor="reg_email" className="mb-2 block text-sm font-medium text-zinc-400">
-            Email
+            {t("email")}
           </label>
           <div className="relative">
             <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -159,7 +159,7 @@ export default function RegisterForm() {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="juan@example.com"
+              placeholder={t("emailPlaceholder")}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-12 py-3.5 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
           </div>
@@ -167,7 +167,7 @@ export default function RegisterForm() {
 
         <div>
           <label htmlFor="reg_pass" className="mb-2 block text-sm font-medium text-zinc-400">
-            Contraseña
+            {t("password")}
           </label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -177,7 +177,7 @@ export default function RegisterForm() {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="........"
+              placeholder={t("passwordPlaceholder")}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-12 py-3.5 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
           </div>
@@ -185,7 +185,7 @@ export default function RegisterForm() {
 
         <div>
           <label htmlFor="reg_confirm_pass" className="mb-2 block text-sm font-medium text-zinc-400">
-            Confirmar contraseña
+            {t("confirmPassword")}
           </label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -195,7 +195,7 @@ export default function RegisterForm() {
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="........"
+              placeholder={t("passwordPlaceholder")}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-12 py-3.5 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
           </div>
@@ -207,18 +207,14 @@ export default function RegisterForm() {
         type="submit"
         className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-4 text-lg font-bold text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Registrarse"}
+        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : t("register")}
       </button>
 
       <p className="text-center text-xs leading-relaxed text-zinc-500">
-        Al registrarte aceptas los{" "}
-        <Link href="/terms" className="text-zinc-300 underline underline-offset-4 hover:text-white">
-          términos de uso
-        </Link>{" "}
-        y confirmas haber leído la{" "}
-        <Link href="/privacy" className="text-zinc-300 underline underline-offset-4 hover:text-white">
-          política de privacidad
-        </Link>.
+        {t.rich("registrationTermsNotice", {
+          terms: (chunks) => <Link href="/terms" className="text-zinc-300 underline underline-offset-4 hover:text-white">{chunks}</Link>,
+          privacy: (chunks) => <Link href="/privacy" className="text-zinc-300 underline underline-offset-4 hover:text-white">{chunks}</Link>,
+        })}
       </p>
     </form>
   );

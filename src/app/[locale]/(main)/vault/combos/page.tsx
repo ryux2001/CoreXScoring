@@ -10,6 +10,7 @@ import {
   getComboCategories,
   paginateCombos,
 } from '@/app/[locale]/(main)/combos/components/comboListUtils';
+import { getTranslations } from 'next-intl/server';
 
 interface VaultCombosPageProps {
   searchParams: Promise<{
@@ -49,6 +50,7 @@ async function createVaultClient() {
 export default async function VaultCombosPage({
   searchParams,
 }: VaultCombosPageProps) {
+  const t = await getTranslations('vault');
   const params = await searchParams;
   const currency = await resolveRequestCurrency(params.currency);
   const supabase = await createVaultClient();
@@ -79,7 +81,7 @@ export default async function VaultCombosPage({
     return (
       <main className="vault-page font-technical min-h-screen bg-black p-0 sm:p-6 md:p-12 lg:p-16">
         <div className="mx-auto max-w-7xl rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center text-sm text-zinc-500">
-          No se pudieron cargar tus combos guardados.
+          {t('savedCombos.loadError')}
         </div>
       </main>
     );
@@ -106,10 +108,10 @@ export default async function VaultCombosPage({
       <div className="mx-auto max-w-7xl rounded-[2rem] py-5 px-1.5 sm:p-5 shadow-2xl md:p-8">
         <header>
           <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
-            Bóveda
+            {t('title')}
           </span>
           <h1 className="mt-2 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            Combos guardados
+            {t('savedCombos.title')}
           </h1>
         </header>
 
@@ -122,7 +124,7 @@ export default async function VaultCombosPage({
 
         <section className="mt-8">
           <h2 className="mb-5 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-            Combos favoritos
+            {t('savedCombos.favorites')}
           </h2>
 
           {visibleCombos.length > 0 ? (
@@ -140,8 +142,8 @@ export default async function VaultCombosPage({
             <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50 px-6 text-center">
               <p className="text-sm font-medium tracking-tight text-zinc-500">
                 {savedCombos.length === 0
-                  ? 'Aún no tienes combos guardados.'
-                  : 'No hay combos guardados que coincidan con estos filtros.'}
+                  ? t('savedCombos.empty')
+                  : t('savedCombos.noMatches')}
               </p>
             </div>
           )}

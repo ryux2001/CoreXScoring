@@ -607,6 +607,7 @@ async function runProviderConversation({
   requestId,
   cacheSessionId,
   requestSignal,
+  continuationInstruction,
 }: {
   provider: ProviderName;
   url: string;
@@ -617,6 +618,7 @@ async function runProviderConversation({
   requestId?: string;
   cacheSessionId?: string;
   requestSignal?: AbortSignal;
+  continuationInstruction?: string;
 }): Promise<ChatResponse> {
   const activeDraft = toolContext.buildDraft || toolContext.comboDraft;
   const policyContext = resolveAiPolicyContext(messages, toolContext.pageContext);
@@ -628,7 +630,7 @@ async function runProviderConversation({
     content: redactSensitiveText(message.content),
   }));
   const providerMessages: ProviderMessage[] = [
-    { role: "system", content: `${SYSTEM_PROMPT}${policyContext}${formatPageContextForPrompt(toolContext.pageContext)}${formatCatalogPriceContext(toolContext.catalogPriceEvaluation)}${formatAiPriceContext(toolContext.priceContext)}${draftSystemContext}` },
+    { role: "system", content: `${SYSTEM_PROMPT}${policyContext}${formatPageContextForPrompt(toolContext.pageContext)}${formatCatalogPriceContext(toolContext.catalogPriceEvaluation)}${formatAiPriceContext(toolContext.priceContext)}${draftSystemContext}${continuationInstruction ? `\n\n${continuationInstruction}` : ""}` },
     ...sanitizedMessages,
   ];
   const usage: ChatUsage = { inputTokens: 0, outputTokens: 0 };
@@ -854,13 +856,14 @@ export async function runChat(
   providerCircuit?: AiProviderCircuit,
   requestSignal?: AbortSignal,
   cacheSessionId?: string,
+  continuationInstruction?: string,
 ): Promise<ChatResponse> {
   const guardrailDecision = evaluateChatGuardrails(messages);
   if (guardrailDecision.response) return guardrailDecision.response;
 
   const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "";
   const activeDraft = toolContext.buildDraft || toolContext.comboDraft;
-  if (activeDraft && hasBuildSaveIntent(latestUserMessage) && !/\b(?:cambiar|cambia|modifica|modificar|sustituye|sustituir|reemplaza|reemplazar)\b/i.test(normalizeIntentText(latestUserMessage)) && !hasExplicitBuildTitle(latestUserMessage)) {
+  if (!continuationInstruction && activeDraft && hasBuildSaveIntent(latestUserMessage) && !/\b(?:cambiar|cambia|modifica|modificar|sustituye|sustituir|reemplaza|reemplazar)\b/i.test(normalizeIntentText(latestUserMessage)) && !hasExplicitBuildTitle(latestUserMessage)) {
     return {
       message: { role: "assistant", content: `¿Qué título quieres ponerle a este ${toolContext.comboDraft ? "combo" : "build"}?` },
       provider: "guardrail",
@@ -878,7 +881,15 @@ export async function runChat(
       if (providerCircuit && !(await providerCircuit.isAllowed(candidate.provider, candidate.model))) {
         throw new AiGatewayError(candidate.provider, 503, "provider_circuit_open", "provider");
       }
-      const response = await runProviderConversation({ ...candidate, messages, toolContext, requestId, requestSignal, cacheSessionId });
+      const response = await runProviderConversation({
+        ...candidate,
+        messages,
+        toolContext,
+        requestId,
+        requestSignal,
+        cacheSessionId,
+        continuationInstruction,
+      });
       if (providerCircuit) await providerCircuit.recordSuccess(candidate.provider, candidate.model);
       return response;
     } catch (error) {

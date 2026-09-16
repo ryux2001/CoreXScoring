@@ -2,6 +2,7 @@
 
 import { Link, usePathname } from "@/i18n/navigation";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import MobileMenu from "./MobileMenu";
 import AuthStatus from "./AuthStatus";
@@ -10,19 +11,19 @@ import SearchBar from "./SearchBar";
 import CompareCartDropdown from "./CompareCartDropdown";
 import LanguageSwitcher from "./LanguageSwitcher";
 
-const navLinks = [
-  { name: "Inicio", href: "/" },
-  { name: "Catálogo", href: "/catalog" },
-  { name: "Combos", href: "/combos" },
-  { name: "Builds", href: "/builds" },
-  { name: "Comparador", href: "/comparator" },
-  { name: "Bóveda", href: "/vault" },
-];
-
 export default function Navbar() {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
+  const navLinks = [
+    { name: t("home"), href: "/" },
+    { name: t("catalog"), href: "/catalog" },
+    { name: t("combos"), href: "/combos" },
+    { name: t("builds"), href: "/builds" },
+    { name: t("comparator"), href: "/comparator" },
+    { name: t("vault"), href: "/vault" },
+  ];
 
   const isActiveLink = (href: string) =>
     href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -34,7 +35,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/70 backdrop-blur-md">
-      <nav aria-label="Navegación principal" className="relative mx-auto px-4 py-1.5 sm:px-6 sm:py-2 xl:px-8">
+      <nav aria-label={t("mainNavigation")} className="relative mx-auto px-4 py-1.5 sm:px-6 sm:py-2 xl:px-8">
         <div className="flex h-14 items-center justify-between gap-2 xl:hidden">
           <Link
             href="/"
@@ -49,7 +50,7 @@ export default function Navbar() {
                 ref={searchButtonRef}
                 type="button"
                 onClick={() => setIsMobileSearchOpen(true)}
-                aria-label="Abrir búsqueda"
+                aria-label={t("openSearch")}
                 aria-expanded={false}
                 aria-controls="mobile-search"
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"

@@ -6,11 +6,13 @@ import { useRouter } from '@/i18n/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { convertPrice } from '@/lib/currency';
 import { resolveProductPrice } from '@/lib/catalog/product-price';
+import { formatPrice } from '@/lib/formatPrice';
 import { useAiVisiblePriceStore } from '@/store/useAiVisiblePriceStore';
 import BuildEvaluationSection from '@/app/[locale]/(main)/builds/[slug]/components/BuildEvaluationSection';
 import FpsCard from '@/app/[locale]/(main)/combos/[slug]/components/FpsCard';
 import Metrics from '@/app/[locale]/(main)/combos/[slug]/components/Metrics';
 import type { Build } from '@/lib/scoringBuilds';
+import { useLocale, useTranslations } from 'next-intl';
 
 type SlotKey = 'cpu' | 'gpu' | 'ram' | 'motherboard' | 'storage' | 'psu';
 type PriceMode = 'msrp' | 'custom';
@@ -51,15 +53,6 @@ interface CreatedBuildWorkspaceProps {
 }
 
 const slots: SlotKey[] = ['cpu', 'gpu', 'ram', 'motherboard', 'storage', 'psu'];
-const slotLabels: Record<SlotKey, string> = {
-  cpu: 'Procesador',
-  gpu: 'Tarjeta gráfica',
-  ram: 'Memoria RAM',
-  motherboard: 'Placa base',
-  storage: 'Almacenamiento',
-  psu: 'Fuente de alimentación',
-};
-
 function parseJson(value: unknown): Record<string, any> {
   if (typeof value !== 'string') return (value as Record<string, any>) || {};
   try {
@@ -155,7 +148,7 @@ function getAiPriceContext(draft: DraftState, currency: string) {
   };
 }
 
-function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: DraftState) {
+function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: DraftState, t: ReturnType<typeof useTranslations>) {
   const build = { ...draft, [nextSlot]: nextProduct };
   const cpu = build.cpu;
   const ram = build.ram;
@@ -165,7 +158,7 @@ function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: D
     const cpuSocket = getSocket(cpu);
     const motherboardSocket = getSocket(motherboard);
     if (cpuSocket && motherboardSocket && cpuSocket !== motherboardSocket) {
-      return `${cpu.name} y ${motherboard.name} usan sockets distintos.`;
+      return t('workspace.compatibility.socket', { cpu: cpu.name, motherboard: motherboard.name });
     }
 
     const cpuCompatibility = parseJson(cpu.compatibility);
@@ -174,7 +167,7 @@ function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: D
     const motherboardCompatibility = parseJson(motherboard.compatibility);
     const chipset = String(motherboardCompatibility.chipset || motherboardSpecs.chipset || '').toLowerCase();
     if (chipsets && chipset && !chipsets.includes(chipset)) {
-      return `${motherboard.name} no es compatible con el chipset admitido por ${cpu.name}.`;
+      return t('workspace.compatibility.chipset', { cpu: cpu.name, motherboard: motherboard.name });
     }
   }
 
@@ -183,11 +176,11 @@ function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: D
     const expectedRamType = normalize(cpuCompatibility.ram_type);
     const actualRamType = getRamType(ram);
     if (expectedRamType && actualRamType && !actualRamType.includes(expectedRamType) && !expectedRamType.includes(actualRamType)) {
-      return `${cpu.name} requiere memoria ${cpuCompatibility.ram_type}.`;
+      return t('workspace.compatibility.ramType', { cpu: cpu.name, type: cpuCompatibility.ram_type });
     }
     const maxRam = Number(cpuCompatibility.ram_max_support || 0);
     if (maxRam > 0 && getRamCapacity(ram) > maxRam) {
-      return `${cpu.name} admite un máximo de ${maxRam} GB de RAM.`;
+      return t('workspace.compatibility.ramCapacity', { cpu: cpu.name, max: maxRam });
     }
   }
 
@@ -196,11 +189,11 @@ function validateCompatibility(nextSlot: SlotKey, nextProduct: Product, draft: D
     const supportedType = normalize(compatibility.ram_type);
     const ramType = getRamType(ram);
     if (supportedType && ramType && !supportedType.includes(ramType) && !ramType.includes(supportedType)) {
-      return `${motherboard.name} no admite memoria ${ramType.toUpperCase()}.`;
+      return t('workspace.compatibility.motherboardRamType', { motherboard: motherboard.name, type: ramType.toUpperCase() });
     }
     const maxCapacity = Number(compatibility.ram_max_capacity || 0);
     if (maxCapacity > 0 && getRamCapacity(ram) > maxCapacity) {
-      return `${motherboard.name} admite un máximo de ${maxCapacity} GB de RAM.`;
+      return t('workspace.compatibility.motherboardRamCapacity', { motherboard: motherboard.name, max: maxCapacity });
     }
   }
 
@@ -212,6 +205,7 @@ export default function CreatedBuildWorkspace({
   games,
   currency,
 }: CreatedBuildWorkspaceProps) {
+  const t = useTranslations('vault');
   const router = useRouter();
   const [draft, setDraft] = useState<DraftState>(() => createInitialDraft(initialBuild, currency));
   const [activeSlot, setActiveSlot] = useState<SlotKey | null>(null);
@@ -257,14 +251,14 @@ export default function CreatedBuildWorkspace({
         .limit(12);
       if (error) {
         setSuggestions([]);
-        setNotification({ type: 'error', message: 'No se pudieron buscar componentes.' });
+        setNotification({ type: 'error', message: t('workspace.searchError') });
       } else {
         setSuggestions((data || []) as Product[]);
       }
       setIsSearching(false);
     }, 300);
     return () => clearTimeout(timer);
-  }, [activeSlot, isModalOpen, searchTerm]);
+  }, [activeSlot, isModalOpen, searchTerm, t]);
 
   const openSlotModal = (slot: SlotKey) => {
     setActiveSlot(slot);
@@ -284,7 +278,7 @@ export default function CreatedBuildWorkspace({
 
   const selectProduct = (product: Product) => {
     if (!activeSlot) return;
-    const compatibilityError = validateCompatibility(activeSlot, product, draft);
+    const compatibilityError = validateCompatibility(activeSlot, product, draft, t);
     if (compatibilityError) {
       setNotification({ type: 'error', message: compatibilityError });
       return;
@@ -308,18 +302,18 @@ export default function CreatedBuildWorkspace({
       customPrices: { ...current.customPrices, [activeSlot]: '' },
       priceModes: { ...current.priceModes, [activeSlot]: 'msrp' },
     }));
-    setNotification({ type: 'success', message: `${slotLabels[activeSlot]} limpiado.` });
+    setNotification({ type: 'success', message: t('workspace.slotCleared', { slot: t(`workspace.slots.${activeSlot}`) }) });
     closeModal();
   };
 
   const applyModal = () => {
     if (!activeSlot || !draft[activeSlot]) {
-      setNotification({ type: 'error', message: 'Selecciona un componente antes de aplicar.' });
+      setNotification({ type: 'error', message: t('workspace.selectComponent') });
       return;
     }
     const customPrice = Number(modalPrice);
     if (modalPriceMode === 'custom' && (!modalPrice || !Number.isFinite(customPrice) || customPrice <= 0)) {
-      setNotification({ type: 'error', message: 'Introduce un precio personalizado válido.' });
+      setNotification({ type: 'error', message: t('workspace.invalidCustomPrice') });
       return;
     }
     setDraft((current) => ({
@@ -343,17 +337,17 @@ export default function CreatedBuildWorkspace({
       customPrices: { cpu: '', gpu: '', ram: '', motherboard: '', storage: '', psu: '' },
       priceModes: { cpu: 'msrp', gpu: 'msrp', ram: 'msrp', motherboard: 'msrp', storage: 'msrp', psu: 'msrp' },
     }));
-    setNotification({ type: 'success', message: 'Componentes limpiados.' });
+    setNotification({ type: 'success', message: t('workspace.componentsCleared') });
   };
 
   const saveDraft = async () => {
     const title = draft.title.trim();
     if (!title || title.length > 120) {
-      setNotification({ type: 'error', message: 'El nombre de la build debe tener entre 1 y 120 caracteres.' });
+      setNotification({ type: 'error', message: t('workspace.buildTitleInvalid') });
       return;
     }
     if (!isComplete) {
-      setNotification({ type: 'error', message: 'Selecciona los seis componentes antes de guardar.' });
+      setNotification({ type: 'error', message: t('workspace.buildIncomplete') });
       return;
     }
 
@@ -418,11 +412,11 @@ export default function CreatedBuildWorkspace({
         ? await supabase.from('created_builds').update(payload).eq('id', draft.id).eq('user_id', user.id)
         : await supabase.from('created_builds').insert(payload);
       if (response.error) throw response.error;
-      setNotification({ type: 'success', message: 'Build guardada exitosamente.' });
+      setNotification({ type: 'success', message: t('workspace.buildSaved') });
       setTimeout(() => router.push(`/vault/builds-created?currency=${currency}`), 700);
     } catch (error) {
       console.error('Error saving created build:', error);
-      setNotification({ type: 'error', message: 'No se pudo guardar la build.' });
+      setNotification({ type: 'error', message: t('workspace.buildSaveError') });
     } finally {
       setIsSaving(false);
     }
@@ -460,8 +454,8 @@ export default function CreatedBuildWorkspace({
       </div>
 
       <div className="fixed bottom-4 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/95 p-2 shadow-2xl backdrop-blur lg:hidden">
-        <button type="button" onClick={clearDraft} className="flex-1 rounded-xl border border-zinc-800 px-4 py-3 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button>
-        <button type="button" onClick={saveDraft} disabled={isSaving} className="flex-1 rounded-xl bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">{isSaving ? 'Guardando' : 'Guardar'}</button>
+         <button type="button" onClick={clearDraft} className="flex-1 rounded-xl border border-zinc-800 px-4 py-3 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">{t('workspace.clear')}</button>
+         <button type="button" onClick={saveDraft} disabled={isSaving} className="flex-1 rounded-xl bg-white px-4 py-3 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">{isSaving ? t('workspace.saving') : t('workspace.save')}</button>
       </div>
 
       {isModalOpen && activeSlot && (
@@ -513,11 +507,13 @@ function CreatedBuildEditorCard({
   onSave: () => void;
   isSaving: boolean;
 }) {
+  const t = useTranslations('vault');
+  const locale = useLocale();
   const symbol = currency === 'EUR' ? '€' : '$';
   return (
     <div className="rounded-3xl border border-zinc-900 bg-zinc-950/50 p-5 shadow-2xl lg:p-8">
       <div className="mb-6 flex items-center justify-between">
-        <div><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Build personalizada</span><h1 className="mt-2 text-xl font-black tracking-tight text-white">Componentes</h1></div>
+         <div><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">{t('workspace.customBuild')}</span><h1 className="mt-2 text-xl font-black tracking-tight text-white">{t('workspace.components')}</h1></div>
         <CircleHelp size={17} className="text-zinc-600" />
       </div>
       <div className="space-y-3">
@@ -526,14 +522,14 @@ function CreatedBuildEditorCard({
           const price = getProductPrice(product, slot, draft, currency);
           return (
             <button key={slot} type="button" onClick={() => onOpenSlot(slot)} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-900 bg-black/50 p-3 text-left transition-colors hover:border-zinc-700">
-              <div className="min-w-0"><span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">{slotLabels[slot]}</span><span className={`mt-1 block truncate text-xs font-bold ${product ? 'text-zinc-200' : 'text-zinc-700'}`}>{product?.name || 'Seleccionar componente'}</span></div>
-              <div className="flex shrink-0 items-center gap-3"><span className="text-xs font-black text-zinc-300">{product ? `${symbol}${price.toFixed(2)}` : '0.00'}</span><Settings2 size={16} className="text-zinc-500" /></div>
+               <div className="min-w-0"><span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-600">{t(`workspace.slots.${slot}`)}</span><span className={`mt-1 block truncate text-xs font-bold ${product ? 'text-zinc-200' : 'text-zinc-700'}`}>{product?.name || t('workspace.selectComponentLabel')}</span></div>
+               <div className="flex shrink-0 items-center gap-3"><span className="text-xs font-black text-zinc-300">{product ? `${symbol}${formatPrice(price, locale)}` : formatPrice(0, locale)}</span><Settings2 size={16} className="text-zinc-500" /></div>
             </button>
           );
         })}
       </div>
-      <label className="mt-5 block"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Nombre de la build</span><input value={draft.title} onChange={(event) => onTitleChange(event.target.value)} maxLength={120} placeholder="Escribe un nombre..." className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600" /></label>
-      <div className="mt-5 hidden items-center justify-between border-t border-zinc-900 pt-5 lg:flex"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio total</span><span className="mt-1 block text-xl font-black font-display text-white">{symbol}{totalPrice.toFixed(2)}</span></div><div className="flex gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button><button type="button" onClick={onSave} disabled={isSaving} className="rounded-xl bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">{isSaving ? 'Guardando' : 'Guardar'}</button></div></div>
+       <label className="mt-5 block"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">{t('workspace.buildName')}</span><input value={draft.title} onChange={(event) => onTitleChange(event.target.value)} maxLength={120} placeholder={t('workspace.namePlaceholder')} className="mt-2 w-full rounded-2xl border border-zinc-900 bg-black px-4 py-3 text-sm font-bold font-display text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-zinc-600" /></label>
+       <div className="mt-5 hidden items-center justify-between border-t border-zinc-900 pt-5 lg:flex"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t('workspace.totalPrice')}</span><span className="mt-1 block text-xl font-black font-display text-white">{symbol}{formatPrice(totalPrice, locale)}</span></div><div className="flex gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">{t('workspace.clear')}</button><button type="button" onClick={onSave} disabled={isSaving} className="rounded-xl bg-white px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-50">{isSaving ? t('workspace.saving') : t('workspace.save')}</button></div></div>
     </div>
   );
 }
@@ -558,22 +554,25 @@ function ComponentModal({
   onApply: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations('vault');
+  const locale = useLocale();
   const catalogPrice = product ? resolveProductPrice(product, currency) : null;
   const currentPrice = catalogPrice?.value || 0;
   const symbol = currency === 'EUR' ? '€' : '$';
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-zinc-900 pb-4"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Componente elegido</span><h2 className="mt-1 text-sm font-black uppercase text-white">{slotLabels[slot]}</h2></div><button type="button" onClick={onClose} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white" aria-label="Cerrar"><X size={15} /></button></div>
-        <div className="relative mt-5"><input value={searchTerm} onChange={(event) => onSearchChange(event.target.value)} placeholder="Buscar componente..." className="w-full rounded-xl border border-zinc-900 bg-black px-4 py-3 pl-10 text-xs font-bold text-white outline-none placeholder:text-zinc-700 focus:border-zinc-700" /><Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />{isSearching && <span className="absolute right-4 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin rounded-full border-2 border-zinc-700 border-t-white" />}</div>
-        <div className="mt-3 max-h-40 space-y-1 overflow-y-auto">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onClick={() => onSelectProduct(suggestion)} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${product?.id === suggestion.id ? 'border-white bg-zinc-900' : 'border-transparent bg-zinc-900/30 hover:border-zinc-700'}`}><span className="min-w-0"><span className="block truncate text-xs font-bold text-zinc-200">{suggestion.name}</span><span className="mt-1 block text-[8px] font-black uppercase tracking-widest text-zinc-600">{suggestion.brand}</span></span><span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{resolveProductPrice(suggestion, currency).value.toFixed(0)}</span></button>)}{!isSearching && searchTerm.trim().length >= 2 && suggestions.length === 0 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Sin resultados</p>}{searchTerm.trim().length < 2 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">Introduce al menos 2 letras</p>}</div>
-        {product && <div className="mt-5 border-t border-zinc-900 pt-5"><label className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Precio del componente</label><div className="mt-3 grid grid-cols-[1fr_110px] gap-2"><select value={priceMode} onChange={(event) => onPriceModeChange(event.target.value as PriceMode)} className="rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none focus:border-zinc-700"><option value="msrp">{catalogPrice?.source === 'current' ? 'Precio actual' : 'MSRP'} ({symbol}{currentPrice.toFixed(2)})</option><option value="custom">Precio personalizado</option></select><input type="number" min="0" step="0.01" value={priceMode === 'custom' ? price : currentPrice} onChange={(event) => onPriceChange(event.target.value)} disabled={priceMode !== 'custom'} className="[appearance:textfield] rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none disabled:text-zinc-700 focus:border-zinc-700" /></div></div>}
-        <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">Limpiar</button><button type="button" onClick={onApply} className="rounded-xl bg-white px-4 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200">Aplicar</button></div>
+         <div className="flex items-center justify-between border-b border-zinc-900 pb-4"><div><span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t('workspace.selectedComponent')}</span><h2 className="mt-1 text-sm font-black uppercase text-white">{t(`workspace.slots.${slot}`)}</h2></div><button type="button" onClick={onClose} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white" aria-label={t('workspace.close')}><X aria-hidden="true" size={15} /></button></div>
+         <div className="relative mt-5"><input value={searchTerm} onChange={(event) => onSearchChange(event.target.value)} placeholder={t('workspace.searchComponent')} className="w-full rounded-xl border border-zinc-900 bg-black px-4 py-3 pl-10 text-xs font-bold text-white outline-none placeholder:text-zinc-700 focus:border-zinc-700" /><Search aria-hidden="true" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />{isSearching && <span aria-label={t('workspace.searching')} className="absolute right-4 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin rounded-full border-2 border-zinc-700 border-t-white" />}</div>
+          <div className="mt-3 max-h-40 space-y-1 overflow-y-auto">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onClick={() => onSelectProduct(suggestion)} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${product?.id === suggestion.id ? 'border-white bg-zinc-900' : 'border-transparent bg-zinc-900/30 hover:border-zinc-700'}`}><span className="min-w-0"><span className="block truncate text-xs font-bold text-zinc-200">{suggestion.name}</span><span className="mt-1 block text-[8px] font-black uppercase tracking-widest text-zinc-600">{suggestion.brand}</span></span><span className="ml-3 shrink-0 text-[10px] font-bold text-zinc-500">{symbol}{formatPrice(resolveProductPrice(suggestion, currency).value, locale, 0)}</span></button>)}{!isSearching && searchTerm.trim().length >= 2 && suggestions.length === 0 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">{t('workspace.noResults')}</p>}{searchTerm.trim().length < 2 && <p className="py-4 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-700">{t('workspace.minimumSearch')}</p>}</div>
+          {product && <div className="mt-5 border-t border-zinc-900 pt-5"><label className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t('workspace.componentPrice')}</label><div className="mt-3 grid grid-cols-[1fr_110px] gap-2"><select value={priceMode} onChange={(event) => onPriceModeChange(event.target.value as PriceMode)} className="rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none focus:border-zinc-700"><option value="msrp">{catalogPrice?.source === 'current' ? t('workspace.currentPrice') : t('workspace.msrp')} ({symbol}{formatPrice(currentPrice, locale)})</option><option value="custom">{t('workspace.customPrice')}</option></select><input type="number" min="0" step="0.01" value={priceMode === 'custom' ? price : currentPrice} onChange={(event) => onPriceChange(event.target.value)} disabled={priceMode !== 'custom'} className="[appearance:textfield] rounded-xl border border-zinc-900 bg-black px-3 py-2 text-xs font-bold text-white outline-none disabled:text-zinc-700 focus:border-zinc-700" /></div></div>}
+         <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClear} className="rounded-xl border border-zinc-800 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">{t('workspace.clear')}</button><button type="button" onClick={onApply} className="rounded-xl bg-white px-4 py-2 text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200">{t('workspace.apply')}</button></div>
       </div>
     </div>
   );
 }
 
 function UnavailableAnalysis() {
-  return <div className="flex min-h-[400px] items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 p-8 text-center lg:col-span-12"><p className="max-w-sm text-xs font-black uppercase leading-relaxed tracking-[0.15em] text-zinc-600">Disponible cuando todos los componentes hayan sido seleccionados</p></div>;
+  const t = useTranslations('vault');
+  return <div className="flex min-h-[400px] items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 p-8 text-center lg:col-span-12"><p className="max-w-sm text-xs font-black uppercase leading-relaxed tracking-[0.15em] text-zinc-600">{t('workspace.analysisUnavailable')}</p></div>;
 }

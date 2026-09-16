@@ -6,6 +6,7 @@ import { formatReleaseDate } from '@/lib/formatReleaseDate';
 import { getProductImage } from '@/lib/catalog/product-images';
 import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 import { resolveProductPrice } from '@/lib/catalog/product-price';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface MainInfoProps {
   product: any;
@@ -13,6 +14,8 @@ interface MainInfoProps {
 }
 
 export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProps) {
+  const t = useTranslations('catalog');
+  const locale = useLocale();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -53,9 +56,9 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
   const imageUrl = getProductImage(product);
 
   const getAllDetails = () => {
-    const dateValue = isMounted ? formatReleaseDate(product.release_date) : "";
+    const dateValue = isMounted ? formatReleaseDate(product.release_date, locale, t('releaseUnavailable')) : "";
 
-    const details = [{ label: "Marca", value: product.brand }, { label: "Lanzamiento", value: dateValue }];
+    const details = [{ label: t('brand'), value: product.brand }, { label: t('release'), value: dateValue }];
 
     const formatCacheValue = (value: unknown) => {
       const cacheInKb = Number(value);
@@ -117,7 +120,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
                 {resolvedPrice.source === 'current' ? 'Precio' : 'MSRP'}
               </span>
               <div className="text-sm font-display font-black text-white lg:text-xl">
-                {!isEUR && symbol}{Number(initialPrice).toLocaleString('es-ES')}{isEUR && symbol}
+                 {!isEUR && symbol}{Number(initialPrice).toLocaleString(locale)}{isEUR && symbol}
               </div>
             </div>
             
@@ -125,7 +128,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
             <div className="rounded-lg border border-zinc-800 border-dashed bg-zinc-900/10 p-2 lg:p-4 lg:rounded-xl">
               <span className="text-[10px] font-display font-black uppercase text-zinc-400 block mb-1 tracking-widest">Evaluado</span>
               <div className="text-sm font-display font-black text-white lg:text-xl">
-                {!isEUR && symbol}{Number(evaluatedPrice).toLocaleString('es-ES')}{isEUR && symbol}
+                 {!isEUR && symbol}{Number(evaluatedPrice).toLocaleString(locale)}{isEUR && symbol}
               </div>
             </div>
           </div>
@@ -134,11 +137,11 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
 
       <div className="p-5 pt-2 lg:p-8 lg:pt-0">
         <button onClick={() => setIsModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-4 text-[10px] font-black uppercase tracking-widest text-white lg:hidden">
-          <Info size={16} /> MOSTRAR DETALLES TÉCNICOS
+          <Info size={16} /> {t('showTechnicalDetails')}
         </button>
 
         <div className="hidden lg:flex flex-col mt-8 relative">
-          <h3 className="mb-4 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">Detalles Técnicos</h3>
+           <h3 className="mb-4 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">{t('technicalDetails')}</h3>
           <div className="space-y-3 transition-all duration-500">
             {displayedDetails.map((detail, idx) => (
               <div key={idx} className="flex justify-between border-b border-zinc-900/30 pb-2.5">
@@ -151,7 +154,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
             <div className="mt-6">
               {!isExpanded && <div className="pointer-events-none absolute bottom-14 left-0 h-20 w-full bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent" />}
               <button onClick={() => setIsExpanded(!isExpanded)} className="group flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-white hover:text-black">
-                {isExpanded ? <><ChevronUp size={14} /> VER MENOS</> : <><ChevronDown size={14} /> VER TODO</>}
+                 {isExpanded ? <><ChevronUp size={14} /> {t('viewLess')}</> : <><ChevronDown size={14} /> {t('viewAll')}</>}
               </button>
             </div>
           )}
@@ -163,7 +166,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
           <div className="absolute inset-0 z-[-1]" onClick={handleCloseModal} />
           <div className={`w-full max-h-[80vh] flex flex-col overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl ${isClosing ? 'animate-out fade-out zoom-out-95 duration-300' : 'animate-in fade-in zoom-in-95 duration-300'}`}>
             <div className="flex-none flex items-center justify-between border-b border-zinc-900 bg-zinc-950 p-6">
-              <h2 className="text-xs font-black uppercase tracking-widest text-white">Detalles Técnicos</h2>
+               <h2 className="text-xs font-black uppercase tracking-widest text-white">{t('technicalDetails')}</h2>
               <button onClick={handleCloseModal} className="rounded-full bg-zinc-900 p-2 text-zinc-400"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 pb-10">

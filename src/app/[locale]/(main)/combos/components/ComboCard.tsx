@@ -7,6 +7,8 @@ import { AlertCircle, BarChart2, Bookmark } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
 import { supabase } from '@/lib/supabaseClient';
 import { getComboPartPrice } from '@/lib/scoringCombos';
+import { formatPrice } from '@/lib/formatPrice';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface ComboCardProps {
   combo: any;
@@ -21,6 +23,8 @@ export default function ComboCard({
   detailPath = '/combos',
   wholeCardClickable = false,
 }: ComboCardProps) {
+  const t = useTranslations('combos');
+  const locale = useLocale();
   const isEUR = currency === 'EUR';
   const addItem = useCompareStore((state) => state.addItem);
   const removeItem = useCompareStore((state) => state.removeItem);
@@ -92,7 +96,7 @@ export default function ComboCard({
     });
 
     if (!result.success) {
-      setCustomError(result.error || 'No se pudo anadir el combo');
+       setCustomError(result.error || t('addError'));
     }
   };
 
@@ -190,7 +194,7 @@ export default function ComboCard({
                 </span>
               </div>
               <span className="font-display text-xs font-bold text-zinc-400">
-                {symbol}{part.price.toFixed(0)}
+                {symbol}{formatPrice(part.price, locale, 0)}
               </span>
             </div>
           )
@@ -202,10 +206,10 @@ export default function ComboCard({
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-              Total
+               {t('total')}
             </span>
             <span className="font-display text-xl font-black text-white mt-0.5">
-              {symbol}{totalPrice.toFixed(2)}
+              {symbol}{formatPrice(totalPrice, locale)}
             </span>
           </div>
           {!wholeCardClickable && (
@@ -213,7 +217,7 @@ export default function ComboCard({
               href={`${detailPath}/${combo.slug}?currency=${currency}`}
               className="flex items-center justify-center rounded-lg bg-white px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-black transition-colors hover:bg-zinc-200 active:scale-95"
             >
-              Ver Combo
+               {t('viewCombo')}
             </Link>
           )}
         </div>
@@ -228,14 +232,14 @@ export default function ComboCard({
             }`}
           >
             <BarChart2 size={14} strokeWidth={2.5} />
-            COMPARAR
+             {t('compare')}
           </button>
           <button
             type="button"
             onClick={handleSaveClick}
             disabled={isSaving}
-            aria-label={isSaved ? 'Quitar combo de guardados' : 'Guardar combo'}
-            title={isSaved ? 'Quitar combo de guardados' : 'Guardar combo'}
+             aria-label={isSaved ? t('removeSaved') : t('saveCombo')}
+             title={isSaved ? t('removeSaved') : t('saveCombo')}
             className={`flex items-center justify-center rounded-lg border px-3 py-3 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95 disabled:cursor-wait disabled:opacity-60 ${
               isSaved
                 ? 'border-white bg-zinc-900 text-white'
@@ -254,7 +258,7 @@ export default function ComboCard({
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-[9px] font-black uppercase tracking-[0.15em] text-red-500">
-              SISTEMA DE COMPARACION
+               {t('comparisonSystem')}
             </span>
             <span className="text-xs font-medium text-zinc-300 tracking-tight mt-0.5 leading-tight">
               {customError}

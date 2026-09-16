@@ -209,6 +209,8 @@ export interface AiActionRequest {
 
 export interface ChatRequest {
   messages: ChatMessage[];
+  /** Solicita continuar la última respuesta sin crear un nuevo mensaje de usuario. */
+  continuation?: boolean;
   conversationMode?: AiConversationMode;
   conversationId?: string;
   /** UUID aleatorio del navegador usado solo para afinidad de caché del proveedor. */
@@ -254,6 +256,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
 
   const conversationMode = (value as ChatRequest).conversationMode;
   if (conversationMode !== undefined && !["temporary", "saved"].includes(conversationMode)) return false;
+  const continuation = (value as ChatRequest).continuation;
+  if (continuation !== undefined && typeof continuation !== "boolean") return false;
   const conversationId = (value as ChatRequest).conversationId;
   if (conversationId !== undefined && (typeof conversationId !== "string" || conversationId.length > 80)) return false;
   const cacheSessionId = (value as ChatRequest).cacheSessionId;

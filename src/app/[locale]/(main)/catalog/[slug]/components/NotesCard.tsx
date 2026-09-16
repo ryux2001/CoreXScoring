@@ -12,6 +12,7 @@ import {
 } from '@/lib/scoring/components/calculations/cpu/profiles';
 import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 import { getProductPrice } from '@/lib/catalog/product-price';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
 
@@ -23,6 +24,8 @@ interface NotesCardProps {
 }
 
 export default function NotesCard({ product, currency = 'USD', onSwitchView }: NotesCardProps) {
+  const t = useTranslations('catalog');
+  const locale = useLocale();
   const isEUR = currency === 'EUR';
   const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
   const isCpu = String(product?.type ?? '').toUpperCase() === 'CPU';
@@ -93,7 +96,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
   };
 
   const formatPrice = (val: number) => {
-    return `${!isEUR ? symbol : ''}${Number(val).toLocaleString('es-ES')}${isEUR ? symbol : ''}`;
+    return `${!isEUR ? symbol : ''}${Number(val).toLocaleString(locale)}${isEUR ? symbol : ''}`;
   };
 
   return (
@@ -103,11 +106,11 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
       <div className="relative mb-8">
         <div className="flex min-w-0 flex-wrap items-center gap-6 pr-28">
           <h3 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400 shrink-0">
-            Notas
+             {t('scores')}
           </h3>
           
           <div className="hidden sm:flex items-center gap-2 whitespace-nowrap bg-zinc-900/30 px-3 py-1 rounded-full border border-zinc-900/50">
-            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-zinc-600">Precio Evaluado:</span>
+             <span className="text-[11px] font-black uppercase tracking-[0.1em] text-zinc-600">{t('evaluatedPrice')}</span>
             <span className="text-xs font-display font-black text-zinc-400">
                {isMounted ? formatPrice(evaluatedPrice) : '---'}
             </span>
@@ -124,20 +127,20 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-all active:scale-95"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Ver Radar
+               {t('viewRadar')}
             </button>
           )}
 
           <div className="group relative">
             <button
               type="button"
-              aria-label="Información sobre los criterios de evaluación"
+               aria-label={t('evaluationCriteriaInfoLabel')}
               className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
             >
               <Info size={11} strokeWidth={3} />
             </button>
             <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">Criterios de Evaluación</div>
+               <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">{t('evaluationCriteria')}</div>
               <div className="mb-3 space-y-1 text-[12px]">
                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span><span className="font-semibold text-blue-300">Azul:</span> Excelente</span></div>
@@ -145,8 +148,8 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span><span className="font-semibold text-yellow-300">Amarillo:</span> Aceptable</span></div>
                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span><span className="font-semibold text-red-300">Rojo:</span> Malo</span></div>
               </div>
-              <p>La nota es orientativa y no refleja de forma absoluta si un componente es inútil en un aspecto concreto.</p>
-              <p className="mt-2">Se calcula mediante fórmulas. Contrasta siempre la información; la decisión final queda a tu criterio.</p>
+               <p>{t('evaluationCriteriaDescription')}</p>
+               <p className="mt-2">{t('evaluationCriteriaDisclaimer')}</p>
             </div>
           </div>
         </div>
@@ -193,7 +196,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
       {/* FOOTER */}
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
         <p className="text-[10px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
-          * Todas las evaluaciones se basan en el rendimiento relativo frente a la competencia.
+           {t('evaluationsNote')}
         </p>
       </div>
     </div>

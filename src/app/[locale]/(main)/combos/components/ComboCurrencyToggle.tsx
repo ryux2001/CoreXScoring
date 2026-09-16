@@ -5,12 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import { useRouter, usePathname } from '@/i18n/navigation';
 import { ArrowRightLeft } from 'lucide-react';
 import { setCurrencyPreference } from '@/lib/currency';
+import { useTranslations } from 'next-intl';
 
 interface ComboCurrencyToggleProps {
   currentCurrency: string;
 }
 
 export default function ComboCurrencyToggle({ currentCurrency }: ComboCurrencyToggleProps) {
+  const t = useTranslations('common');
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -34,7 +36,7 @@ export default function ComboCurrencyToggle({ currentCurrency }: ComboCurrencyTo
     >
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 transition-colors group-hover:text-zinc-400">
-          Moneda activa:
+          {t('activeCurrency')}
         </span>
         <span className="text-xs font-black text-white">
           {currentCurrency}
