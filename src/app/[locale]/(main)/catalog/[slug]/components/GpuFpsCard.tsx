@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Gamepad2, Info, Sliders } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface GpuFpsCardProps {
   product: {
@@ -134,6 +135,7 @@ function getFpsStyles(fps: number | null) {
 }
 
 export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
+  const t = useTranslations("catalog");
   const gpuId = String(product.id ?? "");
   const availableGames = useMemo(
     () => games.filter((game) => hasFpsData(game, gpuId)),
@@ -169,17 +171,17 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
       <div className="group absolute right-6 top-6 z-10 lg:right-5 lg:top-5">
         <button
           type="button"
-          aria-label="Información sobre los FPS mostrados"
+          aria-label={t("fps.infoLabel")}
           className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
         >
           <Info size={11} strokeWidth={3} />
         </button>
         <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
           <div className="mb-2 font-bold uppercase tracking-widest text-[12px] text-white">
-            FPS aproximados
+             {t("fps.approximate")}
           </div>
           <p>
-            Estos valores son aproximados y pueden variar según los controladores, la configuración del sistema y las condiciones reales de uso.
+             {t("fps.description")}
           </p>
         </div>
       </div>
@@ -188,10 +190,10 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
         <div className="flex flex-wrap items-center justify-between gap-4 lg:flex-col lg:items-start lg:justify-start">
           <div className="pr-8 lg:pr-0">
             <h2 className="text-[14px] font-extrabold uppercase tracking-[0.16em] text-zinc-100">
-              FPS en juegos
+               {t("fps.games")}
             </h2>
             <p className="mt-1 text-[10px] font-medium text-zinc-400">
-              Valores directos de la base de datos
+               {t("fps.directDatabaseValues")}
             </p>
           </div>
 
@@ -199,12 +201,12 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <label className="flex min-w-0 items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
                 <Gamepad2 size={12} className="shrink-0 text-zinc-400" />
-                <span className="sr-only">Juego</span>
+                 <span className="sr-only">{t("fps.game")}</span>
                 <select
                   value={selectedGameId}
                   onChange={(event) => setSelectedGameId(event.target.value)}
                   className="min-h-9 max-w-[10rem] min-w-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold normal-case tracking-normal text-zinc-200 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50"
-                  aria-label="Seleccionar juego"
+                   aria-label={t("fps.selectGame")}
                 >
                   {availableGames.map((game) => (
                     <option key={game.id} value={game.id} className="bg-zinc-950 text-zinc-200">
@@ -217,12 +219,12 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
               {availablePresets.length > 0 && (
                 <label className="flex min-w-0 items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
                   <Sliders size={12} className="shrink-0 text-zinc-400" />
-                  <span className="sr-only">Calidad gráfica</span>
+                   <span className="sr-only">{t("fps.graphicsQuality")}</span>
                   <select
                     value={selectedQuality}
                     onChange={(event) => setSelectedQuality(event.target.value)}
                     className="min-h-9 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold capitalize text-zinc-200 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50"
-                    aria-label="Seleccionar calidad gráfica"
+                     aria-label={t("fps.selectGraphicsQuality")}
                   >
                     {availablePresets.map((preset) => (
                       <option key={preset} value={preset} className="bg-zinc-950 text-zinc-200">
@@ -239,7 +241,7 @@ export default function GpuFpsCard({ product, games }: GpuFpsCardProps) {
       </div>
 
       {availableGames.length === 0 ? (
-        <p className="py-4 text-sm font-medium text-zinc-500">No disponible</p>
+         <p className="py-4 text-sm font-medium text-zinc-500">{t("fps.unavailable")}</p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {fpsMetrics.map((metric) => {

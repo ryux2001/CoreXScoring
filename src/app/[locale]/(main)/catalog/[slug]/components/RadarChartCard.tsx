@@ -19,6 +19,8 @@ import {
 } from '@/lib/scoring/components/calculations/cpu/profiles';
 import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 import { getProductPrice } from '@/lib/catalog/product-price';
+import { getCatalogScoreLabelKey } from '@/lib/catalog/presentation';
+import { useTranslations } from 'next-intl';
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
 
@@ -90,7 +92,7 @@ const getColorStyles = (score: number) => {
 
 // 3. COMPONENTE DE TICK INTERACTIVO
 const InteractiveTick = (props: any) => {
-  const { payload, x, y, cx, cy, notesData, setActiveTooltip } = props;
+  const { payload, x, y, cx, cy, notesData, setActiveTooltip, translateCategory } = props;
   const [isHovered, setIsHovered] = useState(false);
 
   const Icon = getIconForCategory(payload.value);
@@ -103,7 +105,7 @@ const InteractiveTick = (props: any) => {
 
   const handleMouseEnter = () => {
     setIsHovered(true);
-    setActiveTooltip({ name: payload.value, score, x, y: y + yOffsetIcon, cx, cy });
+    setActiveTooltip({ name: translateCategory(payload.value), score, x, y: y + yOffsetIcon, cx, cy });
   };
 
   const handleMouseLeave = () => {
@@ -130,6 +132,7 @@ const InteractiveTick = (props: any) => {
 };
 
 export default function RadarChartCard({ product, currency = 'USD', onSwitchView }: RadarChartProps) {
+  const t = useTranslations('catalog');
   const isEUR = currency === 'EUR';
   const isGpu = String(product?.type ?? '').toUpperCase() === 'GPU';
   const isCpu = String(product?.type ?? '').toUpperCase() === 'CPU';
@@ -184,7 +187,7 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
       {/* HEADER MODIFICADO */}
       <div className="relative mb-4 w-full">
         <h3 className="pr-28 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400 shrink-0">
-          Balance
+           {t('balance')}
         </h3>
         
         {/* GRUPO DE ACCIONES DEL HEADER (INFO + TOGGLE MÓVIL) */}
@@ -196,21 +199,21 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-all active:scale-95"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              Ver Notas
+              {t('viewScores')}
             </button>
           )}
 
           <div className="group relative">
             <button
               type="button"
-              aria-label="Información sobre el mapa de rendimiento"
+              aria-label={t('performanceMapInfoLabel')}
               className="relative z-10 flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
             >
               <Info size={11} strokeWidth={3} />
             </button>
           <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">Mapa de Rendimiento</div>
-              <p>El gráfico ilustra el equilibrio en distintas áreas. Pasa el cursor por los iconos para ver los detalles.</p>
+               <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">{t('performanceMap')}</div>
+               <p>{t('performanceMapDescription')}</p>
             </div>
           </div>
         </div>
@@ -253,9 +256,9 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
               margin={{ top: 25, right: 25, bottom: 25, left: 25 }} 
             >
               <PolarGrid stroke="#27272a" />
-              <PolarAngleAxis 
-                dataKey="subject" 
-                tick={<InteractiveTick notesData={notesData} setActiveTooltip={setActiveTooltip} />} 
+                 <PolarAngleAxis
+                 dataKey="subject"
+                 tick={<InteractiveTick notesData={notesData} setActiveTooltip={setActiveTooltip} translateCategory={(category: string) => t(getCatalogScoreLabelKey(category))} />}
               />
               <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
               <Radar
@@ -272,7 +275,7 @@ export default function RadarChartCard({ product, currency = 'USD', onSwitchView
           </ResponsiveContainer>
         ) : (
           <div className="w-full h-full min-h-[300px] flex items-center justify-center text-zinc-800 text-[10px] font-black uppercase tracking-widest">
-            Cargando Gráfico...
+             {t('loadingChart')}
           </div>
         )}
       </div>

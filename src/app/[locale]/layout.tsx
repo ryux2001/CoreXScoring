@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { connection } from "next/server";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, getTranslations } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Courier_Prime, Geist, Geist_Mono, Rajdhani } from "next/font/google";
 import type { ReactNode } from "react";
@@ -58,8 +58,9 @@ export default async function LocaleLayout({
     notFound();
   }
 
+  setRequestLocale(locale);
   await connection();
-  const messages = await getMessages();
+  const messages = await getMessages({ locale });
 
   return (
     <html

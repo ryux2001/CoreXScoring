@@ -49,8 +49,10 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
     <div className="font-technical mb-10 w-full space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <button 
+          <button
+            type="button"
             onClick={() => setIsModalOpen(true)}
+            aria-label={t('openFilters')}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-white hover:border-white/20 transition-all cursor-pointer active:scale-95 shadow-lg"
           >
             <Settings2Icon size={18} strokeWidth={2.5} />
@@ -61,8 +63,10 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
           </span>
         </div>
 
-        <button 
+        <button
+          type="button"
           onClick={toggleCurrency}
+          aria-label={t('changeCurrency')}
           className="font-display group flex items-center gap-3 rounded-full border border-zinc-800 bg-zinc-950 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:border-white/40 active:scale-95 cursor-pointer"
         >
           {currency === 'USD' ? '$ USD' : '€ EUR'}
@@ -78,9 +82,11 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
       {(activeBrands.length > 0 || activeType || hasPrice) && (
         <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
           {activeBrands.map(brand => (
-            <button 
-              key={brand} 
-              onClick={() => removeFilter("brand", brand)} 
+             <button
+               type="button"
+               key={brand}
+               onClick={() => removeFilter("brand", brand)}
+               aria-label={t('removeBrandFilter', { brand })}
               className="font-display group flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase transition-colors hover:border-zinc-600 cursor-pointer"
             >
               {brand} <X size={12} className="text-zinc-600 group-hover:text-white" />
@@ -88,8 +94,10 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
           ))}
           
           {activeType && (
-            <button 
-              onClick={() => removeFilter("type")} 
+            <button
+              type="button"
+              onClick={() => removeFilter("type")}
+              aria-label={t('removeTypeFilter', { type: activeType })}
               className="font-display group flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase transition-colors hover:border-zinc-600 cursor-pointer"
             >
               {activeType} <X size={12} className="text-zinc-600 group-hover:text-white" />
@@ -97,8 +105,10 @@ export default function FilterBar({ count, availableBrands, availableTypes, curr
           )}
           
           {hasPrice && (
-            <button 
-              onClick={() => {removeFilter("minPrice"); removeFilter("maxPrice")}} 
+            <button
+              type="button"
+              onClick={() => {removeFilter("minPrice"); removeFilter("maxPrice")}}
+              aria-label={t('removePriceFilter')}
               className="font-display group flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase transition-colors hover:border-zinc-600 cursor-pointer"
             >
               {t('price')} <X size={12} className="text-zinc-600 group-hover:text-white" />

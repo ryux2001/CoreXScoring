@@ -43,7 +43,7 @@ export default function BenchmarksCard({ product }: BenchmarksCardProps) {
             <div key={metric.id} className="flex flex-col gap-2 w-full group">
               <div className="flex justify-between items-baseline">
                 <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                  {metric.label}
+                  {t(metric.labelKey)}
                 </span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-[16px] font-bold text-white tracking-tighter">

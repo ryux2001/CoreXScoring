@@ -12,6 +12,7 @@ import {
 } from '@/lib/scoring/components/calculations/cpu/profiles';
 import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 import { getProductPrice } from '@/lib/catalog/product-price';
+import { getCatalogScoreLabelKey } from '@/lib/catalog/presentation';
 import { useLocale, useTranslations } from 'next-intl';
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
@@ -142,11 +143,11 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
             <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">{t('evaluationCriteria')}</div>
               <div className="mb-3 space-y-1 text-[12px]">
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span><span className="font-semibold text-blue-300">Azul:</span> Excelente</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span><span className="font-semibold text-emerald-300">Verde:</span> Bueno</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span><span className="font-semibold text-yellow-300">Amarillo:</span> Aceptable</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span><span className="font-semibold text-red-300">Rojo:</span> Malo</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span>{t('colorCriteria.purple')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span>{t('colorCriteria.blue')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span>{t('colorCriteria.green')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span>{t('colorCriteria.yellow')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span>{t('colorCriteria.red')}</span></div>
               </div>
                <p>{t('evaluationCriteriaDescription')}</p>
                <p className="mt-2">{t('evaluationCriteriaDisclaimer')}</p>
@@ -170,7 +171,7 @@ export default function NotesCard({ product, currency = 'USD', onSwitchView }: N
               {/* Título */}
               <div className="flex h-6 items-center justify-center text-center">
                 <p className={`text-[8px] font-black uppercase tracking-widest leading-tight ${styles.label}`}>
-                  {cat}
+                   {t(getCatalogScoreLabelKey(cat))}
                 </p>
               </div>
 

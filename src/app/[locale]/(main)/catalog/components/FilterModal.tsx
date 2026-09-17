@@ -92,12 +92,17 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-hidden px-4 pt-4 sm:pt-32">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl touch-pan-y animate-in fade-in zoom-in-95 duration-200 sm:max-h-none sm:overflow-visible sm:p-8">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="catalog-filters-title"
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl touch-pan-y animate-in fade-in zoom-in-95 duration-200 sm:max-h-none sm:overflow-visible sm:p-8"
+      >
         <div className="flex items-center justify-between mb-8">
-          <h2 className="font-display text-xl font-bold uppercase tracking-tight text-white">{t('filters')}</h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white cursor-pointer"><X size={20} /></button>
+          <h2 id="catalog-filters-title" className="font-display text-xl font-bold uppercase tracking-tight text-white">{t('filters')}</h2>
+          <button type="button" onClick={onClose} aria-label={t('closeFilters')} className="text-zinc-500 hover:text-white cursor-pointer"><X size={20} /></button>
         </div>
 
         <div className="space-y-10">
@@ -147,17 +152,21 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
             <span className="font-display mb-4 block text-xs font-bold uppercase tracking-wider text-zinc-500">
               {t('priceRange', { symbol: currency === 'EUR' ? '€' : '$' })}
             </span>
-            <div className="flex items-center gap-4">
-              <input 
-                type="number" 
+             <div className="flex items-center gap-4">
+               <label htmlFor="catalog-min-price" className="sr-only">{t('minPrice')}</label>
+               <input
+                 id="catalog-min-price"
+                 type="number"
                 placeholder={t('min')}
                 value={priceRange.min}
                 onChange={handleMinChange}
                 className="font-technical w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <div className="h-px w-8 bg-zinc-800" />
-              <input 
-                type="number" 
+               <label htmlFor="catalog-max-price" className="sr-only">{t('maxPrice')}</label>
+               <input
+                 id="catalog-max-price"
+                 type="number"
                 placeholder={t('max')}
                 value={priceRange.max}
                 onChange={handleMaxChange}
@@ -168,7 +177,8 @@ export default function FilterModal({ isOpen, onClose, availableBrands, availabl
           </div>
         </div>
 
-         <button 
+          <button
+             type="button"
             onClick={applyFilters}
             className="font-display mt-12 w-full rounded-2xl bg-white py-4 text-sm font-bold uppercase tracking-widest text-black transition-all hover:bg-zinc-200 cursor-pointer"
           >

@@ -126,7 +126,7 @@ export const Card = ({
     switch (type.toLowerCase()) {
       case "cpu":
         return [
-          { label: t('socket'), value: compatibility?.socket || "N/A" },
+           { label: t('socket'), value: compatibility?.socket || t('notAvailableShort') },
           {
             label: t("coresThreads"),
             value: `${specs?.cores || 0}/${specs?.threads || 0}`,
@@ -159,7 +159,7 @@ export const Card = ({
         ];
       case "motherboard":
         return [
-          { label: t('socket'), value: compatibility?.socket?.[0] || "N/A" },
+           { label: t('socket'), value: compatibility?.socket?.[0] || t('notAvailableShort') },
           {
             label: t('maxRam'),
             value: compatibility?.ram_support?.[0] || "DDR5",
@@ -169,7 +169,7 @@ export const Card = ({
       case "psu":
         return [
           { label: t('wattage'), value: `${specs?.wattage || 0}W` },
-          { label: t('efficiency'), value: specs?.efficiency || "N/A" },
+           { label: t('efficiency'), value: specs?.efficiency || t('notAvailableShort') },
           { label: t('release'), value: date },
         ];
       default:

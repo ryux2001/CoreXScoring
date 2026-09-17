@@ -14,6 +14,11 @@ import {
 } from "@/lib/scoring/components/calculations/cpu/profiles";
 import { useCatalogPriceEvaluationStore } from "@/store/useCatalogPriceEvaluationStore";
 import { resolveProductPrice } from "@/lib/catalog/product-price";
+import {
+  getCatalogProfileDescriptionKey,
+  getCatalogProfileLabelKey,
+} from "@/lib/catalog/presentation";
+import { useTranslations } from "next-intl";
 
 type ValueProfile = GpuValueProfile | CpuValueProfile;
 type PricePreset = "current" | "msrp" | "high" | "low";
@@ -48,6 +53,7 @@ export default function PriceCustomCard({
   product,
   currency = "USD",
 }: PriceCustomProps) {
+  const t = useTranslations("catalog");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
@@ -164,19 +170,18 @@ export default function PriceCustomCard({
         <div>
           <div className="relative mb-2 pr-10">
             <h3 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-              Evaluación de Precio
+              {t("priceEvaluation")}
             </h3>
             <div className="group absolute right-0 top-0">
               <button
                 type="button"
-                aria-label="Información sobre la evaluación de precio"
+                aria-label={t("priceEvaluationInfoLabel")}
                 className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
               >
                 <Info size={11} strokeWidth={3} />
               </button>
               <div className="invisible absolute right-0 top-9 z-40 w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-                Ajusta el precio para recalcular automáticamente la relación
-                Calidad/Precio.
+                {t("priceEvaluationDescription")}
               </div>
             </div>
           </div>
@@ -205,19 +210,19 @@ export default function PriceCustomCard({
 
         <div className="pt-3 border-t border-zinc-900/50">
           <p className="text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
-            * Evalúa la{" "}
-            <span className="text-zinc-400 font-bold">Calidad/Precio</span>.
+             * {t("priceEvaluationNote")}
           </p>
         </div>
       </div>
 
       {/* --- VERSIÓN MÓVIL (Botón que dispara Modal) --- */}
       <button
+        type="button"
         onClick={() => setIsModalOpen(true)}
         className="lg:hidden flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 py-4 text-[11px] font-black uppercase tracking-[0.15em] text-white active:scale-[0.98] transition-all"
       >
         <Settings2 size={16} />
-        Personalizar Precio
+        {t("customizePrice")}
       </button>
 
       {/* --- MODAL DE PRECIO (Móvil) --- */}
@@ -233,11 +238,13 @@ export default function PriceCustomCard({
               <div className="flex items-center gap-2">
                 <Settings2 size={14} className="text-zinc-500" />
                 <h2 className="text-[10px] font-black uppercase tracking-widest text-white">
-                  Ajustar Evaluación
+                  {t("adjustEvaluation")}
                 </h2>
               </div>
               <button
+                type="button"
                 onClick={handleCloseModal}
+                aria-label={t("closeTechnicalDetails")}
                 className="rounded-full bg-zinc-900 p-2 text-zinc-400"
               >
                 <X size={18} />
@@ -266,8 +273,7 @@ export default function PriceCustomCard({
                 profileSelectId="value-profile-mobile"
               />
               <p className="mt-6 text-center text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500">
-                El cambio se verá reflejado en la <br /> tarjeta principal del
-                producto.
+                {t("priceChangeNotice")}
               </p>
             </div>
           </div>
@@ -277,7 +283,7 @@ export default function PriceCustomCard({
   );
 }
 
-const PriceForm = ({
+function PriceForm({
   selectedPreset,
   setSelectedPreset,
   customPrice,
@@ -296,15 +302,19 @@ const PriceForm = ({
   onValueProfileChange,
   profileSelectId,
   className,
-}: PriceFormProps) => (
+}: PriceFormProps) {
+  const t = useTranslations("catalog");
+
+  return (
   <div className={`space-y-4 ${className ?? ""}`}>
     {/* PRECIOS ALTERNATIVOS */}
     <div className="space-y-1.5">
-      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
-        Precios Alternativos
+       <label htmlFor={`${profileSelectId}-preset`} className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+         {t("alternativePrices")}
       </label>
       <div className="relative">
-        <select
+         <select
+           id={`${profileSelectId}-preset`}
           value={selectedPreset}
           onChange={(e) => {
             const preset = e.target.value as PricePreset;
@@ -320,13 +330,13 @@ const PriceForm = ({
           }}
           className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700"
         >
-          {hasCurrentPrice ? <option value="current">Precio actual - {format(currentPrice)}</option> : null}
-          {msrpPrice !== null ? <option value="msrp">MSRP - {format(msrpPrice)}</option> : null}
-          <option value="high">
-            Estimado Alto (+15%) - {format(currentPrice * 1.15)}
-          </option>
-          <option value="low">
-            Estimado Bajo (-10%) - {format(currentPrice * 0.9)}
+           {hasCurrentPrice ? <option value="current">{t("currentPrice")} - {format(currentPrice)}</option> : null}
+           {msrpPrice !== null ? <option value="msrp">MSRP - {format(msrpPrice)}</option> : null}
+           <option value="high">
+             {t("estimatedHigh")} - {format(currentPrice * 1.15)}
+           </option>
+           <option value="low">
+             {t("estimatedLow")} - {format(currentPrice * 0.9)}
           </option>
         </select>
         <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600">
@@ -341,22 +351,22 @@ const PriceForm = ({
           htmlFor={profileSelectId}
           className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-500"
         >
-          Perfil de valor
+           {t("valueProfile")}
         </label>
         <div className="relative">
           <select
             id={profileSelectId}
             value={valueProfile}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (isValidValueProfile(value)) onValueProfileChange(value);
-            }}
-            aria-describedby={`${profileSelectId}-description`}
-            className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 pr-9 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700 focus:ring-2 focus:ring-zinc-700/60"
+             onChange={(event) => {
+               const value = event.target.value;
+               if (isValidValueProfile(value)) onValueProfileChange(value);
+             }}
+             aria-describedby={`${profileSelectId}-description`}
+             className="w-full appearance-none rounded-xl border border-zinc-900 bg-black p-3 pr-9 text-xs font-bold text-white outline-none transition-all focus:border-zinc-700 focus:ring-2 focus:ring-zinc-700/60"
           >
             {profileOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                 {t(getCatalogProfileLabelKey(option.value))}
               </option>
             ))}
           </select>
@@ -364,16 +374,16 @@ const PriceForm = ({
             <ChevronDown size={14} />
           </div>
         </div>
-        {/* <p id={`${profileSelectId}-description`} className="px-1 text-[10px] leading-relaxed text-zinc-500">
-          Cambia qué tipo de rendimiento pesa más en Calidad/Precio.
-        </p> */}
+        <p id={`${profileSelectId}-description`} className="px-1 text-[10px] leading-relaxed text-zinc-500">
+          {t(getCatalogProfileDescriptionKey(valueProfile))}
+        </p>
       </div>
     )}
 
     {/* PRECIO PERSONALIZADO */}
     <div className="space-y-1.5">
-      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
-        Precio Personalizado
+       <label htmlFor={`${profileSelectId}-custom-price`} className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+         {t("customPrice")}
       </label>
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -382,7 +392,8 @@ const PriceForm = ({
           </span>
           <input
             type="number"
-            value={customPrice === 0 ? "" : customPrice}
+             id={`${profileSelectId}-custom-price`}
+             value={customPrice === 0 ? "" : customPrice}
             onChange={(e) => setCustomPrice(Number(e.target.value))}
             onKeyDown={(e) => {
               if (
@@ -411,13 +422,15 @@ const PriceForm = ({
             {currency}
           </div>
         </div>
-        <button
-          onClick={handleApply}
+         <button
+           type="button"
+           onClick={handleApply}
           className="px-4 rounded-xl bg-zinc-900 text-[#ffffffbe] text-[10px] font-black uppercase tracking-widest transition-all hover:bg-zinc-800 hover:cursor-pointer active:scale-95"
         >
-          APLICAR
+           {t("apply")}
         </button>
       </div>
     </div>
   </div>
-);
+  );
+}

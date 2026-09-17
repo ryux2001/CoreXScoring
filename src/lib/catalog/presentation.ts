@@ -1,0 +1,112 @@
+const SCORE_LABEL_KEYS: Record<string, string> = {
+  Potencia: "scoreLabels.potency",
+  Productividad: "scoreLabels.productivity",
+  Gaming: "scoreLabels.gaming",
+  Juegos: "scoreLabels.gaming",
+  Eficiencia: "scoreLabels.efficiency",
+  Plataforma: "scoreLabels.platform",
+  Rasterización: "scoreLabels.rasterization",
+  Velocidad: "scoreLabels.speed",
+  Tecnologías: "scoreLabels.technologies",
+  Latencia: "scoreLabels.latency",
+  Temperaturas: "scoreLabels.temperatures",
+  Durabilidad: "scoreLabels.durability",
+  "Estabilidad Eléctrica": "scoreLabels.electricalStability",
+  Estabilidad: "scoreLabels.stability",
+  Protecciones: "scoreLabels.protections",
+  Conectividad: "scoreLabels.connectivity",
+  Compatibilidad: "scoreLabels.compatibility",
+  Expansión: "scoreLabels.expansion",
+  Construcción: "scoreLabels.buildQuality",
+  "Calidad precio": "scoreLabels.value",
+  "Calidad Precio": "scoreLabels.value",
+};
+
+const PROFILE_LABEL_KEYS: Record<string, string> = {
+  balanced: "profileOptions.balanced.label",
+  gaming: "profileOptions.gaming.label",
+  productivity: "profileOptions.productivity.label",
+  creation: "profileOptions.creation.label",
+};
+
+const DETAIL_LABEL_KEYS: Record<string, string> = {
+  architecture: "detailLabels.architecture",
+  socket: "detailLabels.socket",
+  cores: "detailLabels.cores",
+  efficency_cores: "detailLabels.efficiencyCores",
+  threads: "detailLabels.threads",
+  base_frequency: "detailLabels.baseFrequency",
+  turbo_frequency: "detailLabels.turboFrequency",
+  tdp: "detailLabels.tdp",
+  power_turbo_max: "detailLabels.maxPower",
+  cache: "detailLabels.cache",
+  ram_type: "detailLabels.ramType",
+  ram_frecuency: "detailLabels.ramFrequency",
+  ram_max_support: "detailLabels.maxRamCapacity",
+  pcie: "detailLabels.pcieLanes",
+  chipsets: "detailLabels.compatibleChipsets",
+  vram_capacity: "detailLabels.vramCapacity",
+  vram_type: "detailLabels.vramType",
+  bus_width: "detailLabels.memoryBus",
+  cuda_cores_stream_processors: "detailLabels.shadersCudaCores",
+  tflops_fp32: "detailLabels.fp32Compute",
+  core_clock: "detailLabels.coreClock",
+  boost_clock: "detailLabels.boostClock",
+  pcie_generation: "detailLabels.pcieInterface",
+  power_connectors: "detailLabels.requiredPower",
+  support_display: "detailLabels.maxDisplays",
+  max_resolution: "detailLabels.maxResolution",
+  directx: "detailLabels.directxApi",
+  form_factor: "detailLabels.formFactor",
+  power_phases: "detailLabels.powerPhases",
+  vrm_phases: "detailLabels.totalVrmPhases",
+  vrm_quality_rating: "detailLabels.vrmRating",
+  pcie_slots: "detailLabels.pcieExpansionSlots",
+  m2_slots: "detailLabels.m2Slots",
+  ram_support: "detailLabels.supportedRamFrequencies",
+  ethernet: "detailLabels.lanController",
+  wifi: "detailLabels.wirelessModule",
+  audio_codec: "detailLabels.audioCodec",
+  bios_features: "detailLabels.biosFeatures",
+  capacity: "detailLabels.totalCapacity",
+  dual_channel: "detailLabels.moduleConfiguration",
+  technology: "detailLabels.technologyGeneration",
+  speed: "detailLabels.frequencySpeed",
+  latency: "detailLabels.casLatency",
+  voltage: "detailLabels.operatingVoltage",
+  profile_support: "detailLabels.supportedOverclockProfiles",
+  has_dram_cache: "detailLabels.dramCache",
+  ecc_support: "detailLabels.eccSupport",
+  overclocking_headroom: "detailLabels.overclockingHeadroom",
+  modular_type: "detailLabels.modularityType",
+  gpu_support: "detailLabels.verifiedGpuSupport",
+  protections: "detailLabels.protectionSystems",
+  ripple_mv: "detailLabels.maxRipple",
+  nand_type: "detailLabels.nandArchitecture",
+  tbw: "detailLabels.guaranteedLife",
+  energy_per_gb: "detailLabels.powerEfficiency",
+  read_speed: "detailLabels.sequentialRead",
+  write_speed: "detailLabels.sequentialWrite",
+  crystal_disk_read: "detailLabels.crystalDiskRead",
+  crystal_disk_write: "detailLabels.crystalDiskWrite",
+  max_temp_c: "detailLabels.maxTemperature",
+  wattage: "detailLabels.supplyPower",
+  efficiency: "detailLabels.energyCertification",
+};
+
+export function getCatalogScoreLabelKey(category: string): string {
+  return SCORE_LABEL_KEYS[category] ?? "scoreLabels.unknown";
+}
+
+export function getCatalogProfileLabelKey(profile: string): string {
+  return PROFILE_LABEL_KEYS[profile] ?? "profileOptions.unknown.label";
+}
+
+export function getCatalogProfileDescriptionKey(profile: string): string {
+  return getCatalogProfileLabelKey(profile).replace(/\.label$/, ".description");
+}
+
+export function getCatalogDetailLabelKey(label: string): string {
+  const normalized = label.replace(/^compatibility\./, "").replace(/^specs\./, "");
+  return DETAIL_LABEL_KEYS[normalized] ?? "detailLabels.unknown";
+}

@@ -59,10 +59,15 @@ export async function proxy(request: NextRequest) {
   }
 
   const createResponse = (previousResponse?: NextResponse) => {
+    if (previousResponse?.headers.has('location')) {
+      return addContentSecurityPolicies(previousResponse);
+    }
+
     const rewrite = previousResponse?.headers.get('x-middleware-rewrite');
+    const responseRequestHeaders = mergeMiddlewareRequestHeaders(previousResponse, requestHeaders);
     const nextResponse = rewrite
-      ? NextResponse.rewrite(new URL(rewrite, request.url), { request: { headers: requestHeaders } })
-      : NextResponse.next({ request: { headers: requestHeaders } });
+      ? NextResponse.rewrite(new URL(rewrite, request.url), { request: { headers: responseRequestHeaders } })
+      : NextResponse.next({ request: { headers: responseRequestHeaders } });
     previousResponse?.cookies.getAll().forEach((cookie) => nextResponse.cookies.set(cookie));
     return addContentSecurityPolicies(nextResponse);
   };
@@ -93,7 +98,7 @@ export async function proxy(request: NextRequest) {
   const isApiRequest = pathname.startsWith('/api/');
   const isPublicAssetRequest = isKnownPublicAsset(pathname);
   const intlResponse = !isApiRequest && !isAuthFlowRoute && !isPublicAssetRequest
-    ? createI18nResponse(handleI18nRouting(request), request, requestHeaders)
+    ? createResponse(handleI18nRouting(request))
     : null;
   let response = intlResponse ?? createResponse();
 
@@ -162,20 +167,17 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-function createI18nResponse(
-  intlResponse: NextResponse,
-  request: NextRequest,
-  requestHeaders: Headers,
-) {
-  if (intlResponse.headers.has('location')) return intlResponse;
+function mergeMiddlewareRequestHeaders(response: NextResponse | undefined, baseHeaders: Headers) {
+  const headers = new Headers(baseHeaders);
+  const requestHeaderPrefix = 'x-middleware-request-';
 
-  const rewrite = intlResponse.headers.get('x-middleware-rewrite');
-  const response = rewrite
-    ? NextResponse.rewrite(new URL(rewrite, request.url), { request: { headers: requestHeaders } })
-    : NextResponse.next({ request: { headers: requestHeaders } });
+  response?.headers.forEach((value, name) => {
+    if (name.startsWith(requestHeaderPrefix)) {
+      headers.set(name.slice(requestHeaderPrefix.length), value);
+    }
+  });
 
-  intlResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
-  return response;
+  return headers;
 }
 
 function getLocalizedUrl(pathname: string, request: NextRequest) {

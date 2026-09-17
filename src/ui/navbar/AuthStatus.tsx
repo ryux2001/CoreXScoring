@@ -6,11 +6,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { setLocaleCookie } from "@/i18n/locale-cookie";
 import { getValidLocale } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 export default function AuthStatus({ isMobile = false }: { isMobile?: boolean }) {
   const t = useTranslations("auth");
+  const currentLocale = useLocale();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
@@ -25,14 +26,12 @@ export default function AuthStatus({ isMobile = false }: { isMobile?: boolean })
     if (!user || user.is_anonymous || !language) return;
 
     setLocaleCookie(language);
-    const visiblePathname = window.location.pathname;
-    const hasExplicitSpanishLocale = visiblePathname === "/es" || visiblePathname.startsWith("/es/");
-    if (language === "es" && !hasExplicitSpanishLocale) {
+    if (language !== currentLocale) {
       const query = searchParams.toString();
       const hash = window.location.hash;
       router.replace(`${pathname}${query ? `?${query}` : ""}${hash}`, { locale: language, scroll: false });
     }
-  }, [pathname, router, searchParams, user]);
+  }, [currentLocale, pathname, router, searchParams, user]);
 
   useEffect(() => {
     let isMounted = true;

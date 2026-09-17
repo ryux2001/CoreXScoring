@@ -6,6 +6,7 @@ import { formatReleaseDate } from '@/lib/formatReleaseDate';
 import { getProductImage } from '@/lib/catalog/product-images';
 import { useCatalogPriceEvaluationStore } from '@/store/useCatalogPriceEvaluationStore';
 import { resolveProductPrice } from '@/lib/catalog/product-price';
+import { getCatalogDetailLabelKey } from '@/lib/catalog/presentation';
 import { useLocale, useTranslations } from 'next-intl';
 
 interface MainInfoProps {
@@ -80,14 +81,14 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
         if ((key === 'processing_units' || key === 'cache') && typeof value === 'object' && value !== null) {
           Object.entries(value).forEach(([subKey, subValue]) => {
             const label = key === 'cache'
-              ? `Caché ${subKey.toUpperCase()}`
-              : subKey.replace(/_/g, ' ');
+              ? t('detailLabels.cacheLevel', { level: subKey.toUpperCase() })
+              : t(getCatalogDetailLabelKey(subKey));
             const formattedValue = key === 'cache' ? formatCacheValue(subValue) : String(subValue);
 
             details.push({ label, value: formattedValue });
           });
         } else {
-          details.push({ label: key.replace(/_/g, ' '), value: String(value) });
+          details.push({ label: t(getCatalogDetailLabelKey(key)), value: String(value) });
         }
       });
     }
@@ -117,7 +118,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
           <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3">
             <div className="rounded-lg border border-zinc-900 bg-black p-2 lg:p-4 lg:rounded-xl">
               <span className="text-[10px] font-display font-black uppercase text-zinc-600 block tracking-widest lg:mb-1">
-                {resolvedPrice.source === 'current' ? 'Precio' : 'MSRP'}
+                {resolvedPrice.source === 'current' ? t('price') : 'MSRP'}
               </span>
               <div className="text-sm font-display font-black text-white lg:text-xl">
                  {!isEUR && symbol}{Number(initialPrice).toLocaleString(locale)}{isEUR && symbol}
@@ -126,7 +127,7 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
             
             {/* PRECIO EVALUADO DINÁMICO */}
             <div className="rounded-lg border border-zinc-800 border-dashed bg-zinc-900/10 p-2 lg:p-4 lg:rounded-xl">
-              <span className="text-[10px] font-display font-black uppercase text-zinc-400 block mb-1 tracking-widest">Evaluado</span>
+               <span className="text-[10px] font-display font-black uppercase text-zinc-400 block mb-1 tracking-widest">{t('evaluated')}</span>
               <div className="text-sm font-display font-black text-white lg:text-xl">
                  {!isEUR && symbol}{Number(evaluatedPrice).toLocaleString(locale)}{isEUR && symbol}
               </div>
@@ -167,7 +168,14 @@ export default function MainInfoCard({ product, currency = 'USD' }: MainInfoProp
           <div className={`w-full max-h-[80vh] flex flex-col overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl ${isClosing ? 'animate-out fade-out zoom-out-95 duration-300' : 'animate-in fade-in zoom-in-95 duration-300'}`}>
             <div className="flex-none flex items-center justify-between border-b border-zinc-900 bg-zinc-950 p-6">
                <h2 className="text-xs font-black uppercase tracking-widest text-white">{t('technicalDetails')}</h2>
-              <button onClick={handleCloseModal} className="rounded-full bg-zinc-900 p-2 text-zinc-400"><X size={20} /></button>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                aria-label={t('closeTechnicalDetails')}
+                className="rounded-full bg-zinc-900 p-2 text-zinc-400"
+              >
+                <X size={20} />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 pb-10">
               <div className="space-y-4">

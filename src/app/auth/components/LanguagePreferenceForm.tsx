@@ -2,14 +2,19 @@
 
 import { AlertCircle, CheckCircle2, Languages, Loader2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { updateLanguagePreference } from "@/app/auth/actions";
 import { setLocaleCookie } from "@/i18n/locale-cookie";
 import { isLocale, type Locale } from "@/i18n/routing";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function LanguagePreferenceForm({ initialLanguage }: { initialLanguage?: string }) {
   const currentLocale = useLocale() as Locale;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const t = useTranslations("common");
@@ -46,6 +51,13 @@ export default function LanguagePreferenceForm({ initialLanguage }: { initialLan
     setLocaleCookie(result.language);
     setSaved(true);
     setLoading(false);
+
+    const query = searchParams.toString();
+    const hash = window.location.hash;
+    router.replace(`${pathname}${query ? `?${query}` : ""}${hash}`, {
+      locale: result.language,
+      scroll: false,
+    });
   };
 
   const errorMessage = errorCode === "invalid_language"

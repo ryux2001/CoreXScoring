@@ -15,6 +15,7 @@ export interface ProductForMetrics {
 
 export interface ProductMetric {
   id: string;
+  labelKey: string;
   label: string;
   unit: string;
   value: number;
@@ -83,6 +84,7 @@ function getCpuMetrics(benchmarks: JsonRecord): ProductMetric[] {
   return [
     {
       id: 'cinebench-multi',
+      labelKey: 'benchmarkLabels.cpuCinebenchMulti',
       label: 'Cinebench R23 (Multi-Core)',
       unit: 'pts',
       value: getNumber(benchmarks, 'cinebench_multi'),
@@ -90,6 +92,7 @@ function getCpuMetrics(benchmarks: JsonRecord): ProductMetric[] {
     },
     {
       id: 'geekbench-single',
+      labelKey: 'benchmarkLabels.cpuGeekbenchSingle',
       label: 'Geekbench (Single-Core)',
       unit: 'pts',
       value: getNumber(benchmarks, 'geekbench_single'),
@@ -97,6 +100,7 @@ function getCpuMetrics(benchmarks: JsonRecord): ProductMetric[] {
     },
     {
       id: 'passmark',
+      labelKey: 'benchmarkLabels.cpuPassmark',
       label: 'PassMark CPU Mark',
       unit: 'pts',
       value: getNumber(benchmarks, 'passmark_score'),
@@ -109,6 +113,7 @@ function getGpuMetrics(specs: JsonRecord, benchmarks: JsonRecord): ProductMetric
   return [
     {
       id: 'time-spy',
+      labelKey: 'benchmarkLabels.gpuTimeSpy',
       label: '3DMark Time Spy Score',
       unit: 'pts',
       value: getNumber(benchmarks, '3dmark_time_spy'),
@@ -116,6 +121,7 @@ function getGpuMetrics(specs: JsonRecord, benchmarks: JsonRecord): ProductMetric
     },
     {
       id: 'port-royal',
+      labelKey: 'benchmarkLabels.gpuPortRoyal',
       label: '3DMark Port Royal (Ray Tracing)',
       unit: 'pts',
       value: getNumber(benchmarks, '3dmark_port_royal'),
@@ -123,6 +129,7 @@ function getGpuMetrics(specs: JsonRecord, benchmarks: JsonRecord): ProductMetric
     },
     {
       id: 'vram-capacity',
+      labelKey: 'benchmarkLabels.gpuVramCapacity',
       label: 'Capacidad de VRAM',
       unit: 'GB',
       value: getNumber(specs, 'vram_capacity'),
@@ -140,6 +147,7 @@ function getRamMetrics(specs: JsonRecord): ProductMetric[] {
   return [
     {
       id: 'ram-frequency',
+      labelKey: 'benchmarkLabels.ramFrequency',
       label: 'Frecuencia del Módulo',
       unit: 'MHz',
       value: speed,
@@ -147,6 +155,7 @@ function getRamMetrics(specs: JsonRecord): ProductMetric[] {
     },
     {
       id: 'ram-bandwidth',
+      labelKey: 'benchmarkLabels.ramBandwidth',
       label: 'Ancho de Banda Teórico',
       unit: 'MB/s',
       value: theoreticalBandwidth,
@@ -154,6 +163,7 @@ function getRamMetrics(specs: JsonRecord): ProductMetric[] {
     },
     {
       id: 'ram-latency',
+      labelKey: 'benchmarkLabels.ramLatency',
       label: 'Latencia Cruda Real',
       unit: 'ns',
       value: rawLatency,
@@ -168,6 +178,7 @@ function getStorageMetrics(specs: JsonRecord): ProductMetric[] {
   return [
     {
       id: 'storage-read',
+      labelKey: 'benchmarkLabels.storageRead',
       label: 'Velocidad de Lectura (Máx)',
       unit: 'MB/s',
       value: getNumber(specs, 'read_speed'),
@@ -175,6 +186,7 @@ function getStorageMetrics(specs: JsonRecord): ProductMetric[] {
     },
     {
       id: 'storage-write',
+      labelKey: 'benchmarkLabels.storageWrite',
       label: 'Velocidad de Escritura (Máx)',
       unit: 'MB/s',
       value: getNumber(specs, 'write_speed'),
@@ -187,6 +199,7 @@ function getMotherboardMetrics(specs: JsonRecord): ProductMetric[] {
   return [
     {
       id: 'motherboard-vrm-phases',
+      labelKey: 'benchmarkLabels.motherboardVrmPhases',
       label: 'Fases de Alimentación VRM',
       unit: 'Fases',
       value: getMotherboardPhases(specs),
@@ -194,6 +207,7 @@ function getMotherboardMetrics(specs: JsonRecord): ProductMetric[] {
     },
     {
       id: 'motherboard-vrm-quality',
+      labelKey: 'benchmarkLabels.motherboardVrmQuality',
       label: 'Calidad de Construcción',
       unit: '/10',
       value: getNumber(specs, 'vrm_quality_rating'),
@@ -206,6 +220,7 @@ function getPsuMetrics(specs: JsonRecord): ProductMetric[] {
   return [
     {
       id: 'psu-ripple',
+      labelKey: 'benchmarkLabels.psuRipple',
       label: 'Rizo Eléctrico (Línea 12V)',
       unit: 'mV',
       value: getNumber(specs, 'ripple_mv'),
@@ -215,6 +230,7 @@ function getPsuMetrics(specs: JsonRecord): ProductMetric[] {
     },
     {
       id: 'psu-wattage',
+      labelKey: 'benchmarkLabels.psuWattage',
       label: 'Carga Máxima Soportada',
       unit: 'W',
       value: getNumber(specs, 'wattage'),
