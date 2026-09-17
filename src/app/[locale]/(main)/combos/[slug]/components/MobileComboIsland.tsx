@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import ComboMainCard from './ComboMainCard';
 
 interface MobileComboIslandProps {
@@ -17,6 +18,7 @@ export default function MobileComboIsland({
   combo,
   currency = 'USD',
 }: MobileComboIslandProps) {
+  const t = useTranslations('combos');
   const [isOpen, setIsOpen] = useState(false);
   const generatedId = useId();
   const panelId = `mobile-combo-details-${generatedId.replace(/:/g, '')}`;
@@ -33,7 +35,7 @@ export default function MobileComboIsland({
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} información de ${combo.title}`}
+           aria-label={isOpen ? t('mobileHide', { name: combo.title }) : t('mobileShow', { name: combo.title })}
           className="flex min-h-16 w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors active:bg-zinc-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-inset"
         >
           <span className="flex min-w-0 items-center">
@@ -61,7 +63,7 @@ export default function MobileComboIsland({
       <div
         id={panelId}
         role="region"
-        aria-label={`Componentes de ${combo.title}`}
+         aria-label={t('mobileComponents', { name: combo.title })}
         aria-hidden={!isOpen}
         inert={!isOpen}
         className={`grid transition-[grid-template-rows] duration-300 ease-out ${

@@ -49,6 +49,20 @@ describe("translation catalog parity", () => {
     assertMatchingPlaceholders(en, es);
   });
 
+  it("keeps combo presentation labels available in both locales", () => {
+    for (const catalog of [en, es]) {
+      expect(catalog.combos.countLabel).toBeTruthy();
+      expect(catalog.combos.searchPlaceholder).toBeTruthy();
+      expect(catalog.combos.componentRoles.cpu).toBeTruthy();
+      expect(catalog.combos.componentRoles.gpu).toBeTruthy();
+      expect(catalog.combos.componentRoles.ram).toBeTruthy();
+      expect(catalog.combos.fpsTitle).toBeTruthy();
+      expect(catalog.combos.metricsTitle).toBeTruthy();
+      expect(catalog.catalog.scoreLabels.bottleneck).toBeTruthy();
+      expect(catalog.catalog.fps.presets.medium).toBeTruthy();
+    }
+  });
+
   it("keeps deletion confirmation aligned with the account protocol", () => {
     expect(en.account.typeConfirmation).toContain("ELIMINAR");
     expect(es.account.typeConfirmation).toContain("ELIMINAR");

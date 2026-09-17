@@ -3,19 +3,21 @@
 import React from 'react';
 import { Info } from 'lucide-react';
 import { getComboMetrics } from '@/lib/metricsCombos';
+import { useTranslations } from 'next-intl';
 
 interface MetricsProps {
-  combo?: any;
+  combo?: object;
 }
 
 export default function Metrics({ combo }: MetricsProps) {
+  const t = useTranslations('combos');
   // 🚀 Obtención dinámica de las métricas reales del combo
   const metrics = getComboMetrics(combo);
 
   const metricsData = [
-    { label: 'Potencia Lógica', value: metrics.logicalPower },
-    { label: 'Potencia Gráfica', value: metrics.graphicsPower },
-    { label: 'Balance', value: metrics.balance },
+    { label: t('metricsLogicalPower'), value: metrics.logicalPower },
+    { label: t('metricsGraphicsPower'), value: metrics.graphicsPower },
+    { label: t('metricsBalance'), value: metrics.balance },
   ];
 
   return (
@@ -24,23 +26,23 @@ export default function Metrics({ combo }: MetricsProps) {
       {/* HEADER */}
       <div className="relative mb-8">
         <h3 className="pr-10 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-          Métricas Clave
+          {t('metricsTitle')}
         </h3>
         
         <div className="group absolute right-0 top-0">
           <button
             type="button"
-            aria-label="Información sobre las métricas clave"
+             aria-label={t('metricsInfoLabel')}
             className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
           >
             <Info size={11} strokeWidth={3} />
           </button>
           <div className="invisible absolute right-0 top-9 z-40 w-72 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">
-              Análisis de Capacidades
+              {t('metricsAnalysisTitle')}
             </div>
             <p>
-              Estimación de rendimiento relativo y equilibrio general del conjunto de piezas frente a los techos teóricos del mercado.
+              {t('metricsDescription')}
             </p>
           </div>
         </div>
@@ -85,7 +87,7 @@ export default function Metrics({ combo }: MetricsProps) {
       {/* FOOTER DISCRETO */}
       <div className="mt-8 pt-4 border-t border-zinc-900/20">
         <p className="text-[10px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
-          * Porcentajes normalizados basados en arquitectura de hilos y capacidades de renderizado.
+           {t('metricsDisclaimer')}
         </p>
       </div>
 

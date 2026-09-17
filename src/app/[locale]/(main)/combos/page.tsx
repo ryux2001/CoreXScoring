@@ -96,6 +96,8 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
           availableCategories={availableCategories}
           currency={currency}
           showCurrencyToggle={false}
+          entityLabel={t('countLabel')}
+          searchPlaceholder={t('searchPlaceholder')}
         />
 
         {filteredCombos.length === 0 ? (

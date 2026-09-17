@@ -3,6 +3,7 @@ const SCORE_LABEL_KEYS: Record<string, string> = {
   Productividad: "scoreLabels.productivity",
   Gaming: "scoreLabels.gaming",
   Juegos: "scoreLabels.gaming",
+  "Cuello Botella": "scoreLabels.bottleneck",
   Eficiencia: "scoreLabels.efficiency",
   Plataforma: "scoreLabels.platform",
   Rasterización: "scoreLabels.rasterization",

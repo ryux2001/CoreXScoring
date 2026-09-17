@@ -5,7 +5,7 @@ import RadarChartCardCombo from './RadarChartCardCombo';
 import ComboNotesCard from './ComboNotesCard';
 
 interface ComboEvaluationSectionProps {
-  combo: any;
+  combo: object;
   currency: string;
 }
 

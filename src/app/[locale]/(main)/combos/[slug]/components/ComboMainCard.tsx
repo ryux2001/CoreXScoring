@@ -1,16 +1,34 @@
+'use client';
+
 import React from 'react';
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { getComboPartPrice } from '@/lib/scoringCombos';
 import { getComponentIcon } from '@/lib/catalog/component-icons';
 import { getComponentNotes } from '@/lib/scoring';
+import { getCatalogScoreLabelKey } from '@/lib/catalog/presentation';
 
 interface ComboMainCardProps {
-  combo: any;
+  combo?: object;
   currency?: string;
   showHeader?: boolean;
   className?: string;
 }
+
+type ComboComponent = Record<string, unknown> & {
+  brand?: string;
+  name: string;
+  slug: string;
+};
+
+type ComboData = Record<string, unknown> & {
+  category?: string;
+  cpu?: ComboComponent;
+  gpu?: ComboComponent;
+  ram?: ComboComponent;
+  title?: string;
+};
 
 export default function ComboMainCard({
   combo,
@@ -18,20 +36,23 @@ export default function ComboMainCard({
   showHeader = true,
   className = '',
 }: ComboMainCardProps) {
-  const draftCurrency = combo?.priceModes ? currency : undefined;
+  const t = useTranslations('combos');
+  const tCatalog = useTranslations('catalog');
+  const comboData = (combo ?? {}) as ComboData;
+  const draftCurrency = comboData.priceModes ? currency : undefined;
 
   // Configuración de las partes con su etiqueta y clave de custom_price
   const parts = [
-    { key: 'cpu', role: 'Procesador', item: combo.cpu },
-    { key: 'gpu', role: 'Tarjeta Gráfica', item: combo.gpu },
-    { key: 'ram', role: 'Memoria RAM', item: combo.ram },
-  ].filter((p) => p.item);
+    { key: 'cpu', role: t('componentRoles.cpu'), item: comboData.cpu },
+    { key: 'gpu', role: t('componentRoles.gpu'), item: comboData.gpu },
+    { key: 'ram', role: t('componentRoles.ram'), item: comboData.ram },
+  ].filter((part): part is { key: 'cpu' | 'gpu' | 'ram'; role: string; item: ComboComponent } => Boolean(part.item));
 
   // Helper para obtener el precio de cada componente respetando custom_price o base_price
   const getPartPrice = (key: string) => {
     const isEur = currency === 'EUR';
     const price = getComboPartPrice(
-      combo,
+      comboData,
       key as 'cpu' | 'gpu' | 'ram',
       currency,
       draftCurrency,
@@ -42,9 +63,9 @@ export default function ComboMainCard({
     return isEur ? `${price}${symbol}` : `${symbol}${price}`;
   };
 
-  const getPartValueScore = (key: string, item: any) => {
+  const getPartValueScore = (key: string, item: ComboComponent) => {
     const evaluatedPrice = getComboPartPrice(
-      combo,
+      comboData,
       key as 'cpu' | 'gpu' | 'ram',
       'USD',
       draftCurrency,
@@ -69,10 +90,10 @@ export default function ComboMainCard({
       {showHeader && (
         <div className="mb-6 lg:mb-8">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-            {combo.category}
+      {comboData.category}
           </span>
           <h1 className="mt-2 text-xl font-black leading-snug tracking-tighter text-white md:text-2xl">
-            {combo.title}
+            {comboData.title}
           </h1>
         </div>
       )}
@@ -96,7 +117,7 @@ export default function ComboMainCard({
               <Link
                 href={`/catalog/${part.item.slug}?currency=${currency}`}
                 className="group flex min-w-0 flex-1 items-center justify-between gap-2 rounded-2xl border border-zinc-900/60 bg-zinc-900/20 p-3 transition-colors hover:border-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 sm:gap-3 sm:p-3.5"
-                aria-label={`Ver ${part.item.name} en el catálogo. Calidad precio: ${valueScore.toFixed(1)}`}
+                aria-label={`${part.item.name}. ${tCatalog(getCatalogScoreLabelKey('Calidad Precio'))}: ${valueScore.toFixed(1)}`}
               >
 
                   {/* Bloque Nombre + Icono */}
@@ -107,7 +128,7 @@ export default function ComboMainCard({
                       {iconSrc && (
                         <Image
                           src={iconSrc}
-                          alt={`Icono de ${part.role}`}
+                           alt={part.role}
                           width={40}
                           height={40}
                           className="h-full w-full object-contain"
@@ -137,7 +158,7 @@ export default function ComboMainCard({
                     <span
                       aria-hidden="true"
                       className={`h-2.5 w-2.5 shrink-0 rounded-full transition-transform group-hover:scale-125 motion-reduce:animate-none animate-pulse ${getValueIndicatorColor(valueScore)}`}
-                      title={`Calidad precio: ${valueScore.toFixed(1)}`}
+                       title={`${tCatalog(getCatalogScoreLabelKey('Calidad Precio'))}: ${valueScore.toFixed(1)}`}
                     />
                   </div>
               </Link>

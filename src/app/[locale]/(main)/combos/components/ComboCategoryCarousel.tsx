@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ComboCategoryCarouselProps {
   children: ReactNode;
@@ -29,6 +30,7 @@ const INITIAL_STATE: CarouselState = {
 };
 
 export default function ComboCategoryCarousel({ children }: ComboCategoryCarouselProps) {
+  const t = useTranslations('common');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [carousel, setCarousel] = useState<CarouselState>(INITIAL_STATE);
   const cards = Children.toArray(children);
@@ -94,7 +96,7 @@ export default function ComboCategoryCarousel({ children }: ComboCategoryCarouse
           onClick={() => move(-1)}
           disabled={!carousel.canGoPrevious}
           className="absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-700 bg-black text-zinc-300 shadow-xl transition-colors hover:border-zinc-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:pointer-events-none disabled:opacity-25 sm:flex"
-          aria-label="Ver combos anteriores"
+          aria-label={t('previousCarouselPage')}
         >
           <ChevronLeft size={20} strokeWidth={2.5} />
         </button>
@@ -119,14 +121,14 @@ export default function ComboCategoryCarousel({ children }: ComboCategoryCarouse
           onClick={() => move(1)}
           disabled={!carousel.canGoNext}
           className="absolute right-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-700 bg-black text-zinc-300 shadow-xl transition-colors hover:border-zinc-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:pointer-events-none disabled:opacity-25 sm:flex"
-          aria-label="Ver más combos"
+          aria-label={t('nextCarouselPage')}
         >
           <ChevronRight size={20} strokeWidth={2.5} />
         </button>
       </div>
 
       {carousel.pageCount > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-1.5" aria-label="Páginas del carrusel">
+        <div className="mt-3 flex items-center justify-center gap-1.5" aria-label={t('carouselPages')}>
           {Array.from({ length: carousel.pageCount }, (_, page) => (
             <button
               key={page}
@@ -137,7 +139,7 @@ export default function ComboCategoryCarousel({ children }: ComboCategoryCarouse
                   ? 'w-5 bg-white'
                   : 'w-2 bg-zinc-700 hover:bg-zinc-500'
               }`}
-              aria-label={`Ir a la página ${page + 1}`}
+               aria-label={t('goToCarouselPage', { page: page + 1 })}
               aria-current={page === carousel.currentPage ? 'true' : undefined}
             />
           ))}

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Info, Gamepad2, Sliders } from 'lucide-react';
 import { GameData } from '@/lib/fpsCombos/types';
 import { getAvailablePresets, calculateComboFps } from '@/lib/fpsCombos';
+import { useTranslations } from 'next-intl';
 
 interface FpsCardProps {
-  combo?: any;
+  combo?: object;
   games?: GameData[];
   cpuGamingScore?: number;
   ramGamingScore?: number;
@@ -63,6 +64,8 @@ export default function FpsCard({
   cpuGamingScore = 8.5,
   ramGamingScore = 9.0,
 }: FpsCardProps) {
+  const t = useTranslations('combos');
+  const tCatalog = useTranslations('catalog');
   // Estado del juego seleccionado
   const [selectedGameId, setSelectedGameId] = useState<string>(games[0]?.id || '');
   // Objeto del juego activo
@@ -78,25 +81,34 @@ export default function FpsCard({
   // Estado del preset seleccionado
   const [selectedQuality, setSelectedQuality] = useState<string>(availablePresets[0] || 'medio');
 
-  // Si el usuario cambia de juego y el preset actual no existe en el nuevo juego, reseteamos al primero disponible
-  useEffect(() => {
-    if (availablePresets.length > 0 && !availablePresets.includes(selectedQuality)) {
-      setSelectedQuality(availablePresets[0]);
-    }
-  }, [availablePresets, selectedQuality]);
+  const activeQuality = availablePresets.includes(selectedQuality)
+    ? selectedQuality
+    : availablePresets[0] || 'medio';
 
   // Cálculo de FPS final en tiempo real
   const fps = useMemo(() => {
     if (!activeGame) return { fhd: 0, qhd: 0, uhd: 0 };
-    return calculateComboFps(combo, activeGame, selectedQuality, {
+    return calculateComboFps(combo, activeGame, activeQuality, {
       cpuGamingScore,
       ramGamingScore,
     });
-  }, [combo, activeGame, selectedQuality, cpuGamingScore, ramGamingScore]);
+  }, [combo, activeGame, activeQuality, cpuGamingScore, ramGamingScore]);
 
   // Helper para formatear los nombres de los presets (ej. "bajo" -> "Bajo")
   const formatPresetLabel = (preset: string) => {
-    return preset.charAt(0).toUpperCase() + preset.slice(1);
+    const presetKeys: Record<string, string> = {
+      bajo: 'fps.presets.low',
+      low: 'fps.presets.low',
+      medio: 'fps.presets.medium',
+      medium: 'fps.presets.medium',
+      alto: 'fps.presets.high',
+      high: 'fps.presets.high',
+      ultra: 'fps.presets.ultra',
+    };
+    const translationKey = presetKeys[preset.toLowerCase()];
+    return translationKey
+      ? tCatalog(translationKey)
+      : preset.charAt(0).toUpperCase() + preset.slice(1);
   };
 
   const fpsMetrics = [
@@ -112,10 +124,10 @@ export default function FpsCard({
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 pr-10 lg:justify-start">
           <div className="mr-0 pr-8 lg:mr-1 lg:pr-0">
             <h2 className="text-[14px] font-extrabold uppercase tracking-[0.16em] text-zinc-100">
-              FPS estimados
+              {t('fpsTitle')}
             </h2>
             <p className="mt-1 text-[10px] font-medium text-zinc-400">
-              Rendimiento nativo por resolución
+              {t('fpsDescription')}
             </p>
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2 lg:gap-4">
@@ -123,12 +135,12 @@ export default function FpsCard({
             <div className="flex min-w-0 items-center gap-1.5 lg:gap-2">
               <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500 lg:text-[10px] lg:tracking-[0.15em]">
                 <Gamepad2 size={12} className="text-zinc-400" />
-                <span className="sr-only lg:not-sr-only">Juego:</span>
+                <span className="sr-only lg:not-sr-only">{tCatalog('fps.game')}:</span>
               </span>
               <select
                 value={selectedGameId}
                 onChange={(e) => setSelectedGameId(e.target.value)}
-                aria-label="Seleccionar juego"
+                 aria-label={tCatalog('fps.selectGame')}
                 className="min-h-9 min-w-0 max-w-[10rem] cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 lg:min-h-10 lg:max-w-none lg:px-3"
               >
                 {games.map((game) => (
@@ -143,12 +155,12 @@ export default function FpsCard({
             <div className="flex min-w-0 items-center gap-1.5 lg:gap-2">
               <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500 lg:text-[10px] lg:tracking-[0.15em]">
                 <Sliders size={12} className="text-zinc-400" />
-                <span className="sr-only lg:not-sr-only">Gráficos:</span>
+                <span className="sr-only lg:not-sr-only">{tCatalog('fps.graphicsQuality')}:</span>
               </span>
               <select
-                value={selectedQuality}
+                 value={activeQuality}
                 onChange={(e) => setSelectedQuality(e.target.value)}
-                aria-label="Seleccionar calidad gráfica"
+                 aria-label={tCatalog('fps.selectGraphicsQuality')}
                 className="min-h-9 min-w-0 cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold capitalize text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 lg:min-h-10 lg:px-3"
               >
                 {availablePresets.map((preset) => (
@@ -166,17 +178,17 @@ export default function FpsCard({
         <div className="group absolute right-0 top-0">
           <button
             type="button"
-            aria-label="Información sobre la estimación de FPS"
+             aria-label={t('fpsInfoLabel')}
             className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
           >
             <Info size={11} strokeWidth={3} />
           </button>
           <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">
-              Estimación de FPS
+              {t('fpsInfoTitle')}
             </div>
             <p>
-              Cálculo promedio considerando la GPU, el límite de la CPU y la penalización de la memoria RAM.
+              {t('fpsDescriptionDetail')}
             </p>
           </div>
         </div>
@@ -202,7 +214,7 @@ export default function FpsCard({
                 </span>
               </div>
               <span className="mt-1 text-[8px] font-bold uppercase tracking-widest text-zinc-600 lg:hidden">
-                FPS
+                 {tCatalog('fps.unit')}
               </span>
             </div>
           );
@@ -212,7 +224,7 @@ export default function FpsCard({
       {/* FOOTER */}
       <div className="mt-6 hidden border-t border-zinc-900/20 pt-4 lg:block">
         <p className="text-[9px] font-bold uppercase tracking-widest leading-tight text-zinc-500 text-center lg:text-left">
-          * Rendimiento nativo estimado sin tecnologías de reescalado (DLSS / FSR).
+           {t('fpsDisclaimer')}
         </p>
       </div>
 

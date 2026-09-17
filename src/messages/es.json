@@ -22,7 +22,11 @@
     "backToCoreXScoring": "Volver a CoreXScoring",
     "pagination": "Paginación",
     "previousPage": "Página anterior",
-    "nextPage": "Página siguiente"
+    "nextPage": "Página siguiente",
+    "previousCarouselPage": "Página anterior del carrusel",
+    "nextCarouselPage": "Página siguiente del carrusel",
+    "carouselPages": "Páginas del carrusel",
+    "goToCarouselPage": "Ir a la página {page} del carrusel"
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo.",
@@ -266,6 +270,7 @@
       "potency": "Potencia",
       "productivity": "Productividad",
       "gaming": "Gaming",
+      "bottleneck": "Cuello de botella",
       "efficiency": "Eficiencia",
       "platform": "Plataforma",
       "rasterization": "Rasterización",
@@ -308,7 +313,14 @@
       "selectGame": "Seleccionar juego",
       "graphicsQuality": "Calidad gráfica",
       "selectGraphicsQuality": "Seleccionar calidad gráfica",
-      "unavailable": "No disponible"
+      "unavailable": "No disponible",
+      "unit": "FPS",
+      "presets": {
+        "low": "Baja",
+        "medium": "Media",
+        "high": "Alta",
+        "ultra": "Ultra"
+      }
     },
     "detailLabels": {
       "architecture": "Arquitectura",
@@ -416,8 +428,43 @@
     "noCategories": "No hay categorías disponibles.",
     "clear": "Limpiar",
     "applyFilters": "Aplicar filtros",
-    "countLabel": "builds",
-    "searchPlaceholder": "Buscar builds"
+    "countLabel": "combos",
+    "searchPlaceholder": "Buscar combos",
+    "componentRoles": {
+      "cpu": "Procesador",
+      "gpu": "Tarjeta gráfica",
+      "ram": "Memoria RAM"
+    },
+    "evaluatedPrice": "Precio evaluado",
+    "notes": "Notas",
+    "viewRadar": "Ver radar",
+    "viewNotes": "Ver notas",
+    "evaluationInfoLabel": "Información sobre los criterios de evaluación",
+    "evaluationCriteria": "Criterios de evaluación",
+    "evaluationDisclaimer": "La nota es orientativa y no determina de forma absoluta si un componente es inadecuado para un uso concreto.",
+    "evaluationFormulaDisclaimer": "Se calcula mediante fórmulas. Contrasta siempre la información; la decisión final queda a tu criterio.",
+    "radar": "Balance",
+    "radarInfoLabel": "Información sobre el mapa de rendimiento",
+    "radarTitle": "Mapa de rendimiento",
+    "radarDescription": "Muestra el equilibrio de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.",
+    "loadingBalance": "Cargando balance...",
+    "metricsTitle": "Métricas clave",
+    "metricsInfoLabel": "Información sobre las métricas clave",
+    "metricsAnalysisTitle": "Análisis de capacidades",
+    "metricsDescription": "Estimación de rendimiento relativo y equilibrio general del conjunto de piezas frente a los techos teóricos del mercado.",
+    "metricsLogicalPower": "Potencia lógica",
+    "metricsGraphicsPower": "Potencia gráfica",
+    "metricsBalance": "Balance",
+    "metricsDisclaimer": "* Porcentajes normalizados basados en arquitectura de hilos y capacidades de renderizado.",
+    "fpsTitle": "FPS estimados",
+    "fpsDescription": "Rendimiento nativo por resolución",
+    "fpsInfoLabel": "Información sobre la estimación de FPS",
+    "fpsInfoTitle": "Estimación de FPS",
+    "fpsDescriptionDetail": "Cálculo promedio considerando la GPU, el límite de la CPU y la penalización de la memoria RAM.",
+    "fpsDisclaimer": "* Rendimiento nativo estimado sin tecnologías de reescalado (DLSS / FSR).",
+    "mobileShow": "Mostrar información de {name}",
+    "mobileHide": "Ocultar información de {name}",
+    "mobileComponents": "Componentes de {name}"
   },
   "builds": {
     "title": "Catálogo de builds",

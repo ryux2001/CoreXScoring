@@ -3,24 +3,28 @@
 import React from 'react';
 import { Info } from 'lucide-react';
 import { getComboNotes, getComboPartPrice } from '@/lib/scoringCombos';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { getCatalogScoreLabelKey } from '@/lib/catalog/presentation';
 
 interface ComboNotesCardProps {
-  combo?: any;
+  combo?: object;
   currency?: string;
   onSwitchView?: () => void;
 }
 
 export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }: ComboNotesCardProps) {
   const locale = useLocale();
-  const notes = getComboNotes(combo, currency);
+  const t = useTranslations('combos');
+  const tCatalog = useTranslations('catalog');
+  const comboData = (combo ?? {}) as Record<string, unknown>;
+  const notes = getComboNotes(comboData, currency);
 
   const isEUR = currency === 'EUR';
   const symbol = isEUR ? '€' : '$';
 
   // Helper para obtener el precio de un componente respetando custom_price o base_price
   const getPartPrice = (key: string) => {
-    return getComboPartPrice(combo, key as 'cpu' | 'gpu' | 'ram', currency, currency);
+    return getComboPartPrice(comboData, key as 'cpu' | 'gpu' | 'ram', currency, currency);
   };
 
   // Suma total de los componentes del combo
@@ -36,12 +40,12 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
 
   // Agrupamos las 6 notas en un único array plano
   const allNotes = [
-    { label: 'Potencia', score: notes.Potencia },
-    { label: 'Productividad', score: notes.Productividad },
-    { label: 'Gaming', score: notes.Gaming },
-    { label: 'Eficiencia', score: notes.Eficiencia },
-    { label: 'Cuello Botella', score: notes["Cuello Botella"] },
-    { label: 'Calidad Precio', score: notes["Calidad Precio"] },
+    { key: 'Potencia', score: notes.Potencia },
+    { key: 'Productividad', score: notes.Productividad },
+    { key: 'Gaming', score: notes.Gaming },
+    { key: 'Eficiencia', score: notes.Eficiencia },
+    { key: 'Cuello Botella', score: notes["Cuello Botella"] },
+    { key: 'Calidad Precio', score: notes["Calidad Precio"] },
   ];
 
   // Sistema de colores compartido con NotesCard
@@ -90,12 +94,12 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
       <div className="relative mb-8">
         <div className="flex min-w-0 flex-wrap items-center gap-6 pr-28">
           <h3 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400 shrink-0">
-            Notas
+            {t('notes')}
           </h3>
           
           {/* Badge del Precio Evaluado (Suma del combo) */}
           <div className="hidden sm:flex items-center gap-2 whitespace-nowrap bg-zinc-900/30 px-3 py-1 rounded-full border border-zinc-900/50">
-            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-zinc-600">Precio Evaluado:</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.1em] text-zinc-600">{t('evaluatedPrice')}:</span>
             <span className="text-xs font-black text-zinc-400">
                {formatPrice(totalPrice)}
             </span>
@@ -111,29 +115,29 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-all active:scale-95"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Ver Radar
+               {t('viewRadar')}
             </button>
           )}
 
           <div className="group relative">
             <button
               type="button"
-              aria-label="Información sobre los criterios de evaluación"
+              aria-label={t('evaluationInfoLabel')}
               className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
             >
               <Info size={11} strokeWidth={3} />
             </button>
             <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">Criterios de Evaluación</div>
-              <div className="mb-3 space-y-1 text-[12px]">
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span><span className="font-semibold text-blue-300">Azul:</span> Excelente</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span><span className="font-semibold text-emerald-300">Verde:</span> Bueno</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span><span className="font-semibold text-yellow-300">Amarillo:</span> Aceptable</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span><span className="font-semibold text-red-300">Rojo:</span> Malo</span></div>
-              </div>
-              <p>La nota es orientativa y no refleja de forma absoluta si un componente es inútil en un aspecto concreto.</p>
-              <p className="mt-2">Se calcula mediante fórmulas. Contrasta siempre la información; la decisión final queda a tu criterio.</p>
+               <div className="mb-2 font-bold text-white uppercase tracking-widest text-[12px]">{t('evaluationCriteria')}</div>
+               <div className="mb-3 space-y-1 text-[12px]">
+                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span>{tCatalog('colorCriteria.purple')}</span></div>
+                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span>{tCatalog('colorCriteria.blue')}</span></div>
+                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span>{tCatalog('colorCriteria.green')}</span></div>
+                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span>{tCatalog('colorCriteria.yellow')}</span></div>
+                 <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span>{tCatalog('colorCriteria.red')}</span></div>
+               </div>
+               <p>{t('evaluationDisclaimer')}</p>
+               <p className="mt-2">{t('evaluationFormulaDisclaimer')}</p>
             </div>
           </div>
         </div>
@@ -153,7 +157,7 @@ export default function ComboNotesCard({ combo, currency = 'USD', onSwitchView }
               {/* Título de la nota */}
               <div className="flex h-6 items-center justify-center text-center">
                 <p className={`text-[8px] font-black uppercase tracking-widest leading-tight ${styles.label}`}>
-                  {note.label}
+                   {tCatalog(getCatalogScoreLabelKey(note.key))}
                 </p>
               </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer 
 } from 'recharts';
@@ -8,11 +8,33 @@ import {
   BadgeDollarSign, BriefcaseBusiness, Gamepad2, Gauge, Info, Leaf, Zap,
 } from 'lucide-react';
 import { getComboNotes } from '@/lib/scoringCombos';
+import { getCatalogScoreLabelKey } from '@/lib/catalog/presentation';
+import { useTranslations } from 'next-intl';
 
 interface RadarChartCardComboProps {
-  combo?: any;
+  combo?: object;
   currency?: string;
   onSwitchView?: () => void;
+}
+
+interface ActiveTooltip {
+  name: string;
+  score: number;
+  x: number;
+  y: number;
+  cx: number;
+  cy: number;
+}
+
+interface InteractiveTickProps {
+  payload?: { value?: string };
+  x?: number;
+  y?: number;
+  cx?: number;
+  cy?: number;
+  notesData: Record<string, number>;
+  setActiveTooltip: (tooltip: ActiveTooltip | null) => void;
+  translateCategory: (category: string) => string;
 }
 
 const getIconForCategory = (category: string) => {
@@ -59,21 +81,34 @@ const getColorStyles = (score: number) => {
   };
 };
 
-const InteractiveTick = (props: any) => {
-  const { payload, x, y, cx, cy, notesData, setActiveTooltip } = props;
+const InteractiveTick = (props: InteractiveTickProps) => {
+  const { payload, x, y, cx, cy, notesData, setActiveTooltip, translateCategory } = props;
   const [isHovered, setIsHovered] = useState(false);
 
-  const Icon = getIconForCategory(payload.value);
-  const score = notesData[payload.value] || 0;
+  const category = payload?.value ?? '';
+  const xPosition = x ?? 0;
+  const yPosition = y ?? 0;
+  const centerX = cx ?? 0;
+  const centerY = cy ?? 0;
+  const Icon = getIconForCategory(category);
+  const score = notesData[category] || 0;
+  const label = translateCategory(category);
   const styles = getColorStyles(score);
 
-  const isTop = y < cy - 10;
-  const isBottom = y > cy + 10;
+  const isTop = yPosition < centerY - 10;
+  const isBottom = yPosition > centerY + 10;
   const yOffsetIcon = isTop ? -10 : isBottom ? 10 : 0;
 
   const handleMouseEnter = () => {
     setIsHovered(true);
-    setActiveTooltip({ name: payload.value, score, x, y: y + yOffsetIcon, cx, cy });
+    setActiveTooltip({
+      name: label,
+      score,
+      x: xPosition,
+      y: yPosition + yOffsetIcon,
+      cx: centerX,
+      cy: centerY,
+    });
   };
 
   const handleMouseLeave = () => {
@@ -88,9 +123,9 @@ const InteractiveTick = (props: any) => {
       className="cursor-help"
       style={{ outline: 'none' }}
     >
-      <circle cx={x} cy={y + yOffsetIcon} r={22} fill="transparent" />
+      <circle cx={xPosition} cy={yPosition + yOffsetIcon} r={22} fill="transparent" />
 
-      <foreignObject x={x - 12} y={y + yOffsetIcon - 12} width={24} height={24}>
+      <foreignObject x={xPosition - 12} y={yPosition + yOffsetIcon - 12} width={24} height={24}>
         <div className={`flex items-center justify-center transition-colors duration-300 ${isHovered ? styles.icon : 'text-zinc-400 hover:text-white'}`}>
           {Icon}
         </div>
@@ -100,14 +135,17 @@ const InteractiveTick = (props: any) => {
 };
 
 export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchView }: RadarChartCardComboProps) {
-  const [activeTooltip, setActiveTooltip] = useState<any>(null);
+  const t = useTranslations('combos');
+  const tCatalog = useTranslations('catalog');
+  const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    const frame = window.requestAnimationFrame(() => setIsMounted(true));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  const notes = getComboNotes(combo, currency);
+  const notes = getComboNotes((combo ?? {}) as Record<string, unknown>, currency);
 
   const notesData: Record<string, number> = {
     'Potencia': notes.Potencia,
@@ -148,7 +186,7 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
       {/* HEADER */}
       <div className="relative mb-2 w-full">
         <h3 className="pr-28 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400 shrink-0">
-          Balance
+          {t('radar')}
         </h3>
 
         <div className="absolute right-0 top-0 flex items-center gap-3">
@@ -158,21 +196,21 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:text-white transition-all active:scale-95"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              Ver Notas
+              {t('viewNotes')}
             </button>
           )}
 
           <div className="group relative">
             <button
               type="button"
-              aria-label="Información sobre el mapa de rendimiento"
+              aria-label={t('radarInfoLabel')}
               className="relative z-10 flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
             >
               <Info size={11} strokeWidth={3} />
             </button>
             <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[12px]">Mapa de Rendimiento</div>
-              <p>Muestra la proporción de rendimiento del combo. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
+              <div className="mb-1.5 font-bold text-white uppercase tracking-widest text-[12px]">{t('radarTitle')}</div>
+              <p>{t('radarDescription')}</p>
             </div>
           </div>
         </div>
@@ -216,11 +254,15 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
               <PolarGrid stroke="#27272a" />
               <PolarAngleAxis 
                 dataKey="subject" 
-                tick={<InteractiveTick notesData={notesData} setActiveTooltip={setActiveTooltip} />} 
+                tick={<InteractiveTick
+                  notesData={notesData}
+                  setActiveTooltip={setActiveTooltip}
+                  translateCategory={(category: string) => tCatalog(getCatalogScoreLabelKey(category))}
+                />}
               />
               <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
               <Radar
-                name="Combo Performance"
+                name={t('radar')}
                 dataKey="A"
                 stroke="#fff"
                 strokeWidth={2}
@@ -232,8 +274,8 @@ export default function RadarChartCardCombo({ combo, currency = 'USD', onSwitchV
             </RadarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="w-full h-full min-h-[260px] flex items-center justify-center text-zinc-800 text-[10px] font-black uppercase tracking-widest">
-            Cargando Balance...
+          <div className="flex h-full min-h-[260px] w-full items-center justify-center text-[10px] font-black uppercase tracking-widest text-zinc-800">
+            {t('loadingBalance')}
           </div>
         )}
       </div>
