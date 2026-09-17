@@ -12,6 +12,7 @@ import {
   paginateBuilds,
 } from './components/buildListUtils';
 import { getTranslations } from 'next-intl/server';
+import type { Build } from '@/lib/scoringBuilds';
 
 interface BuildsPageProps {
   searchParams: Promise<{
@@ -66,9 +67,9 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
     filteredBuilds,
     params.page,
   );
-  const buildsByCategory = visibleBuilds.reduce<Record<string, any[]>>(
+  const buildsByCategory = visibleBuilds.reduce<Record<string, Build[]>>(
     (acc, build) => {
-      const category = build.category || 'Builds';
+       const category = build.category || t('fallbackCategory');
       if (!acc[category]) acc[category] = [];
       acc[category].push(build);
       return acc;

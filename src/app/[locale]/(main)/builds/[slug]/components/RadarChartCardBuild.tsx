@@ -21,6 +21,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { getBuildNotes, type Build } from "@/lib/scoringBuilds";
+import { useTranslations } from "next-intl";
 
 interface RadarChartCardBuildProps {
   build: Build;
@@ -33,19 +34,19 @@ type ActiveTooltip = { name: string; score: number; x: number; y: number; cx: nu
 
 type BuildMetric = {
   key: keyof BuildNotes;
-  label: string;
+  labelKey: string;
   icon: typeof Zap;
 };
 
 const buildMetrics: BuildMetric[] = [
-  { key: "potencia", label: "Potencia", icon: Zap },
-  { key: "productividad", label: "Productividad", icon: BriefcaseBusiness },
-  { key: "gaming", label: "Gaming", icon: Gamepad2 },
-  { key: "eficiencia", label: "Eficiencia", icon: Leaf },
-  { key: "cuelloBotella", label: "Cuello botella", icon: Gauge },
-  { key: "compatibilidad", label: "Compatibilidad", icon: PlugZap },
-  { key: "actualizaciones", label: "Actualizaciones", icon: RefreshCw },
-  { key: "calidadPrecio", label: "Calidad precio", icon: BadgeDollarSign },
+  { key: "potencia", labelKey: "notes.metrics.potencia", icon: Zap },
+  { key: "productividad", labelKey: "notes.metrics.productividad", icon: BriefcaseBusiness },
+  { key: "gaming", labelKey: "notes.metrics.gaming", icon: Gamepad2 },
+  { key: "eficiencia", labelKey: "notes.metrics.eficiencia", icon: Leaf },
+  { key: "cuelloBotella", labelKey: "notes.metrics.cuelloBotella", icon: Gauge },
+  { key: "compatibilidad", labelKey: "notes.metrics.compatibilidad", icon: PlugZap },
+  { key: "actualizaciones", labelKey: "notes.metrics.actualizaciones", icon: RefreshCw },
+  { key: "calidadPrecio", labelKey: "notes.metrics.calidadPrecio", icon: BadgeDollarSign },
 ];
 
 const subscribeToMount = () => () => {};
@@ -92,16 +93,18 @@ interface InteractiveTickProps {
   cx?: number;
   cy?: number;
   notesData: Record<string, number>;
+  metricLabels: Record<string, string>;
   setActiveTooltip: Dispatch<SetStateAction<ActiveTooltip | null>>;
 }
 
-const InteractiveTick = ({ payload, x, y, cx, cy, notesData, setActiveTooltip }: InteractiveTickProps) => {
+const InteractiveTick = ({ payload, x, y, cx, cy, notesData, metricLabels, setActiveTooltip }: InteractiveTickProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const tickX = x ?? 0;
   const tickY = y ?? 0;
   const centerX = cx ?? 0;
   const centerY = cy ?? 0;
-  const metric = buildMetrics.find((item) => item.label === payload?.value) ?? buildMetrics[0];
+  const metric = buildMetrics.find((item) => item.key === payload?.value) ?? buildMetrics[0];
+  const label = metricLabels[metric.key] ?? metric.key;
   const score = notesData[metric.key] ?? 0;
   const styles = getColorStyles(score);
   const Icon = metric.icon;
@@ -111,7 +114,7 @@ const InteractiveTick = ({ payload, x, y, cx, cy, notesData, setActiveTooltip }:
 
   const handleMouseEnter = () => {
     setIsHovered(true);
-    setActiveTooltip({ name: metric.label, score, x: tickX, y: tickY + yOffsetIcon, cx: centerX, cy: centerY });
+    setActiveTooltip({ name: label, score, x: tickX, y: tickY + yOffsetIcon, cx: centerX, cy: centerY });
   };
 
   const handleMouseLeave = () => {
@@ -132,16 +135,21 @@ const InteractiveTick = ({ payload, x, y, cx, cy, notesData, setActiveTooltip }:
 };
 
 export default function RadarChartCardBuild({ build, currency = "USD", onSwitchView }: RadarChartCardBuildProps) {
+  const t = useTranslations("builds");
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip | null>(null);
   const isMounted = useSyncExternalStore(subscribeToMount, getClientMountState, getServerMountState);
 
   const notes = getBuildNotes(build, currency);
+  const metricLabels = buildMetrics.reduce<Record<string, string>>((result, metric) => {
+    result[metric.key] = t(metric.labelKey);
+    return result;
+  }, {});
   const notesData = buildMetrics.reduce<Record<string, number>>((result, metric) => {
     result[metric.key] = notes[metric.key] ?? 0;
     return result;
   }, {});
   const chartData = buildMetrics.map((metric) => ({
-    subject: metric.label,
+    subject: metric.key,
     A: notesData[metric.key],
     fullMark: 10,
   }));
@@ -165,7 +173,7 @@ export default function RadarChartCardBuild({ build, currency = "USD", onSwitchV
 
       <div className="relative mb-2 w-full">
         <h3 className="pr-28 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-          Balance de la build
+          {t("radar.title")}
         </h3>
 
         <div className="absolute right-0 top-0 flex items-center gap-3">
@@ -173,24 +181,25 @@ export default function RadarChartCardBuild({ build, currency = "USD", onSwitchV
             <button
               type="button"
               onClick={onSwitchView}
+              aria-label={t("radar.showNotes")}
               className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-zinc-400 transition-all hover:text-white active:scale-95"
             >
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
-              Ver Notas
+               {t("radar.showNotes")}
             </button>
           )}
 
           <div className="group relative">
             <button
               type="button"
-              aria-label="Información sobre el mapa de rendimiento de la build"
+               aria-label={t("radar.infoLabel")}
               className="relative z-10 flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
             >
               <Info size={11} strokeWidth={3} />
             </button>
             <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="mb-1.5 font-bold uppercase tracking-widest text-[12px] text-white">Mapa de rendimiento</div>
-              <p>Muestra el equilibrio de la build en sus principales áreas. Pasa el cursor sobre los iconos para ver las notas exactas.</p>
+               <div className="mb-1.5 font-bold uppercase tracking-widest text-[12px] text-white">{t("radar.infoTitle")}</div>
+               <p>{t("radar.description")}</p>
             </div>
           </div>
         </div>
@@ -221,14 +230,14 @@ export default function RadarChartCardBuild({ build, currency = "USD", onSwitchV
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <PolarGrid stroke="#27272a" />
-              <PolarAngleAxis dataKey="subject" tick={<InteractiveTick notesData={notesData} setActiveTooltip={setActiveTooltip} />} />
+             <PolarAngleAxis dataKey="subject" tick={<InteractiveTick notesData={notesData} metricLabels={metricLabels} setActiveTooltip={setActiveTooltip} />} />
               <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
-              <Radar name="Build Performance" dataKey="A" stroke="#fff" strokeWidth={2} fill="#fff" fillOpacity={0.15} dot={{ r: 3, fill: "#10b981", strokeWidth: 0 }} isAnimationActive={false} />
+               <Radar name={t("radar.chartName")} dataKey="A" stroke="#fff" strokeWidth={2} fill="#fff" fillOpacity={0.15} dot={{ r: 3, fill: "#10b981", strokeWidth: 0 }} isAnimationActive={false} />
             </RadarChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex min-h-[260px] h-full w-full items-center justify-center text-[10px] font-black uppercase tracking-widest text-zinc-800">
-            Cargando Balance...
+             {t("radar.loading")}
           </div>
         )}
       </div>

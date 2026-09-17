@@ -10,9 +10,10 @@ import { formatPrice } from '@/lib/formatPrice';
 import { supabase } from '@/lib/supabaseClient';
 import { useCompareStore } from '@/store/useCompareStore';
 import { useLocale, useTranslations } from 'next-intl';
+import type { Build } from '@/lib/scoringBuilds';
 
 interface BuildCardProps {
-  build: any;
+  build: Build;
   currency: string;
   detailPath?: string;
   showSave?: boolean;
@@ -21,12 +22,12 @@ interface BuildCardProps {
 }
 
 const parts = [
-  { key: 'cpu', label: 'CPU' },
-  { key: 'gpu', label: 'GPU' },
-  { key: 'ram', label: 'RAM' },
-  { key: 'motherboard', label: 'Placa base' },
-  { key: 'storage', label: 'Almacenamiento' },
-  { key: 'psu', label: 'Fuente' },
+  { key: 'cpu' },
+  { key: 'gpu' },
+  { key: 'ram' },
+  { key: 'motherboard' },
+  { key: 'storage' },
+  { key: 'psu' },
 ];
 
 export default function BuildCard({
@@ -98,10 +99,12 @@ export default function BuildCard({
 
     const result = addItem({
       ...build,
+      id: build.id,
+      slug: build.slug,
       type: 'BUILD',
       comparisonType: 'build',
       name: build.title,
-      brand: 'Build',
+      brand: t('fallbackCategory'),
       price: totalPrice,
       currency,
     });
@@ -178,10 +181,11 @@ export default function BuildCard({
       onKeyDown={handleCardKeyDown}
       role={wholeCardClickable ? 'link' : undefined}
       tabIndex={wholeCardClickable ? 0 : undefined}
+      aria-label={wholeCardClickable ? t('openBuild', { name: build.title }) : undefined}
     >
       <div>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-          {build.category || 'Build'}
+          {build.category || t('fallbackCategory')}
         </span>
         <h2 className="mt-2 line-clamp-2 text-[14px] font-extrabold leading-snug text-white">
           {build.title}
@@ -218,6 +222,7 @@ export default function BuildCard({
           <button
             type="button"
             onClick={handleCompareClick}
+            aria-label={t('compare')}
             className={wholeCardClickable
               ? `flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border py-3 text-xs font-bold transition-all active:scale-95 ${
                   isInCompare

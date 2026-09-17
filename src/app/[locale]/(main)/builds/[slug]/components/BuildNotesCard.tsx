@@ -1,8 +1,12 @@
+'use client';
+
 import { Info } from 'lucide-react';
 import { getBuildNotes, getBuildPartPrice } from '@/lib/scoringBuilds';
+import { useTranslations } from 'next-intl';
+import type { Build } from '@/lib/scoringBuilds';
 
 interface BuildNotesCardProps {
-  build: any;
+  build: Build;
   currency?: string;
   onSwitchView?: () => void;
 }
@@ -64,18 +68,19 @@ export default function BuildNotesCard({
   currency = 'USD',
   onSwitchView,
 }: BuildNotesCardProps) {
+  const t = useTranslations('builds');
   const isEUR = currency === 'EUR';
   const symbol = isEUR ? '€' : '$';
   const notes = getBuildNotes(build, currency);
   const buildNotes = [
-    { label: 'Potencia', score: notes.potencia },
-    { label: 'Productividad', score: notes.productividad },
-    { label: 'Gaming', score: notes.gaming },
-    { label: 'Eficiencia', score: notes.eficiencia },
-    { label: 'Cuello botella', score: notes.cuelloBotella },
-    { label: 'Compatibilidad', score: notes.compatibilidad },
-    { label: 'Actualizaciones', score: notes.actualizaciones },
-    { label: 'Calidad precio', score: notes.calidadPrecio },
+    { label: t('notes.metrics.potencia'), score: notes.potencia },
+    { label: t('notes.metrics.productividad'), score: notes.productividad },
+    { label: t('notes.metrics.gaming'), score: notes.gaming },
+    { label: t('notes.metrics.eficiencia'), score: notes.eficiencia },
+    { label: t('notes.metrics.cuelloBotella'), score: notes.cuelloBotella },
+    { label: t('notes.metrics.compatibilidad'), score: notes.compatibilidad },
+    { label: t('notes.metrics.actualizaciones'), score: notes.actualizaciones },
+    { label: t('notes.metrics.calidadPrecio'), score: notes.calidadPrecio },
   ];
   const totalPrice = parts.reduce((total, part) => {
     return total + getBuildPartPrice(build, part, currency);
@@ -86,11 +91,11 @@ export default function BuildNotesCard({
       <div className="relative mb-8">
         <div className="flex min-w-0 flex-wrap items-center gap-4 pr-28">
           <h2 className="shrink-0 text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">
-            Notas
+            {t('notes.title')}
           </h2>
           <div className="hidden items-center gap-2 rounded-full border border-zinc-900/50 bg-zinc-900/30 px-3 py-1 sm:flex">
             <span className="text-[11px] font-black uppercase tracking-[0.1em] text-zinc-600">
-              Precio evaluado:
+              {t('notes.evaluatedPrice')}
             </span>
             <span className="text-xs font-black font-display text-zinc-400">
               {isEUR ? `${totalPrice.toFixed(2)}${symbol}` : `${symbol}${totalPrice.toFixed(2)}`}
@@ -103,32 +108,33 @@ export default function BuildNotesCard({
             <button
               type="button"
               onClick={onSwitchView}
+              aria-label={t('notes.showRadar')}
               className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-zinc-400 transition-all hover:text-white active:scale-95"
             >
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              Ver Radar
+              {t('notes.showRadar')}
             </button>
           )}
 
           <div className="group relative">
             <button
               type="button"
-              aria-label="Información sobre la evaluación provisional"
+              aria-label={t('notes.infoLabel')}
               className="flex h-7 w-7 cursor-help items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-zinc-600/70"
             >
               <Info size={11} strokeWidth={3} />
             </button>
             <div className="invisible absolute right-0 top-9 z-40 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] leading-relaxed text-zinc-400 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-              <div className="mb-2 text-[12px] font-bold uppercase tracking-widest text-white">Criterios de Evaluación</div>
+              <div className="mb-2 text-[12px] font-bold uppercase tracking-widest text-white">{t('notes.criteriaTitle')}</div>
               <div className="mb-3 space-y-1 text-[12px]">
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span><span className="font-semibold text-purple-300">Morado:</span> Perfecto</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span><span className="font-semibold text-blue-300">Azul:</span> Excelente</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span><span className="font-semibold text-emerald-300">Verde:</span> Bueno</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span><span className="font-semibold text-yellow-300">Amarillo:</span> Aceptable</span></div>
-                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span><span className="font-semibold text-red-300">Rojo:</span> Malo</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-purple-500" /><span>{t('notes.legend.perfect')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" /><span>{t('notes.legend.excellent')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span>{t('notes.legend.good')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-yellow-500" /><span>{t('notes.legend.acceptable')}</span></div>
+                <div className="flex items-center gap-2"><span className="h-2 w-2 shrink-0 rounded-full bg-red-500" /><span>{t('notes.legend.poor')}</span></div>
               </div>
-              <p>La nota es orientativa y no refleja de forma absoluta si un componente es inútil en un aspecto concreto.</p>
-              <p className="mt-2">Se calcula mediante fórmulas. Contrasta siempre la información; la decisión final queda a tu criterio.</p>
+              <p>{t('notes.explanation')}</p>
+              <p className="mt-2">{t('notes.formula')}</p>
             </div>
           </div>
         </div>
@@ -161,7 +167,7 @@ export default function BuildNotesCard({
 
       <div className="mt-8 border-t border-zinc-900/20 pt-4">
         <p className="text-center text-[10px] font-bold uppercase leading-tight tracking-widest text-zinc-500 lg:text-left">
-          * Datos mockeados pendientes de evaluación dinámica.
+           {t('notes.provisional')}
         </p>
       </div>
     </div>

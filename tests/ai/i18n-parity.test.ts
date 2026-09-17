@@ -63,6 +63,21 @@ describe("translation catalog parity", () => {
     }
   });
 
+  it("keeps build presentation labels available in both locales", () => {
+    for (const catalog of [en, es]) {
+      expect(catalog.builds.fallbackCategory).toBeTruthy();
+      expect(catalog.builds.partRoles.cpu).toBeTruthy();
+      expect(catalog.builds.partRoles.gpu).toBeTruthy();
+      expect(catalog.builds.partRoles.ram).toBeTruthy();
+      expect(catalog.builds.partRoles.motherboard).toBeTruthy();
+      expect(catalog.builds.partRoles.storage).toBeTruthy();
+      expect(catalog.builds.partRoles.psu).toBeTruthy();
+      expect(catalog.builds.notes.title).toBeTruthy();
+      expect(catalog.builds.radar.title).toBeTruthy();
+      expect(catalog.builds.mobileComponents).toContain("{name}");
+    }
+  });
+
   it("keeps deletion confirmation aligned with the account protocol", () => {
     expect(en.account.typeConfirmation).toContain("ELIMINAR");
     expect(es.account.typeConfirmation).toContain("ELIMINAR");

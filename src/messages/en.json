@@ -472,13 +472,65 @@
     "countLabel": "builds",
     "searchPlaceholder": "Search builds",
     "empty": "No builds match these filters.",
+    "fallbackCategory": "Build",
+    "partRoles": {
+      "cpu": "Processor",
+      "gpu": "Graphics card",
+      "ram": "RAM",
+      "motherboard": "Motherboard",
+      "storage": "Storage",
+      "psu": "Power supply"
+    },
+    "openBuild": "Open build {name}",
+    "openComponent": "View {name} in the catalog",
+    "qualityPrice": "Value for money: {score}",
+    "totalPrice": "Total price",
     "addError": "Could not add the build",
     "price": "Price",
     "compare": "Compare",
     "removeSaved": "Remove build from saved items",
     "saveBuild": "Save build",
     "comparisonSystem": "Comparison system",
-    "availableSoon": "Coming soon"
+    "availableSoon": "Coming soon",
+    "notes": {
+      "title": "Scores",
+      "evaluatedPrice": "Evaluated price:",
+      "showRadar": "View radar",
+      "infoLabel": "Information about the provisional evaluation",
+      "criteriaTitle": "Evaluation criteria",
+      "legend": {
+        "perfect": "Perfect",
+        "excellent": "Excellent",
+        "good": "Good",
+        "acceptable": "Acceptable",
+        "poor": "Poor"
+      },
+      "explanation": "The score is a guide and does not absolutely determine whether a component is unsuitable for a specific use.",
+      "formula": "It is calculated using formulas. Always verify the information; the final decision is yours.",
+      "provisional": "* Mock data pending dynamic evaluation.",
+      "metrics": {
+        "potencia": "Power",
+        "productividad": "Productivity",
+        "gaming": "Gaming",
+        "eficiencia": "Efficiency",
+        "cuelloBotella": "Bottleneck",
+        "compatibilidad": "Compatibility",
+        "actualizaciones": "Upgrades",
+        "calidadPrecio": "Value for money"
+      }
+    },
+    "radar": {
+      "title": "Build balance",
+      "showNotes": "View scores",
+      "infoLabel": "Information about the build performance map",
+      "infoTitle": "Performance map",
+      "description": "Shows the build balance across its main areas. Hover over the icons to see the exact scores.",
+      "loading": "Loading balance...",
+      "chartName": "Build performance"
+    },
+    "mobileShow": "Show information for {name}",
+    "mobileHide": "Hide information for {name}",
+    "mobileComponents": "Components of {name}"
   },
   "comparator": {
     "addItem": "Add {type}",

@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import BuildMainCard from './BuildMainCard';
 
 interface MobileBuildIslandProps {
@@ -17,6 +18,7 @@ export default function MobileBuildIsland({
   build,
   currency,
 }: MobileBuildIslandProps) {
+  const t = useTranslations('builds');
   const [isOpen, setIsOpen] = useState(false);
   const generatedId = useId();
   const panelId = `mobile-build-details-${generatedId.replace(/:/g, '')}`;
@@ -33,14 +35,16 @@ export default function MobileBuildIsland({
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} información de ${build.title}`}
+           aria-label={isOpen
+             ? t('mobileHide', { name: build.title })
+             : t('mobileShow', { name: build.title })}
           className="flex min-h-16 w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors active:bg-zinc-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-inset"
         >
           <span className="flex min-w-0 items-center">
             <span className="min-w-0">
               {isOpen && (
                 <span className="block truncate text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                  {build.category || 'Build'}
+                   {build.category || t('fallbackCategory')}
                 </span>
               )}
               <span className="block truncate text-sm font-black leading-snug tracking-tight text-white">
@@ -61,7 +65,7 @@ export default function MobileBuildIsland({
       <div
         id={panelId}
         role="region"
-        aria-label={`Componentes de ${build.title}`}
+         aria-label={t('mobileComponents', { name: build.title })}
         aria-hidden={!isOpen}
         inert={!isOpen}
         className={`grid transition-[grid-template-rows] duration-300 ease-out ${

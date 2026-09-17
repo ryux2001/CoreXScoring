@@ -472,13 +472,65 @@
     "countLabel": "builds",
     "searchPlaceholder": "Buscar builds",
     "empty": "No hay builds que coincidan con estos filtros.",
+    "fallbackCategory": "Build",
+    "partRoles": {
+      "cpu": "Procesador",
+      "gpu": "Tarjeta gráfica",
+      "ram": "Memoria RAM",
+      "motherboard": "Placa madre",
+      "storage": "Almacenamiento",
+      "psu": "Fuente"
+    },
+    "openBuild": "Abrir build {name}",
+    "openComponent": "Ver {name} en el catálogo",
+    "qualityPrice": "Calidad precio: {score}",
+    "totalPrice": "Precio total",
     "addError": "No se pudo añadir el build",
     "price": "Precio",
     "compare": "Comparar",
     "removeSaved": "Quitar build de guardados",
     "saveBuild": "Guardar build",
     "comparisonSystem": "Sistema de comparación",
-    "availableSoon": "Disponible próximamente"
+    "availableSoon": "Disponible próximamente",
+    "notes": {
+      "title": "Notas",
+      "evaluatedPrice": "Precio evaluado:",
+      "showRadar": "Ver radar",
+      "infoLabel": "Información sobre la evaluación provisional",
+      "criteriaTitle": "Criterios de evaluación",
+      "legend": {
+        "perfect": "Perfecto",
+        "excellent": "Excelente",
+        "good": "Bueno",
+        "acceptable": "Aceptable",
+        "poor": "Malo"
+      },
+      "explanation": "La nota es orientativa y no determina de forma absoluta si un componente es inadecuado para un uso concreto.",
+      "formula": "Se calcula mediante fórmulas. Contrasta siempre la información; la decisión final queda a tu criterio.",
+      "provisional": "* Datos mockeados pendientes de evaluación dinámica.",
+      "metrics": {
+        "potencia": "Potencia",
+        "productividad": "Productividad",
+        "gaming": "Gaming",
+        "eficiencia": "Eficiencia",
+        "cuelloBotella": "Cuello botella",
+        "compatibilidad": "Compatibilidad",
+        "actualizaciones": "Actualizaciones",
+        "calidadPrecio": "Calidad precio"
+      }
+    },
+    "radar": {
+      "title": "Balance de la build",
+      "showNotes": "Ver notas",
+      "infoLabel": "Información sobre el mapa de rendimiento de la build",
+      "infoTitle": "Mapa de rendimiento",
+      "description": "Muestra el equilibrio de la build en sus principales áreas. Pasa el cursor sobre los iconos para ver las notas exactas.",
+      "loading": "Cargando balance...",
+      "chartName": "Rendimiento de la build"
+    },
+    "mobileShow": "Mostrar información de {name}",
+    "mobileHide": "Ocultar información de {name}",
+    "mobileComponents": "Componentes de {name}"
   },
   "comparator": {
     "addItem": "Añadir {type}",
