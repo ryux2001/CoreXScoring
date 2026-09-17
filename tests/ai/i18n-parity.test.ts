@@ -78,6 +78,20 @@ describe("translation catalog parity", () => {
     }
   });
 
+  it("keeps comparator presentation labels available in both locales", () => {
+    for (const catalog of [en, es]) {
+      expect(catalog.comparator.removeItem).toContain("{name}");
+      expect(catalog.comparator.referencePrice).toContain("{price}");
+      expect(catalog.comparator.partRoles.motherboard).toBeTruthy();
+      expect(catalog.comparator.specifications).toBeTruthy();
+      expect(catalog.comparator.notAvailable).toBeTruthy();
+      expect(catalog.comparator.fpsRegionLabel).toBeTruthy();
+      expect(catalog.comparator.fpsNoData).toBeTruthy();
+      expect(catalog.comparator.specs.cpu.socket).toBeTruthy();
+      expect(catalog.comparator.specs.psu.wattage).toBeTruthy();
+    }
+  });
+
   it("keeps deletion confirmation aligned with the account protocol", () => {
     expect(en.account.typeConfirmation).toContain("ELIMINAR");
     expect(es.account.typeConfirmation).toContain("ELIMINAR");

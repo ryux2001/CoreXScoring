@@ -21,6 +21,14 @@ const SCORE_LABEL_KEYS: Record<string, string> = {
   Construcción: "scoreLabels.buildQuality",
   "Calidad precio": "scoreLabels.value",
   "Calidad Precio": "scoreLabels.value",
+  potencia: "scoreLabels.potency",
+  productividad: "scoreLabels.productivity",
+  gaming: "scoreLabels.gaming",
+  eficiencia: "scoreLabels.efficiency",
+  cuelloBotella: "scoreLabels.bottleneck",
+  compatibilidad: "scoreLabels.compatibility",
+  actualizaciones: "scoreLabels.upgrades",
+  calidadPrecio: "scoreLabels.value",
 };
 
 const PROFILE_LABEL_KEYS: Record<string, string> = {
@@ -41,6 +49,7 @@ const DETAIL_LABEL_KEYS: Record<string, string> = {
   tdp: "detailLabels.tdp",
   power_turbo_max: "detailLabels.maxPower",
   cache: "detailLabels.cache",
+  "cache.l3": "detailLabels.cache",
   ram_type: "detailLabels.ramType",
   ram_frecuency: "detailLabels.ramFrequency",
   ram_max_support: "detailLabels.maxRamCapacity",
@@ -93,6 +102,23 @@ const DETAIL_LABEL_KEYS: Record<string, string> = {
   max_temp_c: "detailLabels.maxTemperature",
   wattage: "detailLabels.supplyPower",
   efficiency: "detailLabels.energyCertification",
+  cinebench_multi: "benchmarkLabels.cpuCinebenchMulti",
+  geekbench_single: "benchmarkLabels.cpuGeekbenchSingle",
+  passmark_score: "benchmarkLabels.cpuPassmark",
+  "1080p_gaming_avg_fps": "benchmarkLabels.gpuAverageFps1080p",
+  "1440p_gaming_avg_fps": "benchmarkLabels.gpuAverageFps1440p",
+  "4k_gaming_avg_fps": "benchmarkLabels.gpuAverageFps4k",
+  ray_tracing_performance: "benchmarkLabels.gpuRayTracing",
+  "3dmark_time_spy": "benchmarkLabels.gpuTimeSpy",
+  "3dmark_time_spy_extreme": "benchmarkLabels.gpuTimeSpyExtreme",
+  "3dmark_port_royal": "benchmarkLabels.gpuPortRoyal",
+  "3dmark_speed_way": "benchmarkLabels.gpuSpeedWay",
+  blender_score: "benchmarkLabels.gpuBlender",
+  latency_ns: "benchmarkLabels.ramLatency",
+  vrm_thermal_performance: "benchmarkLabels.motherboardVrmQuality",
+  boot_time_seconds: "benchmarkLabels.motherboardBootTime",
+  efficiency_load_50: "benchmarkLabels.psuEfficiencyLoad",
+  noise_level_db: "benchmarkLabels.psuNoiseLevel",
 };
 
 export function getCatalogScoreLabelKey(category: string): string {

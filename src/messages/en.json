@@ -285,6 +285,7 @@
       "connectivity": "Connectivity",
       "compatibility": "Compatibility",
       "expansion": "Expansion",
+      "upgrades": "Upgrades",
       "buildQuality": "Build quality",
       "value": "Value for money",
       "unknown": "Score"
@@ -402,6 +403,20 @@
       "storageWrite": "Write speed (max)",
       "motherboardVrmPhases": "VRM power phases",
       "motherboardVrmQuality": "Build quality",
+      "cpuBaseFrequency": "Base frequency",
+      "gpuAverageFps1080p": "Average FPS (1080p)",
+      "gpuAverageFps1440p": "Average FPS (1440p)",
+      "gpuAverageFps4k": "Average FPS (4K)",
+      "gpuRayTracing": "Ray tracing acceleration",
+      "gpuTimeSpyExtreme": "3DMark Time Spy Extreme",
+      "gpuSpeedWay": "3DMark Speed Way",
+      "gpuBlender": "Blender render score",
+      "ramReadSpeed": "Effective read speed",
+      "ramWriteSpeed": "Effective write speed",
+      "ramLatency": "Raw access latency",
+      "motherboardBootTime": "BIOS boot time",
+      "psuEfficiencyLoad": "Efficiency at 50% load",
+      "psuNoiseLevel": "Average noise level",
       "psuRipple": "Electrical ripple (12V rail)",
       "psuWattage": "Maximum supported load"
     }
@@ -556,7 +571,82 @@
     "componentSearchPlaceholder": "Enter the hardware name...",
     "noResults": "No results",
     "minimumSearchCharacters": "Enter at least 2 characters",
-    "comparisonSystem": "Comparison system"
+    "comparisonSystem": "Comparison system",
+    "removeItem": "Remove {name} from the comparison",
+    "componentFallback": "Component",
+    "comboFallback": "Combo",
+    "buildFallback": "Build",
+    "viewComponent": "View {name} in the catalog",
+    "viewProduct": "View product",
+    "imageUnavailable": "Image unavailable",
+    "bestScore": "Best score",
+    "globalEvaluation": "Overall evaluation",
+    "referencePrice": "Reference: {price}",
+    "customizePrice": "Customize price",
+    "customizePriceTitle": "Customize price",
+    "close": "Close",
+    "enterPrice": "Enter a price...",
+    "applyPrice": "Apply price",
+    "total": "Total",
+    "partRoles": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "ram": "RAM",
+      "motherboard": "Motherboard",
+      "storage": "Storage",
+      "psu": "Power supply"
+    },
+    "specifications": "Specifications",
+    "notAvailable": "Not available",
+    "yes": "Yes",
+    "no": "No",
+    "fpsRegionLabel": "FPS comparison",
+    "fpsGame": "Game",
+    "fpsSelectGame": "Select game",
+    "fpsGraphicsQuality": "Graphics quality",
+    "fpsSelectGraphicsQuality": "Select graphics quality",
+    "fpsNoDataOption": "No data",
+    "fpsNoData": "There is no FPS data for the compared items.",
+    "fpsMissingName": "Unnamed item",
+    "specs": {
+      "cpu": {
+        "socket": "CPU · Socket",
+        "cores": "CPU · P-Cores",
+        "efficiencyCores": "CPU · E-Cores",
+        "threads": "CPU · Threads",
+        "turboFrequency": "CPU · Turbo frequency",
+        "baseTdp": "CPU · Base TDP",
+        "maxPower": "CPU · Maximum power",
+        "cacheL3": "CPU · L3 cache"
+      },
+      "gpu": {
+        "vram": "GPU · VRAM",
+        "vramType": "GPU · VRAM type",
+        "memoryBus": "GPU · Memory bus",
+        "maxTdp": "GPU · Maximum TDP",
+        "busInterface": "GPU · Bus interface"
+      },
+      "ram": {
+        "capacity": "RAM · Total capacity",
+        "modules": "RAM · Module configuration",
+        "generation": "RAM · Generation",
+        "frequency": "RAM · Frequency"
+      },
+      "storage": {
+        "capacity": "Storage · Capacity",
+        "readSpeed": "Storage · Read speed",
+        "writeSpeed": "Storage · Write speed"
+      },
+      "motherboard": {
+        "pcie": "Motherboard · PCIe",
+        "m2Slots": "Motherboard · SSD slots",
+        "ramSupport": "Motherboard · Supported RAM"
+      },
+      "psu": {
+        "efficiency": "PSU · Certification",
+        "wattage": "PSU · Wattage"
+      }
+    }
   },
   "vault": {
     "eyebrow": "Personal space",

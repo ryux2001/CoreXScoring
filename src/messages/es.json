@@ -285,6 +285,7 @@
       "connectivity": "Conectividad",
       "compatibility": "Compatibilidad",
       "expansion": "Expansión",
+      "upgrades": "Actualizaciones",
       "buildQuality": "Construcción",
       "value": "Calidad/precio",
       "unknown": "Nota"
@@ -402,6 +403,20 @@
       "storageWrite": "Velocidad de escritura (máx.)",
       "motherboardVrmPhases": "Fases de alimentación VRM",
       "motherboardVrmQuality": "Calidad de construcción",
+      "cpuBaseFrequency": "Frecuencia base",
+      "gpuAverageFps1080p": "FPS promedio (1080p)",
+      "gpuAverageFps1440p": "FPS promedio (1440p)",
+      "gpuAverageFps4k": "FPS promedio (4K)",
+      "gpuRayTracing": "Aceleración de trazado de rayos",
+      "gpuTimeSpyExtreme": "3DMark Time Spy Extreme",
+      "gpuSpeedWay": "3DMark Speed Way",
+      "gpuBlender": "Puntuación de renderizado Blender",
+      "ramReadSpeed": "Velocidad de lectura efectiva",
+      "ramWriteSpeed": "Velocidad de escritura efectiva",
+      "ramLatency": "Latencia real de acceso",
+      "motherboardBootTime": "Tiempo de arranque de BIOS",
+      "psuEfficiencyLoad": "Eficiencia al 50% de carga",
+      "psuNoiseLevel": "Nivel sonoro promedio",
       "psuRipple": "Rizado eléctrico (línea 12V)",
       "psuWattage": "Carga máxima soportada"
     }
@@ -556,7 +571,82 @@
     "componentSearchPlaceholder": "Escribe el nombre del hardware...",
     "noResults": "Sin resultados",
     "minimumSearchCharacters": "Introduce al menos 2 letras",
-    "comparisonSystem": "Sistema de comparación"
+    "comparisonSystem": "Sistema de comparación",
+    "removeItem": "Quitar {name} de la comparativa",
+    "componentFallback": "Componente",
+    "comboFallback": "Combo",
+    "buildFallback": "Build",
+    "viewComponent": "Ver {name} en el catálogo",
+    "viewProduct": "Ver producto",
+    "imageUnavailable": "Imagen no disponible",
+    "bestScore": "Mejor nota",
+    "globalEvaluation": "Evaluación global",
+    "referencePrice": "Referencia: {price}",
+    "customizePrice": "Personalizar precio",
+    "customizePriceTitle": "Personalizar precio",
+    "close": "Cerrar",
+    "enterPrice": "Escribe un precio...",
+    "applyPrice": "Aplicar precio",
+    "total": "Total",
+    "partRoles": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "ram": "RAM",
+      "motherboard": "Placa base",
+      "storage": "Almacenamiento",
+      "psu": "Fuente"
+    },
+    "specifications": "Especificaciones",
+    "notAvailable": "No disponible",
+    "yes": "Sí",
+    "no": "No",
+    "fpsRegionLabel": "Comparativa de FPS",
+    "fpsGame": "Juego",
+    "fpsSelectGame": "Seleccionar juego",
+    "fpsGraphicsQuality": "Calidad gráfica",
+    "fpsSelectGraphicsQuality": "Seleccionar calidad gráfica",
+    "fpsNoDataOption": "Sin datos",
+    "fpsNoData": "No hay datos de FPS para los elementos comparados.",
+    "fpsMissingName": "Elemento sin nombre",
+    "specs": {
+      "cpu": {
+        "socket": "CPU · Socket",
+        "cores": "CPU · Núcleos P-Cores",
+        "efficiencyCores": "CPU · Núcleos E-Cores",
+        "threads": "CPU · Hilos",
+        "turboFrequency": "CPU · Frecuencia turbo",
+        "baseTdp": "CPU · TDP base",
+        "maxPower": "CPU · Consumo máximo",
+        "cacheL3": "CPU · Caché L3"
+      },
+      "gpu": {
+        "vram": "GPU · VRAM",
+        "vramType": "GPU · Tipo de VRAM",
+        "memoryBus": "GPU · Bus de memoria",
+        "maxTdp": "GPU · TDP máximo",
+        "busInterface": "GPU · Interfaz de bus"
+      },
+      "ram": {
+        "capacity": "RAM · Capacidad total",
+        "modules": "RAM · Configuración de módulos",
+        "generation": "RAM · Generación",
+        "frequency": "RAM · Frecuencia"
+      },
+      "storage": {
+        "capacity": "Almacenamiento · Capacidad",
+        "readSpeed": "Almacenamiento · Velocidad de lectura",
+        "writeSpeed": "Almacenamiento · Velocidad de escritura"
+      },
+      "motherboard": {
+        "pcie": "Placa base · PCIe",
+        "m2Slots": "Placa base · Ranuras SSD",
+        "ramSupport": "Placa base · RAM compatible"
+      },
+      "psu": {
+        "efficiency": "Fuente · Certificación",
+        "wattage": "Fuente · Vatios"
+      }
+    }
   },
   "vault": {
     "eyebrow": "Espacio personal",

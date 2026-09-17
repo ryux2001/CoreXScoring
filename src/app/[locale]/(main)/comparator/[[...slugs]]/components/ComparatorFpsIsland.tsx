@@ -6,6 +6,7 @@ import { Gamepad2, Sliders } from "lucide-react";
 import { calculateComboFps } from "@/lib/fpsCombos";
 import type { GameData } from "@/lib/fpsCombos/types";
 import { isBuildItem, isComboItem } from "./comparisonUtils";
+import { useTranslations } from "next-intl";
 
 type Resolution = "1080p" | "1440p" | "4k";
 type ComparisonKind = "gpu" | "combo" | "build";
@@ -145,6 +146,8 @@ export default function ComparatorFpsIsland({
   scrollContainerRef,
   onScroll,
 }: ComparatorFpsIslandProps) {
+  const t = useTranslations("comparator");
+  const tCatalog = useTranslations("catalog");
   const kind = getComparisonKind(items);
   const normalizedGames = useMemo(() => games.map(normalizeGame), [games]);
   const availableGames = useMemo(
@@ -166,26 +169,42 @@ export default function ComparatorFpsIsland({
     : availablePresets[0] ?? "medio";
   const totalColumns = items.length < 3 ? items.length + 1 : 3;
 
+  const formatPresetLabel = (preset: string) => {
+    const presetKeys: Record<string, string> = {
+      bajo: "fps.presets.low",
+      low: "fps.presets.low",
+      medio: "fps.presets.medium",
+      medium: "fps.presets.medium",
+      alto: "fps.presets.high",
+      high: "fps.presets.high",
+      ultra: "fps.presets.ultra",
+    };
+    const translationKey = presetKeys[preset.toLowerCase()];
+    return translationKey
+      ? tCatalog(translationKey)
+      : preset.charAt(0).toUpperCase() + preset.slice(1);
+  };
+
   if (!kind) return null;
 
   return (
     <section
-      aria-label="Comparativa de FPS"
+      aria-label={t("fpsRegionLabel")}
       className="mt-4 w-full max-w-255"
     >
       <div className="flex items-center justify-center gap-2 rounded-3xl border border-zinc-900 bg-zinc-950/50 px-2 py-3 shadow-xl md:px-6 max-w-[350px]">
           <label className="flex min-w-0 items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
             <Gamepad2 size={12} className="shrink-0 text-zinc-400" />
-            <span className="sr-only">Juego</span>
+            <span className="sr-only">{t("fpsGame")}</span>
             <select
               value={activeGameId}
               onChange={(event) => setSelectedGameId(event.target.value)}
-              aria-label="Seleccionar juego"
+              aria-label={t("fpsSelectGame")}
               disabled={availableGames.length === 0}
               className="min-h-9 max-w-[11rem] min-w-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold normal-case tracking-normal text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {availableGames.length === 0 ? (
-                <option value="">Sin datos</option>
+                <option value="">{t("fpsNoDataOption")}</option>
               ) : (
                 availableGames.map((game) => (
                   <option key={game.id} value={game.id} className="bg-zinc-950 text-zinc-200">
@@ -198,17 +217,17 @@ export default function ComparatorFpsIsland({
 
           <label className="flex min-w-0 items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">
             <Sliders size={12} className="shrink-0 text-zinc-400" />
-            <span className="sr-only">Calidad gráfica</span>
+            <span className="sr-only">{t("fpsGraphicsQuality")}</span>
             <select
               value={activeQuality}
               onChange={(event) => setSelectedQuality(event.target.value)}
-              aria-label="Seleccionar calidad gráfica"
+              aria-label={t("fpsSelectGraphicsQuality")}
               disabled={!activeGame}
               className="min-h-9 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-bold capitalize text-zinc-200 outline-none transition-colors focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700/50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {availablePresets.map((preset) => (
                 <option key={preset} value={preset} className="bg-zinc-950 text-zinc-200">
-                  {preset}
+                  {formatPresetLabel(preset)}
                 </option>
               ))}
             </select>
@@ -225,8 +244,8 @@ export default function ComparatorFpsIsland({
           >
             {items.map((item) => (
               <article key={item.id} className="w-1/2 min-w-0 shrink-0 snap-start bg-black/30 p-3 md:w-full md:p-4">
-                <h3 className="mb-0 truncate text-[10px] font-black uppercase tracking-[0.12em] text-zinc-400" title={String(item.name || item.title || "Sin nombre")}>
-                  {String(item.name || item.title || "Sin nombre")}
+                <h3 className="mb-0 truncate text-[10px] font-black uppercase tracking-[0.12em] text-zinc-400" title={String(item.name || item.title || t("fpsMissingName"))}>
+                  {String(item.name || item.title || t("fpsMissingName"))}
                 </h3>
                 <div className="grid grid-cols-3 gap-2">
                   {resolutions.map(({ label, key }) => {
@@ -241,7 +260,7 @@ export default function ComparatorFpsIsland({
                           {label}
                         </span>
                         <span className={`font-display text-[28px] font-medium leading-none tracking-[-0.03em] tabular-nums ${styles.text}`}>
-                          {value ?? "—"}<span className="text-[14px] text-zinc-500">fps</span>
+                          {value ?? "—"}<span className="text-[14px] text-zinc-500">{tCatalog("fps.unit")}</span>
                         </span>
                       </div>
                     );
@@ -259,7 +278,7 @@ export default function ComparatorFpsIsland({
         </div>
       ) : (
         <p className="px-5 py-8 text-center text-sm font-medium text-zinc-500">
-          No hay datos de FPS para los elementos comparados.
+           {t("fpsNoData")}
         </p>
       )}
     </section>

@@ -2,52 +2,55 @@
 
 import React from "react";
 import { COMPONENT_SPECS, getProductSpecValue } from "@/lib/config/specs-mapping";
+import { getCatalogDetailLabelKey } from "@/lib/catalog/presentation";
 import { isBuildItem, isComboItem } from "./comparisonUtils";
 import type { BuildPartKey, ComboPartKey } from "./comparisonUtils";
+import { useTranslations } from "next-intl";
+import type { CompareProduct } from "@/store/useCompareStore";
 
 interface CompareSpecsTableProps {
-  items: any[];
+  items: CompareProduct[];
 }
 
 interface ComboSpecDefinition {
   part: ComboPartKey | BuildPartKey;
-  label: string;
+  labelKey: string;
   key: string;
-  format?: (value: any) => string;
+  format?: (value: unknown) => string;
 }
 
-const formatList = (value: any) => Array.isArray(value) ? value.join(" · ") : String(value);
+const formatList = (value: unknown) => Array.isArray(value) ? value.join(" · ") : String(value);
 
 const COMBO_SPECS: ComboSpecDefinition[] = [
-  { part: "cpu", label: "CPU · Socket", key: "socket" },
-  { part: "cpu", label: "CPU · Núcleos P-Cores", key: "cores" },
-  { part: "cpu", label: "CPU · Núcleos E-Cores", key: "efficency_cores" },
-  { part: "cpu", label: "CPU · Hilos", key: "threads" },
-  { part: "cpu", label: "CPU · Frecuencia Turbo", key: "turbo_frequency", format: (value: any) => `${value} GHz` },
-  { part: "cpu", label: "CPU · TDP Base", key: "tdp", format: (value: any) => `${value} W` },
-  { part: "cpu", label: "CPU · Consumo Máximo", key: "power_turbo_max", format: (value: any) => `${value} W` },
-  { part: "cpu", label: "CPU · Caché L3", key: "cache.l3", format: (value: any) => `${(Number(value) / 1024).toFixed(0)} MB` },
-  { part: "gpu", label: "GPU · VRAM", key: "vram_capacity", format: (value: any) => `${value} GB` },
-  { part: "gpu", label: "GPU · Tipo de VRAM", key: "vram_type" },
-  { part: "gpu", label: "GPU · Bus de memoria", key: "bus_width", format: (value: any) => `${value}-bit` },
-  { part: "gpu", label: "GPU · TDP Máximo", key: "tdp", format: (value: any) => `${value} W` },
-  { part: "gpu", label: "GPU · Interfaz Bus", key: "pcie_generation", format: (value: any) => `PCIe Gen ${value}` },
-  { part: "ram", label: "RAM · Capacidad Total", key: "capacity", format: (value: any) => `${value} GB` },
-  { part: "ram", label: "RAM · Configuración Módulos", key: "dual_channel" },
-  { part: "ram", label: "RAM · Generación", key: "technology" },
-  { part: "ram", label: "RAM · Frecuencia", key: "speed", format: (value: any) => `${value} MHz` },
+  { part: "cpu", labelKey: "specs.cpu.socket", key: "socket" },
+  { part: "cpu", labelKey: "specs.cpu.cores", key: "cores" },
+  { part: "cpu", labelKey: "specs.cpu.efficiencyCores", key: "efficency_cores" },
+  { part: "cpu", labelKey: "specs.cpu.threads", key: "threads" },
+  { part: "cpu", labelKey: "specs.cpu.turboFrequency", key: "turbo_frequency", format: (value: unknown) => `${value} GHz` },
+  { part: "cpu", labelKey: "specs.cpu.baseTdp", key: "tdp", format: (value: unknown) => `${value} W` },
+  { part: "cpu", labelKey: "specs.cpu.maxPower", key: "power_turbo_max", format: (value: unknown) => `${value} W` },
+  { part: "cpu", labelKey: "specs.cpu.cacheL3", key: "cache.l3", format: (value: unknown) => `${(Number(value) / 1024).toFixed(0)} MB` },
+  { part: "gpu", labelKey: "specs.gpu.vram", key: "vram_capacity", format: (value: unknown) => `${value} GB` },
+  { part: "gpu", labelKey: "specs.gpu.vramType", key: "vram_type" },
+  { part: "gpu", labelKey: "specs.gpu.memoryBus", key: "bus_width", format: (value: unknown) => `${value}-bit` },
+  { part: "gpu", labelKey: "specs.gpu.maxTdp", key: "tdp", format: (value: unknown) => `${value} W` },
+  { part: "gpu", labelKey: "specs.gpu.busInterface", key: "pcie_generation", format: (value: unknown) => `PCIe Gen ${value}` },
+  { part: "ram", labelKey: "specs.ram.capacity", key: "capacity", format: (value: unknown) => `${value} GB` },
+  { part: "ram", labelKey: "specs.ram.modules", key: "dual_channel" },
+  { part: "ram", labelKey: "specs.ram.generation", key: "technology" },
+  { part: "ram", labelKey: "specs.ram.frequency", key: "speed", format: (value: unknown) => `${value} MHz` },
 ];
 
 const BUILD_SPECS: ComboSpecDefinition[] = [
   ...COMBO_SPECS,
-  { part: "storage", label: "STORAGE · Almacenamiento", key: "capacity", format: (value: any) => Number(value) >= 1000 ? `${Number(value) / 1000} TB` : `${value} GB` },
-  { part: "storage", label: "STORAGE · Velocidad lectura", key: "read_speed", format: (value: any) => `${value} MB/s` },
-  { part: "storage", label: "STORAGE · Velocidad escritura", key: "write_speed", format: (value: any) => `${value} MB/s` },
-  { part: "motherboard", label: "MOTHERBOARD · PCIe", key: "pcie_generation", format: (value: any) => `PCIe Gen ${value}` },
-  { part: "motherboard", label: "MOTHERBOARD · Slots SSD", key: "m2_slots", format: formatList },
-  { part: "motherboard", label: "MOTHERBOARD · RAM soportada", key: "ram_support", format: formatList },
-  { part: "psu", label: "PSU · Certificacion", key: "efficiency" },
-  { part: "psu", label: "PSU · Watts", key: "wattage", format: (value: any) => `${value} W` },
+  { part: "storage", labelKey: "specs.storage.capacity", key: "capacity", format: (value: unknown) => Number(value) >= 1000 ? `${Number(value) / 1000} TB` : `${value} GB` },
+  { part: "storage", labelKey: "specs.storage.readSpeed", key: "read_speed", format: (value: unknown) => `${value} MB/s` },
+  { part: "storage", labelKey: "specs.storage.writeSpeed", key: "write_speed", format: (value: unknown) => `${value} MB/s` },
+  { part: "motherboard", labelKey: "specs.motherboard.pcie", key: "pcie_generation", format: (value: unknown) => `PCIe Gen ${value}` },
+  { part: "motherboard", labelKey: "specs.motherboard.m2Slots", key: "m2_slots", format: formatList },
+  { part: "motherboard", labelKey: "specs.motherboard.ramSupport", key: "ram_support", format: formatList },
+  { part: "psu", labelKey: "specs.psu.efficiency", key: "efficiency" },
+  { part: "psu", labelKey: "specs.psu.wattage", key: "wattage", format: (value: unknown) => `${value} W` },
 ];
 
 interface SpecsTableHeaderProps {
@@ -57,8 +60,9 @@ interface SpecsTableHeaderProps {
 }
 
 function SpecsTableHeader({ items, headerContentRef, variant }: SpecsTableHeaderProps) {
+  const t = useTranslations("comparator");
   const isCollection = variant !== "component";
-  const itemTypeLabel = variant === "build" ? "Build" : "Combo";
+  const itemTypeLabel = variant === "build" ? t("buildFallback") : t("comboFallback");
 
   return (
     <div className="pointer-events-none sticky top-[4.25rem] lg:top-[5rem] z-20 w-full overflow-hidden border-b border-zinc-900 bg-zinc-950">
@@ -69,7 +73,7 @@ function SpecsTableHeader({ items, headerContentRef, variant }: SpecsTableHeader
       >
         <div className="col-span-3">
           <span className="text-[11px] font-black font-display uppercase tracking-[0.5px] text-zinc-500">
-            Especificaciones
+            {t("specifications")}
           </span>
         </div>
 
@@ -77,7 +81,9 @@ function SpecsTableHeader({ items, headerContentRef, variant }: SpecsTableHeader
           {items.map((item) => (
             <div key={item.id} className="truncate pr-2">
               <span className="text-[10px] font-bold font-display text-zinc-300 uppercase tracking-normal truncate block">
-                {isCollection ? item.title || item.name : item.name}
+                {isCollection
+                  ? String((item as unknown as Record<string, unknown>).title || item.name)
+                  : item.name}
               </span>
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mt-0.5">
                 {isCollection ? itemTypeLabel : item.brand}
@@ -94,7 +100,23 @@ function SpecsTableHeader({ items, headerContentRef, variant }: SpecsTableHeader
 }
 
 export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
+  const t = useTranslations("comparator");
+  const tCatalog = useTranslations("catalog");
   const headerContentRef = React.useRef<HTMLDivElement>(null);
+
+  const getSpecLabel = (spec: ComboSpecDefinition | { key: string }) => (
+    "labelKey" in spec
+      ? t(spec.labelKey)
+      : tCatalog(getCatalogDetailLabelKey(spec.key))
+  );
+
+  const formatSpecValue = (value: unknown, spec: ComboSpecDefinition | { format?: (raw: unknown) => string }): string | number => {
+    if (typeof value === "boolean") return t(value ? "yes" : "no");
+    const formatted = "format" in spec && spec.format ? spec.format(value) : value;
+    return typeof formatted === "string" || typeof formatted === "number"
+      ? formatted
+      : String(formatted ?? "");
+  };
 
   const syncHeaderScroll = (event: React.UIEvent<HTMLDivElement>) => {
     headerContentRef.current?.style.setProperty(
@@ -122,13 +144,13 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
             {specs.map((spec) => (
               <div key={`${spec.part}-${spec.key}`} className="grid grid-cols-12 px-6 py-3.5 items-center hover:bg-zinc-900/10 transition-colors duration-200 group min-w-[650px] md:min-w-0">
                 <div className="col-span-3 pr-4">
-                  <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">{spec.label}</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">{getSpecLabel(spec)}</span>
                 </div>
                 <div className="col-span-9 grid grid-cols-3 gap-6">
                   {items.map((item) => {
-                    const rawValue = getProductSpecValue(item[spec.part], spec.key);
+                    const rawValue = getProductSpecValue((item as unknown as Record<string, unknown>)[spec.part], spec.key);
                     const formattedValue = rawValue !== null && rawValue !== ""
-                      ? (spec.format ? spec.format(rawValue) : rawValue)
+                      ? formatSpecValue(rawValue, spec)
                       : null;
 
                     return (
@@ -136,7 +158,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
                         {formattedValue !== null ? (
                           <span className="text-[12px] font-medium text-zinc-300 tracking-wide">{formattedValue}</span>
                         ) : (
-                          <span className="text-xs font-black text-zinc-700 uppercase tracking-wider select-none">No</span>
+                          <span className="text-xs font-black text-zinc-700 uppercase tracking-wider select-none">{t("notAvailable")}</span>
                         )}
                       </div>
                     );
@@ -174,16 +196,16 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
             >
               <div className="col-span-3 pr-4">
                 <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                  {spec.label}
+                  {tCatalog(getCatalogDetailLabelKey(spec.key))}
                 </span>
               </div>
 
               <div className="col-span-9 grid grid-cols-3 gap-6">
                 {items.map((item) => {
                   const rawValue = getProductSpecValue(item, spec.key);
-                  const formattedValue = rawValue !== null && rawValue !== ""
-                    ? (spec.format ? spec.format(rawValue) : rawValue)
-                    : null;
+                    const formattedValue = rawValue !== null && rawValue !== ""
+                      ? formatSpecValue(rawValue, spec)
+                      : null;
 
                   return (
                     <div key={`${item.id}-${spec.key}`} className="text-left">
@@ -193,7 +215,7 @@ export default function CompareSpecsTable({ items }: CompareSpecsTableProps) {
                         </span>
                       ) : (
                         <span className="text-xs font-black text-zinc-700 uppercase tracking-wider select-none">
-                          No
+                          {t("notAvailable")}
                         </span>
                       )}
                     </div>

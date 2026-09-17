@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { ArrowUp, Currency, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useCompareStore } from "@/store/useCompareStore";
 import { getComponentNotes } from "@/lib/scoring";
@@ -10,6 +11,7 @@ import { getBuildNotes } from "@/lib/scoringBuilds";
 import { convertPrice } from "@/lib/currency";
 import { getProductImage } from "@/lib/catalog/product-images";
 import { getComponentIcon } from "@/lib/catalog/component-icons";
+import { getCatalogScoreLabelKey } from "@/lib/catalog/presentation";
 import {
   applyBuildPriceOverrides,
   applyComboPriceOverrides,
@@ -41,7 +43,8 @@ interface CompareProductCardProps {
     price_base_usd?: number;
     price_eur?: number;
     price_usd?: number;
-    [key: string]: any;
+    title?: string;
+    category?: string;
   };
   globalCurrency: string;
   displayedPrice: number;
@@ -58,19 +61,19 @@ type NotesMap = Record<string, number>;
 type PricePartKey = ComboPartKey | BuildPartKey;
 type PriceDraft = Partial<Record<PricePartKey, string>>;
 
-const comboParts: Array<{ key: ComboPartKey; label: string }> = [
-  { key: "cpu", label: "CPU" },
-  { key: "gpu", label: "GPU" },
-  { key: "ram", label: "RAM" },
+const comboParts: Array<{ key: ComboPartKey; labelKey: string }> = [
+  { key: "cpu", labelKey: "partRoles.cpu" },
+  { key: "gpu", labelKey: "partRoles.gpu" },
+  { key: "ram", labelKey: "partRoles.ram" },
 ];
 
-const buildParts: Array<{ key: BuildPartKey; label: string }> = [
-  { key: "cpu", label: "CPU" },
-  { key: "gpu", label: "GPU" },
-  { key: "ram", label: "RAM" },
-  { key: "motherboard", label: "Placa base" },
-  { key: "storage", label: "Almacenamiento" },
-  { key: "psu", label: "Fuente" },
+const buildParts: Array<{ key: BuildPartKey; labelKey: string }> = [
+  { key: "cpu", labelKey: "partRoles.cpu" },
+  { key: "gpu", labelKey: "partRoles.gpu" },
+  { key: "ram", labelKey: "partRoles.ram" },
+  { key: "motherboard", labelKey: "partRoles.motherboard" },
+  { key: "storage", labelKey: "partRoles.storage" },
+  { key: "psu", labelKey: "partRoles.psu" },
 ];
 
 function getColorStyles(score: number) {
@@ -98,10 +101,13 @@ export default function CompareProductCard({
   maxScores,
   masterCategories,
 }: CompareProductCardProps) {
+  const t = useTranslations("comparator");
+  const tCatalog = useTranslations("catalog");
   const removeItem = useCompareStore((state) => state.removeItem);
   const itemsCount = useCompareStore((state) => state.items.length);
   const isCombo = isComboItem(product);
   const isBuild = isBuildItem(product);
+  const productData = product as unknown as Record<string, unknown>;
   const isCollection = isCombo || isBuild;
   const cardHeightClass = isCollection ? "min-h-[600px]" : "min-h-[520px]";
   const cardPaddingClass = isCollection ? "md:p-6" : "md:px-6 md:py-4";
@@ -109,7 +115,7 @@ export default function CompareProductCard({
   const notesHeaderSpacingClass = isCollection ? "mb-4" : "mb-3";
   const notesListGapClass = isCollection ? "gap-3.5" : "gap-2.5";
   const evaluationSpacingClass = isCollection ? "mt-6 p-3.5" : "mt-4 p-3";
-  const collectionParts: Array<{ key: PricePartKey; label: string }> = isBuild ? buildParts : comboParts;
+  const collectionParts: Array<{ key: PricePartKey; labelKey: string }> = isBuild ? buildParts : comboParts;
   const isEUR = globalCurrency === "EUR";
   const symbol = isEUR ? "€" : "$";
 
@@ -134,7 +140,7 @@ export default function CompareProductCard({
   const baseNotes = useMemo<NotesMap>(() => {
     if (isCombo) return (getComboNotes(effectiveCombo, globalCurrency) || {}) as NotesMap;
     if (isBuild) return (getBuildNotes(effectiveBuild, globalCurrency) || {}) as NotesMap;
-    return (getComponentNotes(product, precioUSD) || {}) as NotesMap;
+    return (getComponentNotes(product as unknown as Record<string, unknown>, precioUSD) || {}) as NotesMap;
   }, [effectiveBuild, effectiveCombo, globalCurrency, isBuild, isCombo, precioUSD, product]);
 
   const categories = Object.keys(baseNotes);
@@ -198,7 +204,10 @@ export default function CompareProductCard({
   return (
     <div className={`relative flex h-full ${cardHeightClass} w-1/2 shrink-0 snap-start flex-col justify-between p-2 group animate-in fade-in duration-300 md:w-full md:shrink ${cardPaddingClass}`}>
       <button
+        type="button"
         onClick={() => removeItem(product.id)}
+        aria-label={t("removeItem", { name: product.title || product.name })}
+        title={t("removeItem", { name: product.title || product.name })}
         className="absolute top-4 right-4 z-10 rounded-full bg-zinc-900/80 p-2 text-zinc-500 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95"
       >
         <X size={13} strokeWidth={2.5} />
@@ -209,7 +218,7 @@ export default function CompareProductCard({
           <>
             <div className="mb-3 px-1">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                {product.category || "Combo"}
+                {product.category || t("comboFallback")}
               </span>
               <h3 className="mt-1 text-[14px] font-extrabold leading-snug tracking-tight text-white">
                 {product.title || product.name}
@@ -218,7 +227,7 @@ export default function CompareProductCard({
 
             <div className="grid w-full grid-cols-3 gap-2">
               {comboParts.map((part) => {
-                const component = product[part.key];
+                const component = productData[part.key] as { name: string; slug: string } | undefined;
                 if (!component) return null;
                 const imageSrc = getComponentIcon(part.key);
 
@@ -226,13 +235,13 @@ export default function CompareProductCard({
                   <div key={part.key} className="flex min-w-0 flex-col gap-1.5">
                     <Link
                       href={`/catalog/${component.slug}?currency=${globalCurrency}`}
-                      aria-label={`Ver ${component.name} en el catálogo`}
+                       aria-label={t("viewComponent", { name: component.name })}
                       className="group relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-900/20 transition-colors hover:border-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                     >
                       {imageSrc ? (
-                        <img src={imageSrc} alt={`Icono de ${component.name}`} className="h-full w-full object-contain opacity-80 transition-opacity group-hover:opacity-100" />
+                        <img src={imageSrc} alt={component.name} className="h-full w-full object-contain opacity-80 transition-opacity group-hover:opacity-100" />
                       ) : (
-                        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-700">Imagen</span>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-700">{t("imageUnavailable")}</span>
                       )}
                     </Link>
                     <Link
@@ -255,7 +264,7 @@ export default function CompareProductCard({
           <>
             <div className="mb-3 px-1">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                {product.category || "Build"}
+                {product.category || t("buildFallback")}
               </span>
               <h3 className="mt-1 text-[14px] font-extrabold leading-snug tracking-tight text-white">
                 {product.title || product.name}
@@ -264,14 +273,14 @@ export default function CompareProductCard({
 
             <div className="mt-1 space-y-2 border-l border-zinc-800 pl-3">
               {buildParts.map((part) => {
-                const component = product[part.key];
+                const component = productData[part.key] as { name: string; slug: string } | undefined;
                 if (!component) return null;
 
                   return (
                   <Link
                     key={part.key}
                     href={`/catalog/${component.slug}?currency=${globalCurrency}`}
-                    aria-label={`Ver ${component.name} en el catálogo`}
+                     aria-label={t("viewComponent", { name: component.name })}
                     className="group flex min-w-0 items-baseline rounded-md py-0.5 text-[10px] font-bold text-zinc-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                   >
                     <span className="truncate" title={component.name}>
@@ -290,7 +299,7 @@ export default function CompareProductCard({
           <>
             <div className="mb-3 px-1">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                {product.type || "Componente"}
+                {product.type || t("componentFallback")}
               </span>
               <h3 className="mt-1 truncate text-[14px] font-extrabold leading-snug tracking-tight text-white" title={product.name}>
                 {product.name}
@@ -302,7 +311,7 @@ export default function CompareProductCard({
                 <div className="relative mx-auto flex aspect-square w-full max-w-[220px] items-center justify-center overflow-hidden">
                   <img
                     src={getProductImage(product) || undefined}
-                    alt={product.name}
+                  alt={product.name || t("imageUnavailable")}
                     className="h-full w-full object-contain opacity-80 transition-opacity group-hover:opacity-100"
                   />
                 </div>
@@ -321,7 +330,7 @@ export default function CompareProductCard({
                 href={`/catalog/${product.slug}?currency=${globalCurrency}`}
                 className="flex h-9 w-full flex-none items-center justify-center rounded-xl border border-zinc-900 bg-zinc-900/20 py-2 text-center text-[10px] font-black font-display uppercase text-zinc-400 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-[0.98] md:w-25"
               >
-                ver producto
+                  {t("viewProduct")}
               </Link>
             </div>
           </>
@@ -340,11 +349,11 @@ export default function CompareProductCard({
                 <div key={category} className="group flex min-w-0 flex-col gap-1.5 animate-in fade-in duration-200 md:gap-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="min-w-0 truncate text-[10px] font-bold font- uppercase tracking-tighter text-zinc-400" title={category}>
-                      {category}
+                      {tCatalog(getCatalogScoreLabelKey(category))}
                     </span>
                     <span className="hidden shrink-0 items-center gap-1 text-[12px] font-thin uppercase tracking-[-2px] tabular-nums text-zinc-300 md:flex">
                       {isHighest && (
-                        <span className="text-emerald-400" title="Mejor nota">
+                        <span className="text-emerald-400" title={t("bestScore")}>
                           <ArrowUp aria-hidden="true" size={10} strokeWidth={3} />
                         </span>
                       )}
@@ -360,7 +369,7 @@ export default function CompareProductCard({
                     </div>
                     <span className="flex shrink-0 items-center gap-1 text-[9px] font-thin uppercase tracking-[-2px] tabular-nums text-zinc-300 md:hidden">
                       {isHighest && (
-                        <span className="text-emerald-400" title="Mejor nota">
+                          <span className="text-emerald-400" title={t("bestScore")}>
                           <ArrowUp aria-hidden="true" size={10} strokeWidth={3} />
                         </span>
                       )}
@@ -375,8 +384,8 @@ export default function CompareProductCard({
 
         <div className={`font-display ${evaluationSpacingClass} flex items-center justify-between rounded-xl border transition-all duration-300 ${valueStyles.bg} ${valueStyles.border}`}>
           <div className="flex flex-col text-left">
-            <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${valueStyles.label}`}>Evaluación global</span>
-            <span className="mt-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-normal text-zinc-200">Referencia: {displayedPrice}{symbol}</span>
+            <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${valueStyles.label}`}>{t("globalEvaluation")}</span>
+            <span className="mt-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-normal text-zinc-200">{t("referencePrice", { price: format(displayedPrice) })}</span>
           </div>
           <div className={`flex h-9 w-11 items-center justify-center rounded-lg border border-zinc-900 bg-zinc-950 text-sm font-black tracking-tighter shadow-xl transition-colors duration-300 ${valueStyles.text}`}>
             {finalScore.toFixed(1)}
@@ -388,19 +397,20 @@ export default function CompareProductCard({
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-[14px] font-extrabold uppercase tracking-widest text-white">Personalizar precio</h3>
-              <button onClick={() => setIsCustomizeOpen(false)} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white">
+              <h3 className="text-[14px] font-extrabold uppercase tracking-widest text-white">{t("customizePriceTitle")}</h3>
+              <button type="button" aria-label={t("close")} onClick={() => setIsCustomizeOpen(false)} className="rounded-full bg-zinc-900 p-2 text-zinc-500 transition-colors hover:text-white">
                 <X size={14} />
               </button>
             </div>
             <div className="space-y-3">
               {collectionParts.map((part) => (
                 <label key={part.key} className="flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-widest text-zinc-500">
-                  <span>{part.label}</span>
+                   <span>{t(part.labelKey)}</span>
                   <div className="relative w-32">
                     <span className="absolute top-1/2 left-3 -translate-y-1/2 text-zinc-600">{symbol}</span>
-                    <input
-                      type="number"
+                      <input
+                        type="number"
+                        aria-label={t("enterPrice")}
                       value={draftPrices[part.key] ?? ""}
                       onChange={(event) => setDraftPrices((previous) => ({ ...previous, [part.key]: event.target.value }))}
                       className="w-full rounded-xl border border-zinc-900 bg-black py-2 pr-3 pl-7 text-xs font-bold text-white outline-none focus:border-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -410,11 +420,11 @@ export default function CompareProductCard({
               ))}
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-zinc-900 pt-4">
-              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">Total</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t("total")}</span>
               <span className="text-sm font-black text-white">{format(draftTotal)}</span>
             </div>
             <button onClick={applyCollectionPrices} className="mt-5 w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-[9px] font-black uppercase tracking-widest text-zinc-200 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white active:scale-[0.98]">
-              Aplicar precios
+               {t("applyPrice")}
             </button>
           </div>
         </div>
@@ -433,12 +443,13 @@ function ProductPriceEditor({
   onApply: (price: number) => void;
 }) {
   const [customPrice, setCustomPrice] = useState(initialPrice);
+  const t = useTranslations("comparator");
 
   return (
     <div className="flex w-full max-w-[320px] flex-1 flex-col gap-3">
       <div className="space-y-1">
-        <label className="ml-0.5 text-[10px] font-black uppercase tracking-wide text-zinc-500">
-          Escriba un precio...
+          <label className="ml-0.5 text-[10px] font-black uppercase tracking-wide text-zinc-500">
+           {t("enterPrice")}
         </label>
         <div className="flex h-[36px] items-center gap-1">
           <div className="relative flex-1">
@@ -451,10 +462,12 @@ function ProductPriceEditor({
             />
           </div>
           <button
+            type="button"
+            aria-label={t("applyPrice")}
             onClick={() => onApply(customPrice)}
             className="h-[36px] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[10px] font-black uppercase text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 hover:text-white cursor-pointer active:scale-95"
           >
-            aplicar
+            {t("applyPrice")}
           </button>
         </div>
       </div>
@@ -471,17 +484,18 @@ function CollectionPriceFooter({
   format: (value: number) => string;
   onCustomize: () => void;
 }) {
+  const t = useTranslations("comparator");
   return (
     <div className="mt-4 flex items-center justify-between gap-2">
       <div className="flex flex-col">
-        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Precio total</span>
+         <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">{t("total")}</span>
         <span className="text-base font-black tracking-tight text-white">{format(displayedPrice)}</span>
       </div>
       <button
         onClick={onCustomize}
         className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-[8px] font-black uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:text-white"
       >
-        Personalizar precio
+         {t("customizePrice")}
       </button>
     </div>
   );
