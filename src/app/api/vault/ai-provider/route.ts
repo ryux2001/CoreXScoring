@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
   getAiChatSettingsPublic,
+  isByokEnabled,
   removeAiChatKey,
   saveAiChatSettings,
 } from "@/lib/ai/chat-settings";
@@ -65,6 +66,9 @@ export async function PATCH(request: NextRequest) {
   if (apiKey !== undefined && (apiKey.length < 12 || apiKey.length > 500)) {
     return NextResponse.json({ code: "INVALID_API_KEY" }, { status: 400 });
   }
+  if (!isByokEnabled() && (body.credentialMode === "byok" || apiKey !== undefined)) {
+    return NextResponse.json({ code: "BYOK_DISABLED" }, { status: 403 });
+  }
 
   try {
     return NextResponse.json(await saveAiChatSettings({
@@ -84,6 +88,7 @@ export async function DELETE(request: NextRequest) {
   if (!allowedOrigin(request)) return NextResponse.json({ code: "ORIGIN_NOT_ALLOWED" }, { status: 403 });
   const user = await getUser();
   if (!user) return NextResponse.json({ code: "AUTH_REQUIRED" }, { status: 401 });
+  if (!isByokEnabled()) return NextResponse.json({ code: "BYOK_DISABLED" }, { status: 403 });
   try {
     const rateLimitResponse = await requireApiRateLimit({ key: `ai-provider:update:user:${user.id}`, windowSeconds: 60, limit: 10 });
     if (rateLimitResponse) return NextResponse.json({ code: "RATE_LIMITED" }, { status: 429, headers: rateLimitResponse.headers });

@@ -11,6 +11,7 @@ const DEFAULT_OPENROUTER_MODELS = [
 const DEFAULT_CEREBRAS_MODELS = ["gpt-oss-120b"];
 
 export interface AiChatSettingsPublic {
+  byokEnabled: boolean;
   credentialMode: AiCredentialMode;
   preferredProvider: AiChatProvider;
   preferredModel: string;
@@ -19,6 +20,10 @@ export interface AiChatSettingsPublic {
   cerebras: { configured: boolean; hint: string | null };
   openrouter: { configured: boolean; hint: string | null };
   localOnly: boolean;
+}
+
+export function isByokEnabled(): boolean {
+  return process.env.AI_BYOK_ENABLED?.trim().toLowerCase() === "true";
 }
 
 export interface AiChatCredential {
@@ -82,13 +87,15 @@ async function readSettings(userId: string): Promise<SettingsRow | null> {
 export async function getAiChatSettingsPublic(userId: string): Promise<AiChatSettingsPublic> {
   const row = await readSettings(userId);
   const models = getAllowedAiChatModels();
+  const byokEnabled = isByokEnabled();
   const preferredProvider = asProvider(row?.preferred_provider);
   const preferredModel = typeof row?.preferred_model === "string" && models[preferredProvider].includes(row.preferred_model)
     ? row.preferred_model
     : models[preferredProvider][0] || "";
 
   return {
-    credentialMode: asMode(row?.credential_mode),
+    byokEnabled,
+    credentialMode: byokEnabled ? asMode(row?.credential_mode) : "project",
     preferredProvider,
     preferredModel,
     models,
@@ -109,7 +116,7 @@ export async function getAiChatSettingsPublic(userId: string): Promise<AiChatSet
 }
 
 export async function getAiChatCredential(userId: string): Promise<AiChatCredential | null> {
-  if (process.env.AI_LOCAL_ONLY?.trim().toLowerCase() === "true") return null;
+  if (!isByokEnabled() || process.env.AI_LOCAL_ONLY?.trim().toLowerCase() === "true") return null;
 
   const row = await readSettings(userId);
   if (asMode(row?.credential_mode) !== "byok") return null;

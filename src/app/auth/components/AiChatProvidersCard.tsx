@@ -7,6 +7,7 @@ import type { AiChatProvider, AiCredentialMode } from "@/lib/ai/types";
 import type { AiChatSettingsPublic } from "@/lib/ai/chat-settings";
 
 const EMPTY_SETTINGS: AiChatSettingsPublic = {
+  byokEnabled: false,
   credentialMode: "project",
   preferredProvider: "openrouter",
   preferredModel: "",
@@ -30,6 +31,7 @@ const PROVIDER_ERROR_KEYS: Record<string, string> = {
   SAVE_FAILED: "aiProvider.errors.saveFailed",
   REMOVE_FAILED: "aiProvider.errors.removeFailed",
   TEST_FAILED: "aiProvider.errors.testFailed",
+  BYOK_DISABLED: "aiProvider.errors.byokDisabled",
 };
 
 function getApiErrorMessage(translate: (key: string) => string, payload: { code?: string } | AiChatSettingsPublic, fallback: string): string {
@@ -163,7 +165,7 @@ export default function AiChatProvidersCard() {
           {t("aiProvider.mode")}
           <select value={mode} onChange={(event) => setMode(event.target.value as AiCredentialMode)} disabled={isLoading || isSaving || settings.localOnly} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40">
             <option value="project">{t("aiProvider.projectKeys")}</option>
-            <option value="byok">{t("aiProvider.myApiKey")}</option>
+            {settings.byokEnabled && <option value="byok">{t("aiProvider.myApiKey")}</option>}
           </select>
         </label>
         <label className="text-xs text-zinc-400">
@@ -182,7 +184,7 @@ export default function AiChatProvidersCard() {
         </label>
       </div>
 
-      <label className="mt-3 block text-xs text-zinc-400">
+      {settings.byokEnabled && <label className="mt-3 block text-xs text-zinc-400">
         <span className="flex items-center gap-1.5">
           {t("aiProvider.apiKey")}{selectedProvider.hint ? ` (${selectedProvider.hint})` : ""}
           <button type="button" aria-label={t("aiProvider.showSecurityInfo")} aria-expanded={showSecurityInfo} aria-controls="ai-chat-key-security" onClick={() => setShowSecurityInfo((current) => !current)} className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-cyan-300/40 text-cyan-200 transition-colors hover:border-cyan-200 hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
@@ -191,12 +193,12 @@ export default function AiChatProvidersCard() {
         </span>
         <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} disabled={isLoading || isSaving || mode === "project" || settings.localOnly} autoComplete="new-password" placeholder={selectedProvider.configured ? t("aiProvider.keepExisting") : t("aiProvider.pasteKey")} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40" />
         {showSecurityInfo && <span id="ai-chat-key-security" role="note" className="mt-2 block rounded-lg border border-cyan-300/15 bg-cyan-300/[0.06] p-2.5 text-[11px] leading-relaxed text-cyan-100/80">{t("aiProvider.securityInfo")}</span>}
-      </label>
+      </label>}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
          <button type="button" onClick={() => void save()} disabled={isLoading || isSaving || !model || !canSave || settings.localOnly} className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-cyan-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? t("aiProvider.saving") : t("aiProvider.save")}</button>
-         {mode === "byok" && selectedProvider.configured && <button type="button" onClick={() => void testConnection()} disabled={isTesting || isSaving || settings.localOnly} className="rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50">{isTesting ? t("aiProvider.testing") : t("aiProvider.test")}</button>}
-         {selectedProvider.configured && <button type="button" onClick={() => void remove()} disabled={isSaving || settings.localOnly} className="rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50">{t("aiProvider.remove")}</button>}
+         {settings.byokEnabled && mode === "byok" && selectedProvider.configured && <button type="button" onClick={() => void testConnection()} disabled={isTesting || isSaving || settings.localOnly} className="rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50">{isTesting ? t("aiProvider.testing") : t("aiProvider.test")}</button>}
+         {settings.byokEnabled && selectedProvider.configured && <button type="button" onClick={() => void remove()} disabled={isSaving || settings.localOnly} className="rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50">{t("aiProvider.remove")}</button>}
         {status && <p className="basis-full text-xs text-cyan-200" role="status">{status}</p>}
       </div>
     </section>

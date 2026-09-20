@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getAllowedAiChatModels } from "@/lib/ai/chat-settings";
+import { getAllowedAiChatModels, isByokEnabled } from "@/lib/ai/chat-settings";
 import { isChatRequest } from "@/lib/ai/types";
 import { createLocalizedMetadata, createNoIndexMetadata } from "@/lib/seo/metadata";
 
@@ -24,6 +24,14 @@ describe("Fase 7 contracts", () => {
   it("uses the server allowlist for BYOK models", () => {
     vi.stubEnv("AI_BYOK_OPENROUTER_MODELS", "qwen/custom-flash, qwen/custom-mini");
     expect(getAllowedAiChatModels().openrouter).toEqual(["qwen/custom-flash", "qwen/custom-mini"]);
+  });
+
+  it("keeps BYOK disabled unless explicitly enabled", () => {
+    expect(isByokEnabled()).toBe(false);
+    vi.stubEnv("AI_BYOK_ENABLED", "false");
+    expect(isByokEnabled()).toBe(false);
+    vi.stubEnv("AI_BYOK_ENABLED", "true");
+    expect(isByokEnabled()).toBe(true);
   });
 
   it("generates canonical and alternate URLs without an /en prefix", () => {

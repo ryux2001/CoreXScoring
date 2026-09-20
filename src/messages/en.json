@@ -300,7 +300,8 @@
         "loadFailed": "Could not load the CoreX AI configuration.",
         "saveFailed": "Could not save the provider configuration.",
         "removeFailed": "Could not remove the API key.",
-        "testFailed": "Could not validate the API key."
+        "testFailed": "Could not validate the API key.",
+        "byokDisabled": "Using personal API keys is currently disabled."
       }
     }
   },
