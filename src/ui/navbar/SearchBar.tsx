@@ -2,10 +2,12 @@
 
 import { Search, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useRef, useEffect, useId } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { localizeProducts } from "@/lib/content/translations";
+import type { Locale } from "@/i18n/routing";
 
 interface SearchSuggestion {
   name: string;
@@ -25,6 +27,7 @@ export default function SearchBar({
   onClose,
 }: SearchBarProps) {
   const t = useTranslations("nav");
+  const locale = useLocale() as Locale;
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -81,7 +84,8 @@ export default function SearchBar({
       if (requestId !== requestIdRef.current) return;
       if (error) throw error;
 
-      setSuggestions(data || []);
+      const localizedSuggestions = await localizeProducts(supabase, (data || []) as Record<string, unknown>[], locale);
+      setSuggestions(localizedSuggestions as unknown as SearchSuggestion[]);
       setShowSuggestions(true);
     } catch {
       if (requestId !== requestIdRef.current) return;

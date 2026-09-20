@@ -10,6 +10,8 @@ import {
   getComboCategories,
 } from './components/comboListUtils';
 import { getTranslations } from 'next-intl/server';
+import type { Locale } from '@/i18n/routing';
+import { localizeCombos } from '@/lib/content/translations';
 
 type ComboRecord = Record<string, unknown> & {
   category: string;
@@ -17,6 +19,7 @@ type ComboRecord = Record<string, unknown> & {
 };
 
 interface CombosPageProps {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{
     currency?: string;
     q?: string;
@@ -24,10 +27,11 @@ interface CombosPageProps {
   }>;
 }
 
-export default async function CombosPage({ searchParams }: CombosPageProps) {
+export default async function CombosPage({ params, searchParams }: CombosPageProps) {
   const t = await getTranslations('combos');
-  const params = await searchParams;
-  const currency = await resolveRequestCurrency(params.currency);
+  const { locale } = await params;
+  const queryParams = await searchParams;
+  const currency = await resolveRequestCurrency(queryParams.currency);
 
   const { data: combos, error } = await supabase
     .from('combos')
@@ -54,12 +58,12 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
     console.error('Error al obtener el orden de categorías de combos:', categoryOrderError);
   }
 
-  const allCombos = (combos || []) as ComboRecord[];
+  const allCombos = await localizeCombos(supabase, (combos || []) as ComboRecord[], locale as Locale) as ComboRecord[];
   const availableCategories = getComboCategories(allCombos);
   const filteredCombos = filterCombos(
     allCombos,
-    params.q || '',
-    params.category || '',
+    queryParams.q || '',
+    queryParams.category || '',
   ) as ComboRecord[];
   const combosByCategory = filteredCombos.reduce<Record<string, ComboRecord[]>>(
     (acc, combo) => {
@@ -71,7 +75,8 @@ export default async function CombosPage({ searchParams }: CombosPageProps) {
   );
   const categoryPosition = new Map((categoryOrders ?? []).map((item) => [item.category, item.sort_order]));
   const orderedComboCategories = Object.entries(combosByCategory).sort(([left], [right]) => (
-    (categoryPosition.get(left) ?? Number.MAX_SAFE_INTEGER) - (categoryPosition.get(right) ?? Number.MAX_SAFE_INTEGER)
+    (categoryPosition.get(allCombos.find((combo) => combo.category === left)?._sourceCategory || left) ?? Number.MAX_SAFE_INTEGER)
+      - (categoryPosition.get(allCombos.find((combo) => combo.category === right)?._sourceCategory || right) ?? Number.MAX_SAFE_INTEGER)
       || left.localeCompare(right)
   ));
 

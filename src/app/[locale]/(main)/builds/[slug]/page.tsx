@@ -6,9 +6,11 @@ import MobileBuildIsland from './components/MobileBuildIsland';
 import BuildEvaluationSection from './components/BuildEvaluationSection';
 import Metrics from '@/app/[locale]/(main)/combos/[slug]/components/Metrics';
 import FpsCard from '@/app/[locale]/(main)/combos/[slug]/components/FpsCard';
+import type { Locale } from '@/i18n/routing';
+import { localizeBuilds } from '@/lib/content/translations';
 
 interface BuildDetailPageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
   searchParams: Promise<{ currency?: string }>;
 }
 
@@ -39,6 +41,8 @@ export default async function BuildDetailPage({
     notFound();
   }
 
+  const [localizedBuild] = await localizeBuilds(supabase, [build], (await params).locale as Locale);
+
   const { data: games } = await supabase.from('games').select('*');
 
   return (
@@ -47,22 +51,22 @@ export default async function BuildDetailPage({
         <div className="mt-6 grid grid-cols-1 gap-6 md:mt-0 lg:grid-cols-12 lg:items-start">
           {/* 📱 VISTA MÓVIL: Tarjeta de componentes plegable */}
           <div className="block lg:hidden">
-            <MobileBuildIsland build={build} currency={currency} />
+             <MobileBuildIsland build={localizedBuild} currency={currency} />
           </div>
 
           <div className="hidden lg:sticky lg:top-8 lg:col-span-4 lg:block xl:col-span-4">
-            <BuildMainCard build={build} currency={currency} />
+             <BuildMainCard build={localizedBuild} currency={currency} />
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:col-span-8 lg:grid-cols-12">
-            <BuildEvaluationSection build={build} currency={currency} />
+             <BuildEvaluationSection build={localizedBuild} currency={currency} />
 
             <div className="lg:col-span-6 lg:col-start-1 lg:row-start-2">
-              <Metrics combo={build} />
+               <Metrics combo={localizedBuild} />
             </div>
 
             <div className="lg:col-span-12 lg:col-start-1 lg:row-start-3">
-              <FpsCard combo={build} games={games || []} />
+               <FpsCard combo={localizedBuild} games={games || []} />
             </div>
           </div>
         </div>

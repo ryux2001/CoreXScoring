@@ -5,9 +5,11 @@ import ComparatorClient from './components/ComparatorClient';
 import { normalizeBuild, normalizeCombo } from './components/comparisonUtils';
 import type { GameData } from '@/lib/fpsCombos/types';
 import type { CompareProduct } from '@/store/useCompareStore';
+import type { Locale } from '@/i18n/routing';
+import { localizeBuilds, localizeCombos, localizeProducts } from '@/lib/content/translations';
 
 interface ComparatorPageProps {
-  params: Promise<{ slugs?: string[] }>;
+  params: Promise<{ locale: string; slugs?: string[] }>;
   searchParams: Promise<{ currency?: string }>;
 }
 
@@ -53,15 +55,21 @@ export default async function ComparatorPage({ params, searchParams }: Comparato
         .in('slug', slugs),
     ]);
 
+    const [localizedProducts, localizedCombos, localizedBuilds] = await Promise.all([
+      localizeProducts(supabase, (products || []) as Record<string, unknown>[], resolvedParams.locale as Locale),
+      localizeCombos(supabase, (combos || []) as Record<string, unknown>[], resolvedParams.locale as Locale),
+      localizeBuilds(supabase, (builds || []) as Record<string, unknown>[], resolvedParams.locale as Locale),
+    ]);
+
     initialItems = slugs
       .map((slug) => {
-        const product = products?.find((item) => item.slug === slug);
+        const product = localizedProducts.find((item) => item.slug === slug);
         if (product) return product;
 
-        const combo = combos?.find((item) => item.slug === slug);
+        const combo = localizedCombos.find((item) => item.slug === slug);
         if (combo) return normalizeCombo(combo, currency);
 
-        const build = builds?.find((item) => item.slug === slug);
+        const build = localizedBuilds.find((item) => item.slug === slug);
         return build ? normalizeBuild(build, currency) : null;
       })
       .filter(Boolean);

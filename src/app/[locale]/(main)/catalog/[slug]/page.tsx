@@ -9,14 +9,16 @@ import MobileEvaluationWrapper from "./components/MobileEvaluationWrapper"; // I
 import BenchmarksCard from "./components/BenchmarksCard";
 import DescriptionCard from "./components/DescriptionCard";
 import GpuFpsCard from "./components/GpuFpsCard";
+import type { Locale } from '@/i18n/routing';
+import { localizeProducts } from '@/lib/content/translations';
 
 interface ProductPageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
   searchParams: Promise<{ currency?: string }>;
 }
 
 export default async function ProductPage({ params, searchParams }: ProductPageProps) {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const resolvedSearchParams = await searchParams;
   const currency = await resolveRequestCurrency(resolvedSearchParams.currency);
 
@@ -30,7 +32,9 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     notFound();
   }
 
-  const isGpu = String(product.type ?? "").toUpperCase() === "GPU";
+  const [localizedProduct] = await localizeProducts(supabase, [product], locale as Locale);
+
+  const isGpu = String(localizedProduct.type ?? "").toUpperCase() === "GPU";
   let games: Array<{ id: string; name: string; gpu_fps_base?: unknown }> = [];
 
   if (isGpu) {
@@ -48,7 +52,7 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
           
           {/* COLUMNA IZQUIERDA (Fija en Escritorio) */}
           <div className="lg:col-span-3 lg:sticky lg:top-8 h-fit">
-            <MainInfoCard product={product} currency={currency} />
+            <MainInfoCard product={localizedProduct} currency={currency} />
           </div>
 
           {/* COLUMNA DERECHA (Contenedor de las Islas) */}
@@ -56,32 +60,32 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
             
             {/* --- SECCIÓN PRECIO (Siempre visible en su cuadrante) --- */}
             <div className="catalog-detail-price lg:col-span-4">
-              <PriceCustomCard product={product} currency={currency} />
+               <PriceCustomCard product={localizedProduct} currency={currency} />
             </div>
 
             {/* --- VISTA ESCRITORIO (hidden lg:block) --- */}
             {/* Notas (Fila 1) */}
             <div className="catalog-detail-notes hidden lg:col-span-8 lg:block">
-               <NotesCard product={product} currency={currency} />
+                <NotesCard product={localizedProduct} currency={currency} />
             </div>
 
             {/* Radar Chart (Fila 2 - Proporción 35% de ancho) */}
             <div className="hidden lg:block lg:col-span-5">
-               <RadarChartCard product={product} currency={currency} />
+               <RadarChartCard product={localizedProduct} currency={currency} />
             </div>
 
 
             {/* --- VISTA MÓVIL UNIFICADA (block lg:hidden) --- */}
             {/* El Wrapper sustituye a ambos componentes en móvil y controla cuál mostrar ocupando el espacio de forma limpia */}
             <div className="block lg:hidden">
-              <MobileEvaluationWrapper product={product} currency={currency} />
+               <MobileEvaluationWrapper product={localizedProduct} currency={currency} />
             </div>
 
 
             {/* --- SECCIÓN BENCHMARKS (Siempre visible debajo de las evaluaciones) --- */}
             {/* Ocupa todo el ancho en móvil, y el 65% (8 columnas) en escritorio al lado del radar */}
             <div className="lg:col-span-7">
-               <BenchmarksCard product={product} />
+               <BenchmarksCard product={localizedProduct} />
             </div>
 
             {isGpu && (
@@ -92,7 +96,7 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
 
             {/* --- SECCIÓN DESCRIPCIÓN (Última isla en móvil) --- */}
             <div className={`catalog-detail-description ${isGpu ? "lg:col-span-5" : "lg:col-span-12"}`}>
-              <DescriptionCard product={product} />
+               <DescriptionCard product={localizedProduct} />
             </div>
 
           </div>

@@ -13,8 +13,11 @@ import {
 } from './components/buildListUtils';
 import { getTranslations } from 'next-intl/server';
 import type { Build } from '@/lib/scoringBuilds';
+import type { Locale } from '@/i18n/routing';
+import { localizeBuilds } from '@/lib/content/translations';
 
 interface BuildsPageProps {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{
     currency?: string;
     q?: string;
@@ -23,10 +26,11 @@ interface BuildsPageProps {
   }>;
 }
 
-export default async function BuildsPage({ searchParams }: BuildsPageProps) {
+export default async function BuildsPage({ params, searchParams }: BuildsPageProps) {
   const t = await getTranslations('builds');
-  const params = await searchParams;
-  const currency = await resolveRequestCurrency(params.currency);
+  const { locale } = await params;
+  const queryParams = await searchParams;
+  const currency = await resolveRequestCurrency(queryParams.currency);
 
   const { data: builds, error } = await supabase
     .from('builds')
@@ -56,16 +60,16 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
     console.error('Error al obtener el orden de categorías de builds:', categoryOrderError);
   }
 
-  const allBuilds = builds || [];
+  const allBuilds = await localizeBuilds(supabase, (builds || []) as Record<string, unknown>[], locale as Locale) as Build[];
   const availableCategories = getBuildCategories(allBuilds);
   const filteredBuilds = filterBuilds(
     allBuilds,
-    params.q || '',
-    params.category || '',
+    queryParams.q || '',
+    queryParams.category || '',
   );
   const { currentPage, totalPages, visibleBuilds } = paginateBuilds(
     filteredBuilds,
-    params.page,
+    queryParams.page,
   );
   const buildsByCategory = visibleBuilds.reduce<Record<string, Build[]>>(
     (acc, build) => {
@@ -78,7 +82,8 @@ export default async function BuildsPage({ searchParams }: BuildsPageProps) {
   );
   const categoryPosition = new Map((categoryOrders ?? []).map((item) => [item.category, item.sort_order]));
   const orderedBuildCategories = Object.entries(buildsByCategory).sort(([left], [right]) => (
-    (categoryPosition.get(left) ?? Number.MAX_SAFE_INTEGER) - (categoryPosition.get(right) ?? Number.MAX_SAFE_INTEGER)
+    (categoryPosition.get(allBuilds.find((build) => build.category === left)?._sourceCategory || left) ?? Number.MAX_SAFE_INTEGER)
+      - (categoryPosition.get(allBuilds.find((build) => build.category === right)?._sourceCategory || right) ?? Number.MAX_SAFE_INTEGER)
       || left.localeCompare(right)
   ));
 

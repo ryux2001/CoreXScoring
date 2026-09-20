@@ -6,8 +6,11 @@ import { resolveProductPrice } from '@/lib/catalog/product-price'
 import FilterBar from './components/FilterBar'
 import Pagination from './components/Pagination' // Importamos el nuevo componente
 import { getTranslations } from 'next-intl/server'
+import type { Locale } from '@/i18n/routing'
+import { localizeProducts } from '@/lib/content/translations'
 
 interface CatalogPageProps {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{
     q?: string;
     brand?: string;
@@ -19,11 +22,12 @@ interface CatalogPageProps {
   }>;
 }
 
-export default async function CatalogPage({ searchParams }: CatalogPageProps) {
+export default async function CatalogPage({ params, searchParams }: CatalogPageProps) {
   const t = await getTranslations('catalog');
-  const params = await searchParams;
-  const { q, brand, type, minPrice, maxPrice, page = '1' } = params;
-  const currency = await resolveRequestCurrency(params.currency);
+  const { locale } = await params;
+  const queryParams = await searchParams;
+  const { q, brand, type, minPrice, maxPrice, page = '1' } = queryParams;
+  const currency = await resolveRequestCurrency(queryParams.currency);
 
   // Lógica de Paginación
   const currentPage = parseInt(page);
@@ -66,6 +70,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   ]);
 
   const { data: products, count, error } = productsResponse;
+  const localizedProducts = error
+    ? products || []
+    : await localizeProducts(supabase, (products || []) as Record<string, unknown>[], locale as Locale);
   const totalPages = Math.ceil((count || 0) / itemsPerPage);
 
   const availableBrands = Array.from(new Set(brandsResponse.data?.map(p => p.brand))).filter(Boolean).sort() as string[];
@@ -85,7 +92,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         />
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 sm:gap-8">
-          {products?.map((product: any) => {
+          {localizedProducts.map((product: any) => {
             const price = resolveProductPrice(product, currency);
             return <Card
               key={product.id}
@@ -109,7 +116,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         {/* CONTROLES DE PAGINACIÓN */}
         <Pagination currentPage={currentPage} totalPages={totalPages} />
 
-        {products?.length === 0 && (
+        {localizedProducts.length === 0 && (
           <div className="flex h-96 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50">
             <p className="text-zinc-500 font-medium tracking-tight">
               {t('empty')}

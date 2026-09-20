@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Locale } from '@/i18n/routing';
+import { localizeHomeContent } from '@/lib/content/translations';
 
 export type HomeContentType = 'products' | 'combos' | 'builds' | 'comparisons';
 export type HomeCatalogType = Exclude<HomeContentType, 'comparisons'>;
@@ -129,7 +131,7 @@ export async function loadHomeAdminData(db: SupabaseClient): Promise<HomeAdminDa
   };
 }
 
-export async function loadPublicHomeData(db: SupabaseClient): Promise<HomeAdminData> {
+export async function loadPublicHomeData(db: SupabaseClient, locale: Locale): Promise<HomeAdminData> {
   const [heroResult, sectionsResult] = await Promise.all([
     db.from('home_hero').select('eyebrow,title,description,primary_label,primary_href,secondary_label,secondary_href,is_active').eq('id', true).eq('is_active', true).maybeSingle(),
     db.from('home_sections').select(HOME_SECTION_SELECT).eq('is_active', true).order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
@@ -138,9 +140,16 @@ export async function loadPublicHomeData(db: SupabaseClient): Promise<HomeAdminD
   if (heroResult.error) throw heroResult.error;
   if (sectionsResult.error) throw sectionsResult.error;
 
+  const localized = await localizeHomeContent(
+    db,
+    (heroResult.data || { ...DEFAULT_HERO, is_active: false }) as unknown as Record<string, unknown>,
+    (sectionsResult.data || []) as unknown as Record<string, unknown>[],
+    locale,
+  );
+
   return {
-    hero: (heroResult.data || { ...DEFAULT_HERO, is_active: false }) as HomeHero,
-    sections: orderNestedContent((sectionsResult.data || []) as unknown as HomeSection[]),
+    hero: localized.hero as unknown as HomeHero,
+    sections: orderNestedContent(localized.sections as unknown as HomeSection[]),
   };
 }
 

@@ -7,9 +7,11 @@ import MobileComboIsland from './components/MobileComboIsland';
 import ComboEvaluationSection from './components/ComboEvaluationSection';
 import Metrics from './components/Metrics';
 import FpsCard from './components/FpsCard';
+import type { Locale } from '@/i18n/routing';
+import { localizeCombos } from '@/lib/content/translations';
 
 interface ComboDetailPageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
   searchParams: Promise<{ currency?: string }>;
 }
 
@@ -36,6 +38,8 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
     notFound();
   }
 
+  const [localizedCombo] = await localizeCombos(supabase, [combo], resolvedParams.locale as Locale);
+
   // 2. Consulta de juegos: Traemos el catálogo de juegos para la estimación de FPS
   const { data: games } = await supabase
     .from('games')
@@ -50,26 +54,26 @@ export default async function ComboDetailPage({ params, searchParams }: ComboDet
 
           {/* 📱 VISTA MÓVIL: Tarjeta de componentes plegable */}
           <div className="block lg:hidden">
-            <MobileComboIsland combo={combo} currency={currency} />
+           <MobileComboIsland combo={localizedCombo} currency={currency} />
           </div>
 
           {/* 💻 VISTA ESCRITORIO: Columna Izquierda Fija */}
           <div className="hidden lg:block lg:sticky lg:top-8 lg:col-span-4 xl:col-span-4">
-            <ComboMainCard combo={combo} currency={currency} />
+             <ComboMainCard combo={localizedCombo} currency={currency} />
           </div>
 
           {/* COLUMNA DERECHA */}
           <div className="grid grid-cols-1 gap-6 lg:col-span-8 lg:grid-cols-12">
 
             {/* Sección de Evaluación (Notas y Radar en desktop, alternancia en móvil) */}
-            <ComboEvaluationSection combo={combo} currency={currency} />
+             <ComboEvaluationSection combo={localizedCombo} currency={currency} />
 
             <div className="lg:col-span-6 lg:col-start-1 lg:row-start-2">
-              <Metrics combo={combo} />
+               <Metrics combo={localizedCombo} />
             </div>
 
             <div className="lg:col-span-12 lg:col-start-1 lg:row-start-3">
-              <FpsCard combo={combo} games={games || []} />
+               <FpsCard combo={localizedCombo} games={games || []} />
             </div>
 
           </div>

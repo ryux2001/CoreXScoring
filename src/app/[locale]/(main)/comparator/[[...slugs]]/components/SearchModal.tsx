@@ -13,6 +13,9 @@ import {
 } from './comparisonUtils';
 import type { ComparisonMode } from './comparisonUtils';
 import { useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
+import type { Locale } from '@/i18n/routing';
+import { localizeBuilds, localizeCombos, localizeProducts } from '@/lib/content/translations';
 
 type SearchSource = 'default' | 'saved' | 'created';
 
@@ -49,6 +52,7 @@ export default function SearchModal({
 }: SearchModalProps) {
   const t = useTranslations('comparator');
   const tCommon = useTranslations('common');
+  const locale = useLocale() as Locale;
   const addItem = useCompareStore((state) => state.addItem);
   const componentType = useCompareStore((state) => state.componentType);
   const itemsCount = useCompareStore((state) => state.items.length);
@@ -233,8 +237,14 @@ export default function SearchModal({
           }
         }
 
+        const localizedItems = comparisonMode === 'components'
+          ? await localizeProducts(supabase, resultItems, locale)
+          : comparisonMode === 'combos'
+            ? await localizeCombos(supabase, resultItems, locale)
+            : await localizeBuilds(supabase, resultItems, locale);
+
         setSuggestions(
-          resultItems
+          localizedItems
             .filter((item) => matchesSearch(item, comparisonMode, searchTerm))
             .slice(0, 5),
         );
@@ -247,7 +257,7 @@ export default function SearchModal({
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, searchSource, comparisonMode, componentType, isOpen, user]);
+  }, [searchTerm, searchSource, comparisonMode, componentType, isOpen, user, locale]);
 
   if (!isOpen) return null;
 

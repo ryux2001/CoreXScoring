@@ -10,8 +10,10 @@ import HomeCollectionCard from './components/home/HomeCollectionCard';
 import HomeComparisonCard from './components/home/HomeComparisonCard';
 import HomeComponentList from './components/home/HomeComponentList';
 import { getTranslations } from 'next-intl/server';
+import type { Locale } from '@/i18n/routing';
 
 interface HomePageProps {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ currency?: string }>;
 }
 
@@ -21,9 +23,10 @@ function sectionItems(section: HomeSection): HomeCatalogItem[] {
     .filter((item): item is HomeCatalogItem => Boolean(item));
 }
 
-export default async function HomePage({ searchParams }: HomePageProps) {
+export default async function HomePage({ params, searchParams }: HomePageProps) {
+  const { locale } = await params;
   const currency = await resolveRequestCurrency((await searchParams).currency);
-  const { hero, sections } = await loadPublicHomeData(supabase);
+  const { hero, sections } = await loadPublicHomeData(supabase, locale as Locale);
   const t = await getTranslations('home');
 
   return (
