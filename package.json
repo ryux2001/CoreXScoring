@@ -31,6 +31,7 @@
     "test:ai:coverage": "vitest run --coverage tests/ai",
     "test:ai:local-qwen": "node tests/ai/evals/run-local-qwen.mjs",
     "ci:local-smokes": "node scripts/run-local-smokes.mjs",
+    "test:i18n:http": "node scripts/phase7-http-smoke.mjs",
     "check:remote-migrations": "node scripts/check-remote-migrations.mjs",
     "security:audit": "pnpm audit --prod --audit-level=high"
   },

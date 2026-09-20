@@ -7,7 +7,6 @@ import { notFound } from "next/navigation";
 import { Courier_Prime, Geist, Geist_Mono, Rajdhani } from "next/font/google";
 import type { ReactNode } from "react";
 import { isLocale, type Locale } from "@/i18n/routing";
-import { createLocalizedMetadata } from "@/lib/seo/metadata";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -40,12 +39,11 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Metadata" });
 
-  return createLocalizedMetadata({
-    locale: locale as Locale,
-    pathname: "/",
+  return {
+    metadataBase: new URL("https://corexscoring.com"),
     title: t("title"),
     description: t("description"),
-  });
+  };
 }
 
 export default async function LocaleLayout({
