@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Info, KeyRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { AiChatProvider, AiCredentialMode } from "@/lib/ai/types";
 import type { AiChatSettingsPublic } from "@/lib/ai/chat-settings";
 
@@ -16,7 +17,30 @@ const EMPTY_SETTINGS: AiChatSettingsPublic = {
   localOnly: false,
 };
 
+const PROVIDER_ERROR_KEYS: Record<string, string> = {
+  AUTH_REQUIRED: "aiProvider.errors.authRequired",
+  INVALID_REQUEST: "aiProvider.errors.invalidRequest",
+  INVALID_CONFIGURATION: "aiProvider.errors.invalidConfiguration",
+  INVALID_API_KEY: "aiProvider.errors.invalidApiKey",
+  PROVIDER_NOT_ALLOWED: "aiProvider.errors.providerNotAllowed",
+  ORIGIN_NOT_ALLOWED: "aiProvider.errors.originNotAllowed",
+  SECURITY_LIMIT_UNAVAILABLE: "aiProvider.errors.securityLimitUnavailable",
+  RATE_LIMITED: "aiProvider.errors.rateLimited",
+  LOAD_FAILED: "aiProvider.errors.loadFailed",
+  SAVE_FAILED: "aiProvider.errors.saveFailed",
+  REMOVE_FAILED: "aiProvider.errors.removeFailed",
+  TEST_FAILED: "aiProvider.errors.testFailed",
+};
+
+function getApiErrorMessage(translate: (key: string) => string, payload: { code?: string } | AiChatSettingsPublic, fallback: string): string {
+  const code = "code" in payload ? payload.code : undefined;
+  return translate(PROVIDER_ERROR_KEYS[code || ""] || fallback);
+}
+
+class LocalizedProviderError extends Error {}
+
 export default function AiChatProvidersCard() {
+  const t = useTranslations("account");
   const [settings, setSettings] = useState<AiChatSettingsPublic>(EMPTY_SETTINGS);
   const [mode, setMode] = useState<AiCredentialMode>("project");
   const [provider, setProvider] = useState<AiChatProvider>("openrouter");
@@ -32,8 +56,8 @@ export default function AiChatProvidersCard() {
     let cancelled = false;
     void fetch("/api/vault/ai-provider", { cache: "no-store" })
       .then(async (response) => {
-        const payload = await response.json() as AiChatSettingsPublic | { error?: string };
-        if (!response.ok || !("credentialMode" in payload)) throw new Error((payload as { error?: string }).error || "No se pudo cargar la configuración.");
+        const payload = await response.json() as AiChatSettingsPublic | { code?: string };
+        if (!response.ok || !("credentialMode" in payload)) throw new LocalizedProviderError(getApiErrorMessage(t, payload, "aiProvider.errors.loadFailed"));
         if (!cancelled) {
           setSettings(payload);
           setMode(payload.credentialMode);
@@ -41,10 +65,10 @@ export default function AiChatProvidersCard() {
           setModel(payload.preferredModel);
         }
       })
-      .catch((error: unknown) => { if (!cancelled) setStatus(error instanceof Error ? error.message : "No se pudo cargar la configuración."); })
+      .catch((error: unknown) => { if (!cancelled) setStatus(error instanceof LocalizedProviderError ? error.message : t("aiProvider.errors.loadFailed")); })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [t]);
 
   const models = useMemo(() => settings.models[provider] || [], [provider, settings.models]);
   const selectedProvider = settings[provider];
@@ -66,13 +90,13 @@ export default function AiChatProvidersCard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credentialMode: mode, provider, model, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) }),
       });
-      const payload = await response.json() as AiChatSettingsPublic | { error?: string };
-      if (!response.ok || !("credentialMode" in payload)) throw new Error((payload as { error?: string }).error || "No se pudo guardar la configuración.");
+      const payload = await response.json() as AiChatSettingsPublic | { code?: string };
+      if (!response.ok || !("credentialMode" in payload)) throw new LocalizedProviderError(getApiErrorMessage(t, payload, "aiProvider.errors.saveFailed"));
       setSettings(payload);
       setApiKey("");
-      setStatus(mode === "byok" ? "Configuración BYOK guardada. La key no se volverá a mostrar." : "Se usarán las claves de CoreX AI.");
+      setStatus(mode === "byok" ? t("aiProvider.status.byokSaved") : t("aiProvider.status.projectSaved"));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo guardar la configuración.");
+      setStatus(error instanceof LocalizedProviderError ? error.message : t("aiProvider.errors.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -87,13 +111,13 @@ export default function AiChatProvidersCard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider }),
       });
-      const payload = await response.json() as AiChatSettingsPublic | { error?: string };
-      if (!response.ok || !("credentialMode" in payload)) throw new Error((payload as { error?: string }).error || "No se pudo eliminar la key.");
+      const payload = await response.json() as AiChatSettingsPublic | { code?: string };
+      if (!response.ok || !("credentialMode" in payload)) throw new LocalizedProviderError(getApiErrorMessage(t, payload, "aiProvider.errors.removeFailed"));
       setSettings(payload);
       setApiKey("");
-      setStatus("API key eliminada. Puedes volver a usar las claves de CoreX AI.");
+      setStatus(t("aiProvider.status.keyRemoved"));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo eliminar la key.");
+      setStatus(error instanceof LocalizedProviderError ? error.message : t("aiProvider.errors.removeFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -104,11 +128,11 @@ export default function AiChatProvidersCard() {
     setStatus(null);
     try {
       const response = await fetch("/api/vault/ai-provider/test", { method: "POST" });
-      const payload = await response.json() as { ok?: boolean; provider?: string; model?: string; error?: string };
-      if (!response.ok || !payload.ok) throw new Error(payload.error || "No se pudo validar la API key.");
-      setStatus(`Conexión correcta con ${payload.provider}. Modelo seleccionado: ${payload.model}.`);
+      const payload = await response.json() as { ok?: boolean; provider?: string; model?: string; code?: string };
+      if (!response.ok || !payload.ok) throw new LocalizedProviderError(getApiErrorMessage(t, payload, "aiProvider.errors.testFailed"));
+      setStatus(t("aiProvider.status.connectionSuccess", { provider: payload.provider || providerLabel, model: payload.model || model }));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo validar la API key.");
+      setStatus(error instanceof LocalizedProviderError ? error.message : t("aiProvider.errors.testFailed"));
     } finally {
       setIsTesting(false);
     }
@@ -121,29 +145,29 @@ export default function AiChatProvidersCard() {
           <KeyRound aria-hidden="true" size={17} />
         </span>
         <div>
-          <h2 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">Proveedor de IA</h2>
+          <h2 className="text-[14px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">{t("aiProvider.title")}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
-            Usa las claves de CoreX AI o una API key propia de {providerLabel}. La key se cifra en servidor y nunca se muestra al chat.
+            {t("aiProvider.description", { provider: providerLabel })}
           </p>
         </div>
       </div>
 
       {settings.localOnly && (
         <p className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-3 text-xs leading-relaxed text-amber-100" role="status">
-          El modo local estricto está activo en desarrollo. CoreX AI usará Qwen local y no consumirá esta configuración hasta desactivar <code>AI_LOCAL_ONLY</code>.
+          {t.rich("aiProvider.localOnly", { code: (chunks) => <code>{chunks}</code> })}
         </p>
       )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="text-xs text-zinc-400">
-          Modo
+          {t("aiProvider.mode")}
           <select value={mode} onChange={(event) => setMode(event.target.value as AiCredentialMode)} disabled={isLoading || isSaving || settings.localOnly} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40">
-            <option value="project">Claves de CoreX AI</option>
-            <option value="byok">Mi API key</option>
+            <option value="project">{t("aiProvider.projectKeys")}</option>
+            <option value="byok">{t("aiProvider.myApiKey")}</option>
           </select>
         </label>
         <label className="text-xs text-zinc-400">
-          Proveedor
+          {t("aiProvider.provider")}
           <select value={provider} onChange={(event) => setProvider(event.target.value as AiChatProvider)} disabled={isLoading || isSaving || settings.localOnly} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40">
             <option value="openrouter">OpenRouter</option>
             <option value="groq">Groq</option>
@@ -151,28 +175,28 @@ export default function AiChatProvidersCard() {
           </select>
         </label>
         <label className="text-xs text-zinc-400">
-          Modelo permitido
+          {t("aiProvider.allowedModel")}
           <select value={model} onChange={(event) => setModel(event.target.value)} disabled={isLoading || isSaving || settings.localOnly || models.length === 0} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40">
-            {models.length === 0 ? <option value="">Sin modelos configurados</option> : models.map((item) => <option key={item} value={item}>{item}</option>)}
+            {models.length === 0 ? <option value="">{t("aiProvider.noModels")}</option> : models.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
       </div>
 
       <label className="mt-3 block text-xs text-zinc-400">
         <span className="flex items-center gap-1.5">
-          API key {selectedProvider.hint ? `(${selectedProvider.hint})` : ""}
-          <button type="button" aria-label="Mostrar información de seguridad de la API key" aria-expanded={showSecurityInfo} aria-controls="ai-chat-key-security" onClick={() => setShowSecurityInfo((current) => !current)} className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-cyan-300/40 text-cyan-200 transition-colors hover:border-cyan-200 hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
+          {t("aiProvider.apiKey")}{selectedProvider.hint ? ` (${selectedProvider.hint})` : ""}
+          <button type="button" aria-label={t("aiProvider.showSecurityInfo")} aria-expanded={showSecurityInfo} aria-controls="ai-chat-key-security" onClick={() => setShowSecurityInfo((current) => !current)} className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-cyan-300/40 text-cyan-200 transition-colors hover:border-cyan-200 hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
             <Info aria-hidden="true" size={11} strokeWidth={2.5} />
           </button>
         </span>
-        <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} disabled={isLoading || isSaving || mode === "project" || settings.localOnly} autoComplete="new-password" placeholder={selectedProvider.configured ? "Deja vacío para conservarla" : "Pega tu API key"} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40" />
-        {showSecurityInfo && <span id="ai-chat-key-security" role="note" className="mt-2 block rounded-lg border border-cyan-300/15 bg-cyan-300/[0.06] p-2.5 text-[11px] leading-relaxed text-cyan-100/80">La key se cifra en el servidor, se aísla por cuenta y no se devuelve ni se incluye en los mensajes. El proveedor y el modelo siguen limitados por CoreX AI.</span>}
+        <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} disabled={isLoading || isSaving || mode === "project" || settings.localOnly} autoComplete="new-password" placeholder={selectedProvider.configured ? t("aiProvider.keepExisting") : t("aiProvider.pasteKey")} className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-200/40" />
+        {showSecurityInfo && <span id="ai-chat-key-security" role="note" className="mt-2 block rounded-lg border border-cyan-300/15 bg-cyan-300/[0.06] p-2.5 text-[11px] leading-relaxed text-cyan-100/80">{t("aiProvider.securityInfo")}</span>}
       </label>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => void save()} disabled={isLoading || isSaving || !model || !canSave || settings.localOnly} className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-cyan-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? "Guardando…" : "Guardar configuración"}</button>
-        {mode === "byok" && selectedProvider.configured && <button type="button" onClick={() => void testConnection()} disabled={isTesting || isSaving || settings.localOnly} className="rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50">{isTesting ? "Probando…" : "Probar conexión"}</button>}
-        {selectedProvider.configured && <button type="button" onClick={() => void remove()} disabled={isSaving || settings.localOnly} className="rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50">Eliminar key</button>}
+         <button type="button" onClick={() => void save()} disabled={isLoading || isSaving || !model || !canSave || settings.localOnly} className="rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-cyan-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50">{isSaving ? t("aiProvider.saving") : t("aiProvider.save")}</button>
+         {mode === "byok" && selectedProvider.configured && <button type="button" onClick={() => void testConnection()} disabled={isTesting || isSaving || settings.localOnly} className="rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-semibold text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50">{isTesting ? t("aiProvider.testing") : t("aiProvider.test")}</button>}
+         {selectedProvider.configured && <button type="button" onClick={() => void remove()} disabled={isSaving || settings.localOnly} className="rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-50">{t("aiProvider.remove")}</button>}
         {status && <p className="basis-full text-xs text-cyan-200" role="status">{status}</p>}
       </div>
     </section>

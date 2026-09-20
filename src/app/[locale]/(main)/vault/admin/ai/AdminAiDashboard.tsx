@@ -40,6 +40,10 @@ function getIpLabel(ipHash: string): string {
   return `…${ipHash.slice(-8)}`;
 }
 
+function getProviderStatusKey(status: AiAdminProviderUsage["status"]): string {
+  return status === "rate_limited" ? "rateLimited" : status;
+}
+
 function sumBy<T>(items: T[], selector: (item: T) => number): number {
   return items.reduce((total, item) => total + selector(item), 0);
 }
@@ -47,7 +51,6 @@ function sumBy<T>(items: T[], selector: (item: T) => number): number {
 function QuotaCard({
   label,
   messages,
-  tokens,
   locale,
   messagesDescription,
   tokensLabel,
@@ -56,7 +59,6 @@ function QuotaCard({
 }: {
   label: string;
   messages: number;
-  tokens: number;
   locale: string;
   messagesDescription: string;
   tokensLabel: string;
@@ -107,6 +109,7 @@ function EmptyState({ message }: { message: string }) {
 
 export default function AdminAiDashboard() {
   const t = useTranslations('admin.ai');
+  const tc = useTranslations('admin.common');
   const locale = useLocale();
   const [period, setPeriod] = useState<number>(7);
   const [data, setData] = useState<AiAdminUsageResponse | null>(null);
@@ -132,7 +135,7 @@ export default function AdminAiDashboard() {
       }
 
       setData(payload);
-    } catch (requestError) {
+    } catch {
       setError(t('errors.loadMetrics'));
     } finally {
       setIsLoading(false);
@@ -163,7 +166,7 @@ export default function AdminAiDashboard() {
         message: t('cleanup.success', { logs: formatNumber(payload.deleted_action_logs ?? 0, locale), buckets: formatNumber(payload.deleted_usage_daily ?? 0, locale) }),
       });
       await loadUsage(period);
-    } catch (requestError) {
+    } catch {
       setCleanupState({
         type: "error",
         message: t('errors.cleanup'),
@@ -365,10 +368,10 @@ export default function AdminAiDashboard() {
               <SectionTitle eyebrow={t('quotas.eyebrow')} title={t('quotas.title')} description={t('quotas.description')} />
               {config ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <QuotaCard label={t('quotas.anonymous')} messages={config.anonymous_daily_messages} tokens={config.anonymous_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.anonymous_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Users} />
-                  <QuotaCard label={t('quotas.authenticated')} messages={config.authenticated_daily_messages} tokens={config.authenticated_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.authenticated_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Users} />
-                  <QuotaCard label={t('quotas.anonymousIp')} messages={config.anonymous_ip_daily_messages} tokens={config.anonymous_ip_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.anonymous_ip_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Wifi} />
-                  <QuotaCard label={t('quotas.authenticatedIp')} messages={config.authenticated_ip_daily_messages} tokens={config.authenticated_ip_daily_tokens} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.authenticated_ip_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Wifi} />
+                  <QuotaCard label={t('quotas.anonymous')} messages={config.anonymous_daily_messages} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.anonymous_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Users} />
+                  <QuotaCard label={t('quotas.authenticated')} messages={config.authenticated_daily_messages} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.authenticated_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Users} />
+                  <QuotaCard label={t('quotas.anonymousIp')} messages={config.anonymous_ip_daily_messages} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.anonymous_ip_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Wifi} />
+                  <QuotaCard label={t('quotas.authenticatedIp')} messages={config.authenticated_ip_daily_messages} locale={locale} messagesDescription={t('quotas.messagesDescription')} tokensLabel={t('quotas.tokens', { count: formatNumber(config.authenticated_ip_daily_tokens, locale) })} tokensDescription={t('quotas.tokensDescription')} icon={Wifi} />
                 </div>
               ) : <EmptyState message={t('quotas.empty')} />}
             </section>
@@ -396,7 +399,7 @@ export default function AdminAiDashboard() {
                   <div className="space-y-3">
                     {providers.map((item) => (
                       <div key={`${item.provider}-${item.status}`} className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                        <div className="flex items-center justify-between gap-3"><span className="font-display text-sm font-bold text-white">{item.provider}</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${item.status === "success" ? "bg-emerald-300/10 text-emerald-200" : item.status === "rate_limited" ? "bg-amber-300/10 text-amber-200" : "bg-red-300/10 text-red-200"}`}>{item.status}</span></div>
+                        <div className="flex items-center justify-between gap-3"><span className="font-display text-sm font-bold text-white">{item.provider}</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${item.status === "success" ? "bg-emerald-300/10 text-emerald-200" : item.status === "rate_limited" ? "bg-amber-300/10 text-amber-200" : "bg-red-300/10 text-red-200"}`}>{tc(`providerStatus.${getProviderStatusKey(item.status)}`)}</span></div>
                         <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-zinc-500"><span><strong className="block text-sm text-zinc-200">{formatNumber(item.requests, locale)}</strong>{t('providers.metrics.requests')}</span><span><strong className="block text-sm text-zinc-200">{formatNumber(item.tokens, locale)}</strong>{t('providers.metrics.tokens')}</span><span><strong className="block text-sm text-zinc-200">{t('providers.metrics.milliseconds', { value: formatNumber(Math.round(item.average_duration_ms), locale) })}</strong>{t('providers.metrics.average')}</span></div>
                       </div>
                     ))}

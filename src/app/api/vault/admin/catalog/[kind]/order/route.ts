@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 import { getAdminUser, parseCatalogKind } from '@/lib/admin/catalog';
+import { normalizeCategory, toStoredCategory } from '@/lib/admin/catalog-categories';
 import { readLimitedJson } from '@/lib/api-security';
 
 export const runtime = 'nodejs';
@@ -41,7 +42,7 @@ export async function PATCH(
     }
     ({ error } = await supabase.rpc('reorder_catalog_categories', {
       p_kind: kind,
-      p_categories: body.categories,
+      p_categories: body.categories.map((category) => toStoredCategory(normalizeCategory(category))),
     }));
   } else if (body.scope === 'items') {
     if (typeof body.category !== 'string' || !Array.isArray(body.ids) || body.ids.some((id) => typeof id !== 'string')) {
@@ -49,7 +50,7 @@ export async function PATCH(
     }
     ({ error } = await supabase.rpc('reorder_catalog_items_by_category', {
       p_kind: kind,
-      p_category: body.category,
+      p_category: toStoredCategory(normalizeCategory(body.category)),
       p_ids: body.ids,
     }));
   } else {

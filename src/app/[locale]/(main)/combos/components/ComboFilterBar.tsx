@@ -13,8 +13,8 @@ interface ComboFilterBarProps {
   availableCategories: string[];
   currency: string;
   showCurrencyToggle?: boolean;
-  entityLabel?: string;
-  searchPlaceholder?: string;
+  entityLabel: string;
+  searchPlaceholder: string;
 }
 
 export default function ComboFilterBar({
@@ -23,8 +23,8 @@ export default function ComboFilterBar({
   availableCategories,
   currency,
   showCurrencyToggle = true,
-  entityLabel = 'combos',
-  searchPlaceholder = 'Buscar combos',
+  entityLabel,
+  searchPlaceholder,
 }: ComboFilterBarProps) {
   const t = useTranslations('combos');
   const router = useRouter();

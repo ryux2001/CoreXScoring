@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/navigation";
+import { getComparisonErrorMessage } from "@/lib/comparison-errors";
 import {
   Bot,
   ChevronDown,
@@ -565,6 +566,7 @@ function ChatPanel({
 
 export default function AISidebar() {
   const t = useTranslations("ai");
+  const tCommon = useTranslations("common");
   const pathname = usePathname() || "/";
   const comparisonItems = useCompareStore((state) => state.items);
   const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
@@ -662,11 +664,11 @@ export default function AISidebar() {
     const comparisonStore = useCompareStore.getState();
     if (action.type === "replace") {
       const result = comparisonStore.applyComparisonSnapshot(action.items as unknown as CompareProduct[], action.evaluatedPrices);
-      return result.success ? null : result.error || t("errors.updateComparison");
+       return result.success ? null : getComparisonErrorMessage(result.error, tCommon);
     }
     if (action.type === "add") {
       const result = comparisonStore.addItem(action.item as unknown as CompareProduct);
-      return result.success ? null : result.error || t("errors.updateComparison");
+       return result.success ? null : getComparisonErrorMessage(result.error, tCommon);
     }
 
     const isPresent = comparisonStore.items.some((item) => String(item.id) === action.itemId);

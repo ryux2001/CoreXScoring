@@ -95,7 +95,7 @@ export default function AdminCatalogSelect({
         className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border bg-black px-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 ${isOpen ? 'border-cyan-200/70 shadow-[0_0_0_1px_rgba(165,243,252,0.15)]' : 'border-zinc-800 hover:border-zinc-600'}`}
       >
         <span className={`truncate text-xs ${selectedOption?.value === value ? 'text-zinc-200' : 'text-zinc-600'}`}>
-          {selectedOption?.label ?? 'Seleccionar'}
+          {selectedOption?.label ?? label}
         </span>
         <ChevronDown aria-hidden="true" size={15} className={`shrink-0 text-zinc-500 transition-transform ${isOpen ? 'rotate-180 text-cyan-200' : ''}`} />
       </button>

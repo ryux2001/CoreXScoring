@@ -93,8 +93,8 @@ describe("translation catalog parity", () => {
   });
 
   it("keeps deletion confirmation aligned with the account protocol", () => {
-    expect(en.account.typeConfirmation).toContain("ELIMINAR");
-    expect(es.account.typeConfirmation).toContain("ELIMINAR");
+    expect(en.account.typeConfirmation).toContain("{token}");
+    expect(es.account.typeConfirmation).toContain("{token}");
   });
 
   it("documents every currently supported external AI provider", () => {

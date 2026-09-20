@@ -12,6 +12,7 @@ interface CompareCartDropdownProps {
 
 export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps) {
   const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const items = useCompareStore((state) => state.items);
@@ -128,29 +129,40 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
               </div>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {items.map((item) => (
-                  <div 
-                    key={item.id} 
-                    className="flex items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-zinc-900/20 p-2.5 hover:border-zinc-800 transition-colors"
-                  >
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-display truncate text-sm font-semibold tracking-tight text-white">
-                        {item.name}
-                      </span>
-                      <span className="font-technical mt-0.5 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
-                        {item.brand} · {item.type}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      aria-label={t("removeFromComparison", { name: item.name })}
-                      onClick={() => removeItem(item.id)}
-                      className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-600 transition-all hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                {items.map((item) => {
+                  const itemIsBuild = item.comparisonType === "build" || String(item.type || "").toUpperCase() === "BUILD";
+                  const itemIsCombo = item.comparisonType === "combo" || String(item.type || "").toUpperCase() === "COMBO";
+                  const itemTypeLabel = itemIsBuild
+                    ? tCommon("comparisonTypes.build")
+                    : itemIsCombo
+                      ? tCommon("comparisonTypes.combo")
+                      : `${item.brand} · ${item.type}`;
+                  const itemDisplayName = item.name || itemTypeLabel;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-zinc-900/20 p-2.5 hover:border-zinc-800 transition-colors"
                     >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-display truncate text-sm font-semibold tracking-tight text-white">
+                          {itemDisplayName}
+                        </span>
+                        <span className="font-technical mt-0.5 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+                          {itemTypeLabel}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={t("removeFromComparison", { name: itemDisplayName })}
+                        onClick={() => removeItem(item.id)}
+                        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-600 transition-all hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

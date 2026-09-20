@@ -74,8 +74,8 @@ export function normalizeCombo(combo: any, currency: string): any {
     ...combo,
     type: 'COMBO',
     comparisonType: 'combo',
-    name: combo?.title || 'Combo sin título',
-    brand: 'Combo',
+    name: combo?.title || '',
+    brand: 'COMBO',
     price: getComboTotalPrice(combo, currency),
     currency,
   };
@@ -133,8 +133,8 @@ export function normalizeBuild(build: any, currency: string): any {
     ...build,
     type: 'BUILD',
     comparisonType: 'build',
-    name: build?.title || 'Build sin titulo',
-    brand: 'Build',
+    name: build?.title || '',
+    brand: 'BUILD',
     price: getBuildTotalPrice(build, currency),
     currency,
   };

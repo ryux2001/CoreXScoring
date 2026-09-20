@@ -37,6 +37,7 @@ function getInitialProducts(kind: CatalogKind, row?: AdminCatalogRow): Record<st
 
 export default function AdminCatalogEditor({ kind, initialRow }: { kind: CatalogKind; initialRow?: AdminCatalogRow }) {
   const t = useTranslations('admin.catalog');
+  const tc = useTranslations('admin.common');
   const router = useRouter();
   const slots = getSlots(kind);
   const [form, setForm] = useState<FormState>(() => getInitialForm(kind, initialRow));
@@ -46,7 +47,7 @@ export default function AdminCatalogEditor({ kind, initialRow }: { kind: Catalog
   const [notice, setNotice] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
 
   const isEditing = Boolean(initialRow);
-  const title = kind === 'builds' ? 'build' : 'combo';
+  const title = tc(`kindsSingular.${kind}`);
   const pluralTitle = t(`kinds.${kind}`);
 
   const updateField = (field: string, value: string | boolean) => {

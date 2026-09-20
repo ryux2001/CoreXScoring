@@ -5,8 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AdminCatalogRow, CatalogKind } from '@/lib/admin/catalog';
 import AdminCatalogSelect from './AdminCatalogSelect';
 import { useTranslations } from 'next-intl';
-
-const UNCATEGORIZED_CATEGORY = 'Sin categoría';
+import { normalizeCategory, UNCATEGORIZED_CATEGORY } from '@/lib/admin/catalog-categories';
 
 export default function AdminCatalogOrderDialog({
   kind,
@@ -24,7 +23,7 @@ export default function AdminCatalogOrderDialog({
   const t = useTranslations('admin.catalog');
   const uncategorized = UNCATEGORIZED_CATEGORY;
   const initialOrders = categories.reduce<Record<string, AdminCatalogRow[]>>((orders, category) => {
-    orders[category] = rows.filter((row) => (row.category || uncategorized) === category);
+    orders[category] = rows.filter((row) => normalizeCategory(row.category) === category);
     return orders;
   }, {});
   const [selectedCategory, setSelectedCategory] = useState(categories[0] ?? '');

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'; // 🚀 Importamos useState y useEffect
 import { BarChart2, AlertCircle } from 'lucide-react'; // 🚀 Añadimos un icono de alerta si quieres
 import { useCompareStore } from '@/store/useCompareStore';
+import { getComparisonErrorMessage } from '@/lib/comparison-errors';
 import { useTranslations } from 'next-intl';
 
 interface CompareButtonProps {
@@ -47,7 +48,7 @@ export default function CompareButton(product: CompareButtonProps) {
       const result = addItem(product);
       if (!result.success) {
         // 🚀 En lugar de alert(), guardamos el error en nuestro estado local
-        setCustomError(result.error || t('addProductError'));
+         setCustomError(getComparisonErrorMessage(result.error, t));
       }
     }
   };

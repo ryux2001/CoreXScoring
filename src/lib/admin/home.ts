@@ -170,8 +170,8 @@ export function getForeignKey(type: HomeCatalogType): 'product_id' | 'combo_id' 
   return type === 'products' ? 'product_id' : type === 'combos' ? 'combo_id' : 'build_id';
 }
 
-export function catalogItemLabel(item: HomeCatalogItem): string {
-  const title = item.name || item.title || 'Sin título';
+export function catalogItemLabel(item: HomeCatalogItem, missingLabel: string): string {
+  const title = item.name || item.title || missingLabel;
   return item.brand ? `${item.brand} ${title}` : title;
 }
 

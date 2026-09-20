@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { useRouter } from '@/i18n/navigation';
 import { AlertCircle, BarChart2, Bookmark } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
+import { getComparisonErrorMessage } from '@/lib/comparison-errors';
 import { supabase } from '@/lib/supabaseClient';
 import { getComboPartPrice } from '@/lib/scoringCombos';
 import { formatPrice } from '@/lib/formatPrice';
@@ -24,6 +25,7 @@ export default function ComboCard({
   wholeCardClickable = false,
 }: ComboCardProps) {
   const t = useTranslations('combos');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
   const isEUR = currency === 'EUR';
   const addItem = useCompareStore((state) => state.addItem);
@@ -90,13 +92,13 @@ export default function ComboCard({
       type: 'COMBO',
       comparisonType: 'combo',
       name: combo.title,
-      brand: 'Combo',
+       brand: 'COMBO',
       price: totalPrice,
       currency,
     });
 
     if (!result.success) {
-       setCustomError(result.error || t('addError'));
+       setCustomError(getComparisonErrorMessage(result.error, tCommon));
     }
   };
 

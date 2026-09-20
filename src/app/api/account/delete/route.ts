@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import {
-  DELETE_CONFIRMATION_TEXT,
   MAX_DELETE_REQUEST_BYTES,
   parseDeleteAccountRequest,
 } from '@/lib/auth/delete-account-policy';
@@ -78,10 +77,6 @@ export async function POST(request: NextRequest) {
 
   const body = parseDeleteAccountRequest(rawBody);
   if (!body) return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 });
-
-  if (body.confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_TEXT) {
-    return NextResponse.json({ error: 'Confirmación inválida.' }, { status: 400 });
-  }
 
   const { data: reauthenticated, error: reauthenticationError } = await supabase.auth.signInWithPassword({
     email: user.email,

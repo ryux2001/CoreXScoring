@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowUp, Check, GripVertical, LoaderCircle, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { UNCATEGORIZED_CATEGORY } from '@/lib/admin/catalog-categories';
 import type { CatalogKind } from '@/lib/admin/catalog';
 import { useTranslations } from 'next-intl';
 
@@ -23,9 +24,7 @@ export default function AdminCatalogCategoryOrderDialog({
   const [error, setError] = useState<string | null>(null);
   const dragCategory = useRef<string | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
-  const uncategorized = 'Sin categoría';
-
-  const categoryLabel = (category: string) => category === uncategorized ? t('uncategorized') : category;
+  const categoryLabel = (category: string) => category === UNCATEGORIZED_CATEGORY ? t('uncategorized') : category;
 
   useEffect(() => {
     const dialog = dialogRef.current;

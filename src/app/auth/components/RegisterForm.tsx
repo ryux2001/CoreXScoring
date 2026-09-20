@@ -27,7 +27,7 @@ export default function RegisterForm() {
     if (error.status === 400) return t("invalidEmailOrPassword");
     if (error.status === 409) return t("emailAlreadyRegistered");
 
-    return error.message || t("createAccountError");
+    return t("createAccountError");
   };
 
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -67,8 +67,8 @@ export default function RegisterForm() {
 
       setUser(data.user);
       router.push("/");
-    } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : t("createAccountError"));
+    } catch {
+      setErrorMsg(t("createAccountError"));
     } finally {
       setLoading(false);
     }

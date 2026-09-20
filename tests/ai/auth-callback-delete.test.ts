@@ -25,14 +25,21 @@ describe('auth callback and account deletion policy', () => {
     expect(getSafeAuthNextPath('/es/auth/update-password')).toBe('/es/auth/update-password');
   });
 
-  it('requires exactly the confirmation and current password fields', () => {
-    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'ELIMINAR', password: 'correct' }))).toEqual({
+  it('requires a locale-specific confirmation and current password', () => {
+    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'ELIMINAR', password: 'correct', locale: 'es' }))).toEqual({
       confirmation: 'ELIMINAR',
       password: 'correct',
+      locale: 'es',
     });
-    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'eliminar', password: 'correct', extra: true }))).toBeNull();
-    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'cancelar', password: 'correct' }))).toBeNull();
-    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'ELIMINAR', password: '' }))).toBeNull();
+    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'DELETE', password: 'correct', locale: 'en' }))).toEqual({
+      confirmation: 'DELETE',
+      password: 'correct',
+      locale: 'en',
+    });
+    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'eliminar', password: 'correct', locale: 'es', extra: true }))).toBeNull();
+    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'cancelar', password: 'correct', locale: 'es' }))).toBeNull();
+    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'ELIMINAR', password: '', locale: 'es' }))).toBeNull();
+    expect(parseDeleteAccountRequest(JSON.stringify({ confirmation: 'ELIMINAR', password: 'correct', locale: 'en' }))).toBeNull();
   });
 
   it('localizes auth callback destinations from the current Spanish page', () => {

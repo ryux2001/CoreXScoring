@@ -20,6 +20,15 @@
     "comparisonSystem": "Sistema de comparación",
     "addProductError": "No se pudo añadir el producto",
     "backToCoreXScoring": "Volver a CoreXScoring",
+    "pageNotFound": "Página no encontrada",
+    "pageNotFoundDescription": "La página solicitada no existe o ya no está disponible.",
+    "comparisonTypes": { "combo": "Combo", "build": "Build" },
+    "comparisonErrors": {
+      "maxSlots": "Puedes comparar hasta {max} elementos a la vez.",
+      "duplicate": "Este elemento ya está en la comparativa.",
+      "mixed": "No puedes mezclar tipos de elementos. Estás comparando {current}, así que no puedes añadir {incoming}.",
+      "mixedSnapshot": "La comparativa no puede contener tipos de elementos diferentes."
+    },
     "pagination": "Paginación",
     "previousPage": "Página anterior",
     "nextPage": "Página siguiente",
@@ -231,10 +240,51 @@
     "deleteAccount": "Eliminar cuenta",
     "irreversibleAction": "Esta acción no se puede deshacer.",
     "deleteAccountWarning": "Se eliminará tu cuenta y perderás el acceso a tus productos, combos y builds guardados.",
-    "typeConfirmation": "Escribe <confirmation>ELIMINAR</confirmation> para confirmar",
+    "typeConfirmation": "Escribe <confirmation>{token}</confirmation> para confirmar",
     "continueWithGoogleToConfirmIdentity": "Después continuarás con Google para confirmar tu identidad.",
     "confirmDeletion": "Confirmar eliminación",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "aiProvider": {
+      "title": "Proveedor de IA",
+      "description": "Usa las claves de CoreX AI o una API key propia de {provider}. La key se cifra en el servidor y nunca se muestra al chat.",
+      "localOnly": "El modo local estricto está activo en desarrollo. CoreX AI usará Qwen local e ignorará esta configuración hasta desactivar <code>AI_LOCAL_ONLY</code>.",
+      "mode": "Modo",
+      "projectKeys": "Claves de CoreX AI",
+      "myApiKey": "Mi API key",
+      "provider": "Proveedor",
+      "allowedModel": "Modelo permitido",
+      "noModels": "No hay modelos configurados",
+      "apiKey": "API key",
+      "showSecurityInfo": "Mostrar información de seguridad de la API key",
+      "keepExisting": "Deja vacío para conservarla",
+      "pasteKey": "Pega tu API key",
+      "securityInfo": "La key se cifra en el servidor, se aísla por cuenta y no se devuelve ni se incluye en los mensajes. El proveedor y el modelo siguen limitados por CoreX AI.",
+      "save": "Guardar configuración",
+      "saving": "Guardando...",
+      "test": "Probar conexión",
+      "testing": "Probando...",
+      "remove": "Eliminar key",
+      "status": {
+        "byokSaved": "Configuración BYOK guardada. La key no se volverá a mostrar.",
+        "projectSaved": "Se usarán las claves de CoreX AI.",
+        "keyRemoved": "API key eliminada. Puedes volver a usar las claves de CoreX AI.",
+        "connectionSuccess": "Conexión correcta con {provider}. Modelo seleccionado: {model}."
+      },
+      "errors": {
+        "authRequired": "Necesitas una cuenta registrada.",
+        "invalidRequest": "La solicitud no es válida.",
+        "invalidConfiguration": "La configuración de proveedor no es válida.",
+        "invalidApiKey": "La API key no tiene un formato válido.",
+        "providerNotAllowed": "El proveedor no está permitido.",
+        "originNotAllowed": "El origen de la solicitud no está permitido.",
+        "securityLimitUnavailable": "El límite de seguridad no está disponible. Inténtalo más tarde.",
+        "rateLimited": "Demasiadas solicitudes. Inténtalo más tarde.",
+        "loadFailed": "No se pudo cargar la configuración de CoreX AI.",
+        "saveFailed": "No se pudo guardar la configuración del proveedor.",
+        "removeFailed": "No se pudo eliminar la API key.",
+        "testFailed": "No se pudo validar la API key."
+      }
+    }
   },
   "catalog": {
     "productCount": "{count, plural, one {# producto} other {# productos}}",
@@ -754,6 +804,8 @@
     "savedCombos": {
       "title": "Combos guardados",
       "loadError": "No se pudieron cargar tus combos guardados.",
+      "entityLabel": "combos",
+      "searchPlaceholder": "Buscar combos guardados",
       "favorites": "Combos favoritos",
       "empty": "Aún no tienes combos guardados.",
       "noMatches": "No hay combos guardados que coincidan con estos filtros."
@@ -761,6 +813,9 @@
     "createdCombos": {
       "title": "Combos creados",
       "loadError": "No se pudieron cargar tus combos creados.",
+      "entityLabel": "combos",
+      "searchPlaceholder": "Buscar combos creados",
+      "create": "Crear combo",
       "heading": "Mis combos",
       "empty": "Aún no tienes combos creados.",
       "noMatches": "No hay combos que coincidan con estos filtros."
@@ -870,6 +925,7 @@
     }
   },
   "admin": {
+    "common": { "kindsSingular": { "builds": "build", "combos": "combo" }, "unknownItem": "Elemento desconocido", "providerStatus": { "success": "Correcto", "error": "Error", "guardrail": "Guardrail", "rateLimited": "Límite alcanzado" } },
     "backToVault": "Volver a la bóveda",
     "placeholder": {
       "title": "Panel preparado para la siguiente fase",

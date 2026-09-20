@@ -8,11 +8,10 @@ import AdminCatalogCategoryOrderDialog from './AdminCatalogCategoryOrderDialog';
 import AdminCatalogOrderDialog from './AdminCatalogOrderDialog';
 import AdminCatalogSelect from './AdminCatalogSelect';
 import { useTranslations } from 'next-intl';
-
-const UNCATEGORIZED_CATEGORY = 'Sin categoría';
+import { normalizeCategory, UNCATEGORIZED_CATEGORY } from '@/lib/admin/catalog-categories';
 
 function stableCategory(category: unknown): string {
-  return typeof category === 'string' && category.trim() ? category.trim() : UNCATEGORIZED_CATEGORY;
+  return normalizeCategory(category);
 }
 
 function productName(row: AdminCatalogRow, slot: CatalogSlot, missingLabel: string): string {
@@ -27,6 +26,7 @@ function getSlots(kind: CatalogKind): CatalogSlot[] {
 
 export default function AdminCatalogList({ kind, rows }: { kind: CatalogKind; rows: AdminCatalogRow[] }) {
   const t = useTranslations('admin.catalog');
+  const tc = useTranslations('admin.common');
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState<'all' | 'active' | 'hidden'>('all');
@@ -79,7 +79,7 @@ export default function AdminCatalogList({ kind, rows }: { kind: CatalogKind; ro
             </button>
             <Link href={`/vault/admin/catalog/${kind}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black uppercase tracking-wider text-black transition-colors hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
               <Plus aria-hidden="true" size={16} />
-              {t('editor.newTitle', { kind: kind === 'builds' ? 'build' : 'combo' })}
+              {t('editor.newTitle', { kind: tc(`kindsSingular.${kind}`) })}
             </Link>
           </div>
         </div>

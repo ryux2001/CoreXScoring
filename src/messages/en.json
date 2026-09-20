@@ -20,6 +20,15 @@
     "comparisonSystem": "Comparison system",
     "addProductError": "Could not add the product",
     "backToCoreXScoring": "Back to CoreXScoring",
+    "pageNotFound": "Page not found",
+    "pageNotFoundDescription": "The requested page does not exist or is no longer available.",
+    "comparisonTypes": { "combo": "Combo", "build": "Build" },
+    "comparisonErrors": {
+      "maxSlots": "You can compare up to {max} items at once.",
+      "duplicate": "This item is already in the comparison.",
+      "mixed": "You cannot mix item types. You are comparing {current}, so you cannot add {incoming}.",
+      "mixedSnapshot": "The comparison cannot contain different item types."
+    },
     "pagination": "Pagination",
     "previousPage": "Previous page",
     "nextPage": "Next page",
@@ -231,10 +240,51 @@
     "deleteAccount": "Delete account",
     "irreversibleAction": "This action cannot be undone.",
     "deleteAccountWarning": "Your account will be deleted and you will lose access to saved products, combos, and builds.",
-    "typeConfirmation": "Type <confirmation>ELIMINAR</confirmation> to confirm",
+    "typeConfirmation": "Type <confirmation>{token}</confirmation> to confirm",
     "continueWithGoogleToConfirmIdentity": "You will then continue with Google to confirm your identity.",
     "confirmDeletion": "Confirm deletion",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "aiProvider": {
+      "title": "AI provider",
+      "description": "Use CoreX AI keys or your own API key for {provider}. The key is encrypted on the server and never shown to chat.",
+      "localOnly": "Strict local mode is active in development. CoreX AI will use local Qwen and ignore this configuration until <code>AI_LOCAL_ONLY</code> is disabled.",
+      "mode": "Mode",
+      "projectKeys": "CoreX AI keys",
+      "myApiKey": "My API key",
+      "provider": "Provider",
+      "allowedModel": "Allowed model",
+      "noModels": "No models configured",
+      "apiKey": "API key",
+      "showSecurityInfo": "Show API key security information",
+      "keepExisting": "Leave empty to keep the current key",
+      "pasteKey": "Paste your API key",
+      "securityInfo": "The key is encrypted on the server, isolated per account, and never returned or included in messages. The provider and model remain limited by CoreX AI.",
+      "save": "Save configuration",
+      "saving": "Saving...",
+      "test": "Test connection",
+      "testing": "Testing...",
+      "remove": "Remove key",
+      "status": {
+        "byokSaved": "BYOK configuration saved. The key will not be shown again.",
+        "projectSaved": "CoreX AI keys will be used.",
+        "keyRemoved": "API key removed. You can use CoreX AI keys again.",
+        "connectionSuccess": "Connection to {provider} succeeded. Selected model: {model}."
+      },
+      "errors": {
+        "authRequired": "You need a registered account.",
+        "invalidRequest": "The request is not valid.",
+        "invalidConfiguration": "The provider configuration is not valid.",
+        "invalidApiKey": "The API key format is not valid.",
+        "providerNotAllowed": "That provider is not allowed.",
+        "originNotAllowed": "The request origin is not allowed.",
+        "securityLimitUnavailable": "The security limit is unavailable. Try again later.",
+        "rateLimited": "Too many requests. Try again later.",
+        "loadFailed": "Could not load the CoreX AI configuration.",
+        "saveFailed": "Could not save the provider configuration.",
+        "removeFailed": "Could not remove the API key.",
+        "testFailed": "Could not validate the API key."
+      }
+    }
   },
   "catalog": {
     "productCount": "{count, plural, =1 {# product} other {# products}}",
@@ -718,8 +768,8 @@
       "adminCatalog": { "title": "Catalog management", "description": "Manage catalog categories, featured builds, and combos." }
     },
     "products": { "title": "Saved products", "loadError": "Could not load your saved products.", "favoriteComponents": "Favorite components", "empty": "You do not have saved products yet.", "noMatches": "No saved products match these filters." },
-    "savedCombos": { "title": "Saved combos", "loadError": "Could not load your saved combos.", "favorites": "Favorite combos", "empty": "You do not have saved combos yet.", "noMatches": "No saved combos match these filters." },
-    "createdCombos": { "title": "Created combos", "loadError": "Could not load your created combos.", "heading": "My combos", "empty": "You have not created any combos yet.", "noMatches": "No combos match these filters." },
+    "savedCombos": { "title": "Saved combos", "loadError": "Could not load your saved combos.", "entityLabel": "combos", "searchPlaceholder": "Search saved combos", "favorites": "Favorite combos", "empty": "You do not have saved combos yet.", "noMatches": "No saved combos match these filters." },
+    "createdCombos": { "title": "Created combos", "loadError": "Could not load your created combos.", "entityLabel": "combos", "searchPlaceholder": "Search created combos", "create": "Create combo", "heading": "My combos", "empty": "You have not created any combos yet.", "noMatches": "No combos match these filters." },
     "savedBuilds": { "title": "Saved builds", "loadError": "Could not load your saved builds.", "entityLabel": "builds", "searchPlaceholder": "Search saved builds", "favorites": "Favorite builds", "empty": "You do not have saved builds yet.", "noMatches": "No saved builds match these filters." },
     "createdBuilds": { "title": "Created builds", "loadError": "Could not load your created builds.", "entityLabel": "builds", "searchPlaceholder": "Search created builds", "create": "Create build", "heading": "My builds", "empty": "You have not created any builds yet.", "noMatches": "No builds match these filters." },
     "filters": {
@@ -730,7 +780,8 @@
       "searchError": "Could not search for components.", "selectComponent": "Select a component before applying.", "invalidCustomPrice": "Enter a valid custom price.", "componentsCleared": "Components cleared.", "comboTitleInvalid": "The combo name must be between 1 and 120 characters.", "buildTitleInvalid": "The build name must be between 1 and 120 characters.", "comboIncomplete": "Select CPU, GPU, and RAM before saving.", "buildIncomplete": "Select all six components before saving.", "comboSaved": "Combo saved successfully.", "buildSaved": "Build saved successfully.", "comboSaveError": "Could not save the combo.", "buildSaveError": "Could not save the build.", "slotCleared": "{slot} cleared.", "clear": "Clear", "saving": "Saving", "save": "Save", "apply": "Apply", "customCombo": "Custom combo", "customBuild": "Custom build", "components": "Components", "selectComponentLabel": "Select component", "slots": { "cpu": "Processor", "gpu": "Graphics card", "ram": "RAM", "motherboard": "Motherboard", "storage": "Storage", "psu": "Power supply" }, "comboName": "Combo name", "buildName": "Build name", "namePlaceholder": "Enter a name...", "totalPrice": "Total price", "selectedComponent": "Selected component", "close": "Close", "searchComponent": "Search component...", "noResults": "No results", "minimumSearch": "Enter at least 2 characters", "componentPrice": "Component price", "currentPrice": "Current price", "customPrice": "Custom price", "msrp": "MSRP", "analysisUnavailable": "Available when all components have been selected", "compatibility": { "socket": "{cpu} and {motherboard} use incompatible sockets.", "chipset": "{cpu} is not compatible with the {motherboard} chipset.", "ramType": "{cpu} requires {type} memory.", "ramCapacity": "{cpu} supports a maximum of {max} GB of RAM.", "motherboardRamType": "{motherboard} does not support {type} memory.", "motherboardRamCapacity": "{motherboard} supports a maximum of {max} GB of RAM." }
     }
   },
-    "admin": {
+     "admin": {
+     "common": { "kindsSingular": { "builds": "build", "combos": "combo" }, "unknownItem": "Unknown item", "providerStatus": { "success": "Success", "error": "Error", "guardrail": "Guardrail", "rateLimited": "Rate limited" } },
     "backToVault": "Back to vault",
     "placeholder": { "title": "Panel ready for the next phase", "description": "Access is already available to administrators. The tools in this panel are not active yet." },
     "monitoring": { "eyebrow": "Administration / Monitoring", "title": "Monitoring", "description": "Monitor platform usage, errors, and activity.", "features": { "users": "User activity", "errors": "Error monitoring", "activity": "Platform activity", "performance": "Performance metrics" } },

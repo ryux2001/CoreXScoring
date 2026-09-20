@@ -27,7 +27,7 @@ export default function LoginForm() {
     if (message.includes("email not confirmed")) return t("confirmEmailBeforeSignIn");
     if (error.status === 400) return t("invalidCredentials");
 
-    return error.message || t("signInError");
+    return t("signInError");
   };
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -56,8 +56,8 @@ export default function LoginForm() {
 
       setUser(data.user);
       router.push("/catalog");
-    } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : t("signInError"));
+    } catch {
+      setErrorMsg(t("signInError"));
     } finally {
       setLoading(false);
     }

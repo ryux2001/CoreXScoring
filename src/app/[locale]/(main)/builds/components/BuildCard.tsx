@@ -9,6 +9,7 @@ import { getBuildPartPrice } from '@/lib/scoringBuilds';
 import { formatPrice } from '@/lib/formatPrice';
 import { supabase } from '@/lib/supabaseClient';
 import { useCompareStore } from '@/store/useCompareStore';
+import { getComparisonErrorMessage } from '@/lib/comparison-errors';
 import { useLocale, useTranslations } from 'next-intl';
 import type { Build } from '@/lib/scoringBuilds';
 
@@ -39,6 +40,7 @@ export default function BuildCard({
   compactSave = false,
 }: BuildCardProps) {
   const t = useTranslations('builds');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
   const router = useRouter();
   const addItem = useCompareStore((state) => state.addItem);
@@ -104,13 +106,13 @@ export default function BuildCard({
       type: 'BUILD',
       comparisonType: 'build',
       name: build.title,
-      brand: t('fallbackCategory'),
+       brand: 'BUILD',
       price: totalPrice,
       currency,
     });
 
     if (!result.success) {
-       setCustomError(result.error || t('addError'));
+       setCustomError(getComparisonErrorMessage(result.error, tCommon));
     }
   };
 

@@ -107,6 +107,9 @@ export default function CompareProductCard({
   const itemsCount = useCompareStore((state) => state.items.length);
   const isCombo = isComboItem(product);
   const isBuild = isBuildItem(product);
+  const productDisplayName = product.title || product.name || (
+    isBuild ? t("buildFallback") : isCombo ? t("comboFallback") : t("componentFallback")
+  );
   const productData = product as unknown as Record<string, unknown>;
   const isCollection = isCombo || isBuild;
   const cardHeightClass = isCollection ? "min-h-[600px]" : "min-h-[520px]";
@@ -206,8 +209,8 @@ export default function CompareProductCard({
       <button
         type="button"
         onClick={() => removeItem(product.id)}
-        aria-label={t("removeItem", { name: product.title || product.name })}
-        title={t("removeItem", { name: product.title || product.name })}
+         aria-label={t("removeItem", { name: productDisplayName })}
+         title={t("removeItem", { name: productDisplayName })}
         className="absolute top-4 right-4 z-10 rounded-full bg-zinc-900/80 p-2 text-zinc-500 transition-all hover:bg-zinc-900 hover:text-white cursor-pointer active:scale-95"
       >
         <X size={13} strokeWidth={2.5} />
@@ -221,7 +224,7 @@ export default function CompareProductCard({
                 {product.category || t("comboFallback")}
               </span>
               <h3 className="mt-1 text-[14px] font-extrabold leading-snug tracking-tight text-white">
-                {product.title || product.name}
+                 {productDisplayName}
               </h3>
             </div>
 
@@ -267,7 +270,7 @@ export default function CompareProductCard({
                 {product.category || t("buildFallback")}
               </span>
               <h3 className="mt-1 text-[14px] font-extrabold leading-snug tracking-tight text-white">
-                {product.title || product.name}
+                 {productDisplayName}
               </h3>
             </div>
 

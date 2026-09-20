@@ -120,6 +120,8 @@ export default async function VaultCombosPage({
           count={filteredCombos.length}
           availableCategories={availableCategories}
           currency={currency}
+          entityLabel={t('savedCombos.entityLabel')}
+          searchPlaceholder={t('savedCombos.searchPlaceholder')}
         />
 
         <section className="mt-8">

@@ -14,6 +14,14 @@ export interface CompareProduct {
   comparisonType?: string;
 }
 
+export type CompareError =
+  | { code: 'maxSlots'; maxSlots: number }
+  | { code: 'duplicate' }
+  | { code: 'mixed'; currentType: string; incomingType: string }
+  | { code: 'mixedSnapshot' };
+
+export type CompareResult = { success: true } | { success: false; error: CompareError };
+
 interface CompareState {
   items: CompareProduct[];
   componentType: string | null; // Guarda el tipo bloqueado (ej: 'CPU', 'GPU')
@@ -21,11 +29,11 @@ interface CompareState {
   evaluatedPrices: Record<string, number>;
   
   // Acciones
-  addItem: (product: CompareProduct) => { success: boolean; error?: string };
+  addItem: (product: CompareProduct) => CompareResult;
   removeItem: (productId: string | number) => void;
   setEvaluatedPrice: (productId: string | number, price: number) => void;
   replaceItems: (items: CompareProduct[]) => void;
-  applyComparisonSnapshot: (items: CompareProduct[], evaluatedPrices: Record<string, number>) => { success: boolean; error?: string };
+  applyComparisonSnapshot: (items: CompareProduct[], evaluatedPrices: Record<string, number>) => CompareResult;
   clearCompare: () => void;
 }
 
@@ -45,21 +53,21 @@ export const useCompareStore = create<CompareState>()(
         if (items.length >= maxSlots) {
           return { 
             success: false, 
-            error: `Límite alcanzado. Solo puedes comparar hasta ${maxSlots} productos simultáneamente.` 
+            error: { code: 'maxSlots', maxSlots },
           };
         }
 
         // 2. Validar que el producto no esté ya repetido en la comparativa
         const isAlreadyAdded = items.some((item) => String(item.id) === String(product.id));
         if (isAlreadyAdded) {
-          return { success: false, error: "Este producto ya está en la comparativa." };
+          return { success: false, error: { code: 'duplicate' } };
         }
 
         // 3. Guardián de tipos: Validar si coincide con el tipo del primer componente agregado
         if (componentType && componentType !== incomingType) {
           return { 
             success: false, 
-            error: `No puedes mezclar componentes. Estás comparando ${componentType}, no puedes añadir un(a) ${incomingType}.` 
+            error: { code: 'mixed', currentType: componentType, incomingType },
           };
         }
 
@@ -113,17 +121,17 @@ export const useCompareStore = create<CompareState>()(
       applyComparisonSnapshot: (items, evaluatedPrices) => {
         const { maxSlots } = get();
         if (items.length > maxSlots) {
-          return { success: false, error: `Límite alcanzado. Solo puedes comparar hasta ${maxSlots} productos simultáneamente.` };
+          return { success: false, error: { code: 'maxSlots', maxSlots } };
         }
 
         const ids = items.map((item) => String(item.id));
         if (new Set(ids).size !== ids.length) {
-          return { success: false, error: "La comparación incluye productos duplicados." };
+          return { success: false, error: { code: 'duplicate' } };
         }
 
         const types = new Set(items.map((item) => String(item.type || "").toUpperCase()).filter(Boolean));
         if (types.size > 1) {
-          return { success: false, error: "No puedes mezclar tipos de componentes en la misma comparación." };
+          return { success: false, error: { code: 'mixedSnapshot' } };
         }
 
         const validIds = new Set(ids);

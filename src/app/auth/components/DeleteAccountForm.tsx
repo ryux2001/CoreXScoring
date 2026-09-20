@@ -2,10 +2,10 @@
 
 import { AlertCircle, Loader2, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabaseClient';
-
-const CONFIRMATION_TEXT = 'ELIMINAR';
+import { getDeleteConfirmationText } from '@/lib/auth/delete-account-policy';
+import type { Locale } from '@/i18n/routing';
 
 interface DeleteAccountFormProps {
   googleConnected: boolean;
@@ -13,6 +13,8 @@ interface DeleteAccountFormProps {
 
 export default function DeleteAccountForm({ googleConnected }: DeleteAccountFormProps) {
   const t = useTranslations('account');
+  const locale = useLocale() as Locale;
+  const confirmationText = getDeleteConfirmationText(locale);
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,8 +24,8 @@ export default function DeleteAccountForm({ googleConnected }: DeleteAccountForm
     event.preventDefault();
     setErrorMsg(null);
 
-    if (confirmation.trim().toUpperCase() !== CONFIRMATION_TEXT) {
-      setErrorMsg(t('typeConfirmationToConfirm', { confirmation: CONFIRMATION_TEXT }));
+    if (confirmation.trim().toUpperCase() !== confirmationText) {
+      setErrorMsg(t('typeConfirmationToConfirm', { confirmation: confirmationText }));
       return;
     }
 
@@ -33,7 +35,7 @@ export default function DeleteAccountForm({ googleConnected }: DeleteAccountForm
       const response = await fetch('/api/account/delete/google-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmation }),
+        body: JSON.stringify({ confirmation, locale }),
       });
 
       if (!response.ok) {
@@ -86,7 +88,8 @@ export default function DeleteAccountForm({ googleConnected }: DeleteAccountForm
 
       <label htmlFor="delete_confirmation" className="mt-4 block text-xs text-zinc-400">
         {t.rich('typeConfirmation', {
-          confirmation: () => <span className="font-bold text-white">{CONFIRMATION_TEXT}</span>,
+          token: confirmationText,
+          confirmation: () => <span className="font-bold text-white">{confirmationText}</span>,
         })}
       </label>
       <input

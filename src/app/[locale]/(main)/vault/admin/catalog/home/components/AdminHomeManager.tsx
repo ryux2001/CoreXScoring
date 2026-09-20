@@ -429,6 +429,7 @@ function ComparisonEditor({ comparison, canMoveUp, canMoveDown, onMove, onSaved,
 
 function ItemListEditor({ title, itemType, initialItems, savePath, onSaved, emptyMessage, maxItems, minItems = 0 }: { title: string; itemType: HomeCatalogType; initialItems: HomeCatalogItem[]; savePath: string; onSaved: () => void; emptyMessage: string; maxItems?: number; minItems?: number }) {
   const t = useTranslations('admin.home');
+  const tc = useTranslations('admin.common');
   const [items, setItems] = useState(initialItems);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -456,8 +457,8 @@ function ItemListEditor({ title, itemType, initialItems, savePath, onSaved, empt
     <div className="mt-4 grid gap-3">
       {items.map((item, index) => <div key={item.id} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-black/45 p-3">
         <div className="flex flex-col rounded-md border border-zinc-800 bg-zinc-950 p-0.5"><OrderButton direction="up" disabled={index === 0} onClick={() => setItems((current) => moveItem(current, index, -1))} /><OrderButton direction="down" disabled={index === items.length - 1} onClick={() => setItems((current) => moveItem(current, index, 1))} /></div>
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-zinc-200">{catalogItemLabel(item)}</p><p className="truncate text-[11px] text-zinc-600">{item.slug}</p></div>
-         <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.id !== item.id))} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 transition-colors hover:border-red-900/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label={t('section.removeItem', { item: catalogItemLabel(item) })}><Trash2 aria-hidden="true" size={14} /></button>
+         <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-zinc-200">{catalogItemLabel(item, tc('unknownItem'))}</p><p className="truncate text-[11px] text-zinc-600">{item.slug}</p></div>
+          <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.id !== item.id))} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 transition-colors hover:border-red-900/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label={t('section.removeItem', { item: catalogItemLabel(item, tc('unknownItem')) })}><Trash2 aria-hidden="true" size={14} /></button>
       </div>)}
       {items.length === 0 && <p className="rounded-xl border border-dashed border-zinc-800 px-4 py-6 text-center text-xs text-zinc-600">{emptyMessage}</p>}
     </div>
@@ -469,6 +470,7 @@ function ItemListEditor({ title, itemType, initialItems, savePath, onSaved, empt
 
 function CatalogPicker({ itemType, selectedIds, onAdd }: { itemType: HomeCatalogType; selectedIds: Set<string>; onAdd: (item: HomeCatalogItem) => void }) {
   const t = useTranslations('admin.home');
+  const tc = useTranslations('admin.common');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<HomeCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -494,7 +496,7 @@ function CatalogPicker({ itemType, selectedIds, onAdd }: { itemType: HomeCatalog
        <button type="submit" disabled={isLoading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-zinc-700 px-4 text-[10px] font-black uppercase tracking-wider text-zinc-200 transition-colors hover:border-cyan-200/60 hover:text-white disabled:cursor-wait disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">{isLoading && <LoaderCircle aria-hidden="true" className="animate-spin" size={14} />}{t('picker.search')}</button>
     </form>
     {notice && <p role="alert" className="mt-3 text-xs text-red-300">{notice}</p>}
-    {results.length > 0 && <div className="mt-3 grid gap-2">{results.map((item) => <button key={item.id} type="button" disabled={selectedIds.has(item.id)} onClick={() => onAdd(item)} className="flex min-h-10 items-center justify-between gap-3 rounded-lg border border-zinc-800 px-3 text-left transition-colors hover:border-zinc-600 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"><span className="min-w-0"><strong className="block truncate text-xs text-zinc-200">{catalogItemLabel(item)}</strong><span className="block truncate text-[10px] text-zinc-600">{item.category || item.type || item.slug}</span></span><Plus aria-hidden="true" size={14} className="shrink-0 text-cyan-200" /></button>)}</div>}
+     {results.length > 0 && <div className="mt-3 grid gap-2">{results.map((item) => <button key={item.id} type="button" disabled={selectedIds.has(item.id)} onClick={() => onAdd(item)} className="flex min-h-10 items-center justify-between gap-3 rounded-lg border border-zinc-800 px-3 text-left transition-colors hover:border-zinc-600 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"><span className="min-w-0"><strong className="block truncate text-xs text-zinc-200">{catalogItemLabel(item, tc('unknownItem'))}</strong><span className="block truncate text-[10px] text-zinc-600">{item.category || item.type || item.slug}</span></span><Plus aria-hidden="true" size={14} className="shrink-0 text-cyan-200" /></button>)}</div>}
   </div>;
 }
 

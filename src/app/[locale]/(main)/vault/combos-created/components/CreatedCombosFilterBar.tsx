@@ -14,9 +14,9 @@ interface CreatedCombosFilterBarProps {
   availableGpuBrands: string[];
   currency: string;
   route?: string;
-  entityLabel?: string;
-  searchPlaceholder?: string;
-  createLabel?: string;
+  entityLabel: string;
+  searchPlaceholder: string;
+  createLabel: string;
   createPath?: string;
 }
 
@@ -26,9 +26,9 @@ export default function CreatedCombosFilterBar({
   availableGpuBrands,
   currency,
   route = '/vault/combos-created',
-  entityLabel = 'combos',
-  searchPlaceholder = 'Buscar combos creados',
-  createLabel = 'Crear combo',
+  entityLabel,
+  searchPlaceholder,
+  createLabel,
   createPath = '/vault/combos-created/new',
 }: CreatedCombosFilterBarProps) {
   const t = useTranslations('vault.filters');

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, X, AlertCircle } from 'lucide-react';
 import { useCompareStore } from '@/store/useCompareStore';
+import { getComparisonErrorMessage } from '@/lib/comparison-errors';
 import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -47,6 +48,7 @@ export default function SearchModal({
   globalCurrency,
 }: SearchModalProps) {
   const t = useTranslations('comparator');
+  const tCommon = useTranslations('common');
   const addItem = useCompareStore((state) => state.addItem);
   const componentType = useCompareStore((state) => state.componentType);
   const itemsCount = useCompareStore((state) => state.items.length);
@@ -267,7 +269,7 @@ export default function SearchModal({
       setSearchTerm('');
       setSuggestions([]);
     } else {
-       setErrorNotification(result.error || t('addError'));
+       setErrorNotification(getComparisonErrorMessage(result.error, tCommon));
     }
   };
 

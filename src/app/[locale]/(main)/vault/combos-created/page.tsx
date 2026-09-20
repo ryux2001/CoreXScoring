@@ -119,6 +119,9 @@ export default async function CreatedCombosPage({
           availableCpuBrands={availableBrands.cpu}
           availableGpuBrands={availableBrands.gpu}
           currency={currency}
+          entityLabel={t('createdCombos.entityLabel')}
+          searchPlaceholder={t('createdCombos.searchPlaceholder')}
+          createLabel={t('createdCombos.create')}
         />
 
         <section className="mt-8">
