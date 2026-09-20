@@ -3,6 +3,15 @@
     "title": "CoreXScoring",
     "description": "Compara componentes y crea configuraciones de PC"
   },
+  "maintenance": {
+    "title": "Estamos realizando tareas de mantenimiento",
+    "description": "CoreXScoring no está disponible temporalmente. Estamos trabajando para restablecer el servicio lo antes posible.",
+    "status": "Servicio temporalmente no disponible",
+    "adminAccess": "Acceso administrativo",
+    "adminLoginTitle": "Acceso administrativo",
+    "adminLoginDescription": "Inicia sesión con Google para acceder al panel administrativo durante el mantenimiento.",
+    "adminLoginError": "No se pudo iniciar la autenticación. Inténtalo de nuevo."
+  },
   "seo": {
     "homeTitle": "CoreXScoring | Scoring y configuraciones de PC",
     "homeDescription": "Compara componentes de PC, evalúa el rendimiento y crea configuraciones personalizadas.",

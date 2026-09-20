@@ -3,6 +3,15 @@
     "title": "CoreXScoring",
     "description": "Compare PC components and create custom builds"
   },
+  "maintenance": {
+    "title": "We are performing maintenance",
+    "description": "CoreXScoring is temporarily unavailable. We are working to restore the service as soon as possible.",
+    "status": "Service temporarily unavailable",
+    "adminAccess": "Administrative access",
+    "adminLoginTitle": "Administrative access",
+    "adminLoginDescription": "Sign in with Google to access the administration panel during maintenance.",
+    "adminLoginError": "Authentication could not be started. Try again."
+  },
   "seo": {
     "homeTitle": "CoreXScoring | PC hardware scoring and builds",
     "homeDescription": "Compare PC components, evaluate performance and create custom builds.",

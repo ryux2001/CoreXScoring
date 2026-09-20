@@ -17,6 +17,14 @@ import {
   isMutatingApiRequest,
 } from '@/lib/security/api-request-policy';
 import { buildContentSecurityPolicy } from '@/lib/security-headers';
+import { areMaintenanceAdminsAllowed, getSiteMode } from '@/lib/maintenance/site-mode';
+import {
+  isAllowedMaintenanceAdminApi,
+  isAuthorizedMaintenanceAdmin,
+  isMaintenanceAdminLoginPath,
+  isMaintenanceAdminOAuthCallback,
+  isMaintenanceAdminPage,
+} from '@/lib/maintenance/policy';
 
 const handleI18nRouting = createMiddleware(routing);
 const authFlowRoutes = ['/auth/confirm', '/auth/oauth/callback', '/auth/oauth/delete-confirm', '/auth/recovery/confirm'];
@@ -33,12 +41,16 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
+  let maintenanceAuthResponse: NextResponse | undefined;
 
   const addContentSecurityPolicies = (response: NextResponse) => {
     response.headers.set('Content-Security-Policy', contentSecurityPolicy);
     response.headers.set('Content-Security-Policy-Report-Only', contentSecurityPolicy);
+    maintenanceAuthResponse?.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
     return response;
   };
+
+  const siteMode = getSiteMode();
 
   if (isMutatingApiRequest(request)) {
     const apiRejection = getUnsafeApiRejection(request);
@@ -75,6 +87,37 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const localizedPathname = getLocalizedPathname(pathname);
   const englishCanonicalPathname = getEnglishCanonicalPathname(pathname);
+
+  if (siteMode !== 'normal') {
+    const isApiRequest = pathname.startsWith('/api/');
+    const isMaintenancePage = localizedPathname === '/maintenance';
+    const isMaintenanceAdminLogin = isMaintenanceAdminLoginPath(localizedPathname);
+    const isAdminPage = isMaintenanceAdminPage(localizedPathname);
+    const isAdminApi = isAllowedMaintenanceAdminApi(request.method, pathname);
+    const isAdminOAuthCallback = isMaintenanceAdminOAuthCallback(localizedPathname, request.nextUrl.searchParams.get('next'));
+    const isEssentialAsset = isEssentialMaintenanceAsset(pathname);
+
+    if (pathname === '/robots.txt' || isEssentialAsset) {
+      // These resources remain available so crawlers and the maintenance shell work normally.
+    } else if (isMaintenancePage) {
+      return createMaintenancePageResponse(request, requestHeaders, localizedPathname, addContentSecurityPolicies);
+    } else if (siteMode === 'maintenance' && areMaintenanceAdminsAllowed() && (isMaintenanceAdminLogin || isAdminOAuthCallback)) {
+      // The dedicated login page and its fixed OAuth callback are the only public auth flow in maintenance.
+    } else if (siteMode === 'maintenance' && areMaintenanceAdminsAllowed() && (isAdminPage || isAdminApi)) {
+      const adminResponse = await getMaintenanceAdminResponse(request, requestHeaders);
+      if (!adminResponse) {
+        return isApiRequest
+          ? createMaintenanceApiResponse(addContentSecurityPolicies)
+          : createMaintenancePageResponse(request, requestHeaders, localizedPathname, addContentSecurityPolicies);
+      }
+      maintenanceAuthResponse = adminResponse;
+    } else if (isApiRequest) {
+      return createMaintenanceApiResponse(addContentSecurityPolicies);
+    } else {
+      return createMaintenancePageResponse(request, requestHeaders, localizedPathname, addContentSecurityPolicies);
+    }
+  }
+
   if (englishCanonicalPathname) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = englishCanonicalPathname;
@@ -165,6 +208,71 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+function createMaintenancePageResponse(
+  request: NextRequest,
+  requestHeaders: Headers,
+  pathname: string,
+  addContentSecurityPolicies: (response: NextResponse) => NextResponse,
+) {
+  const localePrefix = pathname === '/es' || pathname.startsWith('/es/') ? '/es' : '/en';
+  const response = NextResponse.rewrite(new URL(`${localePrefix}/maintenance`, request.url), {
+    request: { headers: requestHeaders },
+    status: 503,
+  });
+  response.headers.set('Retry-After', '300');
+  response.headers.set('Cache-Control', 'no-store');
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return addContentSecurityPolicies(response);
+}
+
+function createMaintenanceApiResponse(addContentSecurityPolicies: (response: NextResponse) => NextResponse) {
+  return addContentSecurityPolicies(NextResponse.json(
+    { error: 'Service temporarily unavailable.', code: 'site_maintenance' },
+    {
+      status: 503,
+      headers: {
+        'Cache-Control': 'no-store',
+        'Retry-After': '300',
+      },
+    },
+  ));
+}
+
+async function getMaintenanceAdminResponse(request: NextRequest, requestHeaders: Headers): Promise<NextResponse | null> {
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: { storageKey: 'sb-auth-token' },
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    },
+  );
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    return isAuthorizedMaintenanceAdmin(user) ? response : null;
+  } catch {
+    return null;
+  }
+}
+
+function isEssentialMaintenanceAsset(pathname: string): boolean {
+  return pathname === '/icon.png'
+    || pathname === '/favicon.ico'
+    || pathname === '/manifest.webmanifest';
 }
 
 function mergeMiddlewareRequestHeaders(response: NextResponse | undefined, baseHeaders: Headers) {
