@@ -9,6 +9,7 @@ import HomeCarousel from './components/home/HomeCarousel';
 import HomeCollectionCard from './components/home/HomeCollectionCard';
 import HomeComparisonCard from './components/home/HomeComparisonCard';
 import HomeComponentList from './components/home/HomeComponentList';
+import { getTranslations } from 'next-intl/server';
 
 interface HomePageProps {
   searchParams: Promise<{ currency?: string }>;
@@ -23,6 +24,7 @@ function sectionItems(section: HomeSection): HomeCatalogItem[] {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const currency = await resolveRequestCurrency((await searchParams).currency);
   const { hero, sections } = await loadPublicHomeData(supabase);
+  const t = await getTranslations('home');
 
   return (
     <main className="min-h-screen bg-black font-technical text-white">
@@ -38,13 +40,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </div>
             </div>
             <div className="hidden md:block"><HomeBannerCarousel /></div>
-            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800 md:hidden"><HeroTile href="/catalog" icon={Cpu} label="Hardware" /><HeroTile href="/combos" icon={Boxes} label="Combos" /><HeroTile href="/builds" icon={Hammer} label="Builds" /></div>
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800 md:hidden"><HeroTile href="/catalog" icon={Cpu} label={t('quickAccess.hardware')} /><HeroTile href="/combos" icon={Boxes} label={t('quickAccess.combos')} /><HeroTile href="/builds" icon={Hammer} label={t('quickAccess.builds')} /></div>
           </div>
         </section>
       )}
 
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 md:px-12 md:py-20 lg:px-16">
-        <HomeSections sections={sections} currency={currency} />
+        <HomeSections sections={sections} currency={currency} translate={t} />
       </div>
     </main>
   );
@@ -54,7 +56,7 @@ function HeroTile({ href, icon: Icon, label }: { href: string; icon: typeof Cpu;
   return <Link href={href} className="flex min-h-28 flex-col justify-between bg-zinc-950 p-4 text-zinc-500 transition-colors hover:bg-zinc-900 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"><Icon aria-hidden="true" size={18} /><span className="font-display text-sm font-bold uppercase tracking-wider text-zinc-300">{label}</span></Link>;
 }
 
-function HomeSections({ sections, currency }: { sections: HomeSection[]; currency: string }) {
+function HomeSections({ sections, currency, translate }: { sections: HomeSection[]; currency: string; translate: (key: string) => string }) {
   const blocks: ReactNode[] = [];
   let productSections: HomeSection[] = [];
 
@@ -103,7 +105,7 @@ function HomeSections({ sections, currency }: { sections: HomeSection[]; currenc
 
   return blocks.length > 0
     ? <div className="space-y-14 sm:space-y-20">{blocks}</div>
-    : <div className="py-24 text-center"><h2 className="font-display text-4xl font-black text-white">Próximamente</h2><p className="mt-3 text-zinc-500">Estamos preparando nuevas selecciones de hardware.</p></div>;
+    : <div className="py-24 text-center"><h2 className="font-display text-4xl font-black text-white">{translate('empty.title')}</h2><p className="mt-3 text-zinc-500">{translate('empty.description')}</p></div>;
 }
 
 function EditorialSection({ section, children }: { section: HomeSection; children: ReactNode }) {

@@ -6,16 +6,16 @@ import type { HomeCatalogItem, HomeCatalogType } from '@/lib/admin/home';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 const COMBO_PARTS = [
-  { key: 'cpu', label: 'CPU' },
-  { key: 'gpu', label: 'GPU' },
-  { key: 'ram', label: 'RAM' },
+  { key: 'cpu' },
+  { key: 'gpu' },
+  { key: 'ram' },
 ] as const;
 
 const BUILD_PARTS = [
   ...COMBO_PARTS,
-  { key: 'motherboard', label: 'Placa' },
-  { key: 'storage', label: 'Almac.' },
-  { key: 'psu', label: 'Fuente' },
+  { key: 'motherboard' },
+  { key: 'storage' },
+  { key: 'psu' },
 ] as const;
 
 function asRecord(item: HomeCatalogItem): Record<string, unknown> {
@@ -52,16 +52,19 @@ export default async function HomeCollectionCard({
   ), 0);
   const href = `/${itemType}/${item.slug}?currency=${currency}`;
   const minimumHeight = itemType === 'combos' ? 'min-h-[20rem]' : 'min-h-[26rem]';
+  const collectionType = itemType === 'combos' ? t('types.combo') : t('types.build');
+  const title = item.title || item.name || collectionType;
 
   return (
     <Link
       href={href}
+      aria-label={t('openCollection', { type: collectionType, title })}
       className={`group flex h-full w-full flex-col rounded-[1.6rem] border border-zinc-800 bg-zinc-950 p-4 transition-colors hover:border-cyan-200/55 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 sm:p-5 ${minimumHeight}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100/65">{item.category || itemType.slice(0, -1)}</p>
-          <h3 className="mt-2 line-clamp-2 font-display text-xl font-black leading-[0.95] text-white">{item.title || item.name}</h3>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100/65">{item.category || collectionType}</p>
+          <h3 className="mt-2 line-clamp-2 font-display text-xl font-black leading-[0.95] text-white">{title}</h3>
         </div>
         <ArrowUpRight aria-hidden="true" size={17} className="shrink-0 text-zinc-600 transition-colors group-hover:text-cyan-100" />
       </div>

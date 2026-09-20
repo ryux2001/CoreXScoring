@@ -36,7 +36,61 @@
   "home": {
     "component": "Component",
     "totalPrice": "Total price",
-    "view": "View"
+    "view": "View",
+    "quickAccess": {
+      "hardware": "Hardware",
+      "combos": "Combos",
+      "builds": "Builds"
+    },
+    "empty": {
+      "title": "Coming soon",
+      "description": "We are preparing new hardware selections."
+    },
+    "banner": {
+      "regionLabel": "Featured CoreX Scoring banners",
+      "roleDescription": "carousel",
+      "previous": "Previous banner",
+      "next": "Next banner",
+      "position": "Banner {current} of {total}",
+      "goTo": "View banner {number}",
+      "pause": "Pause automatic rotation",
+      "resume": "Resume automatic rotation",
+      "reducedMotion": "Automatic rotation disabled due to motion preference",
+      "alts": {
+        "comparison": "CoreX Scoring graphics card comparison",
+        "catalog": "CoreX Scoring PC component catalog",
+        "evaluation": "Component price and performance evaluation"
+      }
+    },
+    "carousel": {
+      "previous": "View previous items of {label}",
+      "next": "View more items of {label}",
+      "pages": "Pages of {label}",
+      "page": "Go to page {page} of {total}"
+    },
+    "types": {
+      "product": "Product",
+      "combo": "Combo",
+      "build": "Build"
+    },
+    "parts": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "ram": "RAM",
+      "motherboard": "Motherboard",
+      "storage": "Storage",
+      "psu": "Power supply"
+    },
+    "openCollection": "Open {type}: {title}",
+    "openComparison": "Open comparison: {title}",
+    "openComponent": "View component: {name}",
+    "comparison": {
+      "vs": "VS"
+    },
+    "metricShort": {
+      "rasterization": "Raster.",
+      "productivity": "Prod."
+    }
   },
   "nav": {
     "home": "Home",

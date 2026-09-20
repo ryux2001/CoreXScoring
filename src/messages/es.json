@@ -36,7 +36,61 @@
   "home": {
     "component": "Componente",
     "totalPrice": "Precio total",
-    "view": "Ver"
+    "view": "Ver",
+    "quickAccess": {
+      "hardware": "Hardware",
+      "combos": "Combos",
+      "builds": "Builds"
+    },
+    "empty": {
+      "title": "Próximamente",
+      "description": "Estamos preparando nuevas selecciones de hardware."
+    },
+    "banner": {
+      "regionLabel": "Banners destacados de CoreX Scoring",
+      "roleDescription": "carrusel",
+      "previous": "Banner anterior",
+      "next": "Siguiente banner",
+      "position": "Banner {current} de {total}",
+      "goTo": "Ver banner {number}",
+      "pause": "Pausar rotación automática",
+      "resume": "Reanudar rotación automática",
+      "reducedMotion": "Rotación automática desactivada por preferencia de movimiento",
+      "alts": {
+        "comparison": "Comparador de tarjetas gráficas de CoreX Scoring",
+        "catalog": "Catálogo de componentes de PC de CoreX Scoring",
+        "evaluation": "Evaluación de precio y rendimiento de un componente"
+      }
+    },
+    "carousel": {
+      "previous": "Ver elementos anteriores de {label}",
+      "next": "Ver más elementos de {label}",
+      "pages": "Páginas de {label}",
+      "page": "Ir a la página {page} de {total}"
+    },
+    "types": {
+      "product": "Producto",
+      "combo": "Combo",
+      "build": "Build"
+    },
+    "parts": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "ram": "RAM",
+      "motherboard": "Placa base",
+      "storage": "Almacenamiento",
+      "psu": "Fuente de alimentación"
+    },
+    "openCollection": "Abrir {type}: {title}",
+    "openComparison": "Abrir comparación: {title}",
+    "openComponent": "Ver componente: {name}",
+    "comparison": {
+      "vs": "VS"
+    },
+    "metricShort": {
+      "rasterization": "Raster.",
+      "productivity": "Prod."
+    }
   },
   "nav": {
     "home": "Inicio",

@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Children, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
@@ -29,6 +30,7 @@ export default function HomeCarousel({
   label: string;
   layout?: HomeCarouselLayout;
 }) {
+  const t = useTranslations('home');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [scrollState, setScrollState] = useState<CarouselState>(INITIAL_CAROUSEL_STATE);
@@ -93,7 +95,7 @@ export default function HomeCarousel({
       <button
         type="button"
         onClick={() => scroll(-1)}
-        aria-label={`Ver elementos anteriores de ${label}`}
+        aria-label={t('carousel.previous', { label })}
         disabled={!scrollState.canScrollLeft}
         className="absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-700 bg-black text-zinc-300 transition-colors hover:border-cyan-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 lg:flex"
       >
@@ -112,13 +114,13 @@ export default function HomeCarousel({
       {scrollState.canScrollLeft && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-[-1rem] z-[1] hidden w-10 bg-gradient-to-r from-black/60 via-black/25 to-transparent sm:left-[-1.5rem] md:left-[-3rem] md:block lg:left-0" />}
       {scrollState.canScrollRight && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-[-1rem] z-[1] hidden w-10 bg-gradient-to-l from-black/60 via-black/25 to-transparent sm:right-[-1.5rem] md:right-[-3rem] md:block lg:right-0" />}
       {scrollState.pageCount > 1 && (
-        <div className="mt-2 flex items-center justify-center gap-1.5" aria-label={`Páginas de ${label}`} role="navigation">
+        <div className="mt-2 flex items-center justify-center gap-1.5" aria-label={t('carousel.pages', { label })} role="navigation">
           {Array.from({ length: scrollState.pageCount }, (_, page) => (
             <button
               key={page}
               type="button"
               onClick={() => scrollToPage(page)}
-              aria-label={`Ir a la página ${page + 1} de ${scrollState.pageCount}`}
+              aria-label={t('carousel.page', { page: page + 1, total: scrollState.pageCount })}
               aria-current={page === scrollState.currentPage ? 'true' : undefined}
               className={`h-2 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 ${page === scrollState.currentPage ? 'w-5 bg-cyan-100' : 'w-2 bg-zinc-700 hover:bg-zinc-500'}`}
             />
@@ -128,7 +130,7 @@ export default function HomeCarousel({
       <button
         type="button"
         onClick={() => scroll(1)}
-        aria-label={`Ver más elementos de ${label}`}
+        aria-label={t('carousel.next', { label })}
         disabled={!scrollState.canScrollRight}
         className="absolute right-0 top-1/2 z-10 hidden h-11 w-11 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-700 bg-black text-zinc-300 transition-colors hover:border-cyan-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 lg:flex"
       >

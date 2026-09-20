@@ -39,6 +39,7 @@ export default async function HomeComponentList({ section, items, currency }: {
             <li key={item.id}>
               <Link
                 href={`/catalog/${item.slug}?currency=${currency}`}
+                aria-label={t('openComponent', { name: item.brand ? `${item.brand} ${item.name}` : item.name || t('component') })}
                 className="group flex min-h-12 items-center gap-3 rounded-xl border border-zinc-800 bg-black/35 px-3 transition-colors hover:border-zinc-600 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
                 <span className="font-display w-5 text-center text-base font-black tabular-nums text-zinc-600">{index + 1}</span>
