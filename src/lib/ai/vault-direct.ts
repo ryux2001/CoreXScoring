@@ -1,9 +1,10 @@
 import type { ChatMessage, ChatResponse } from "./types";
 import type { AiToolContext } from "./tools/types";
+import { detectResponseLanguage } from "./language";
 
 type VaultCollection = "combos" | "builds";
 
-const OWNED_LOOKUP_TERMS = /\b(?:tengo|tienes|cuantos|cuantas|cuanto|cuanta|lista|listar|ver|muestra|mostrar|ensena|guardad|cread|boveda)\b/;
+const OWNED_LOOKUP_TERMS = /\b(?:tengo|tienes|cuantos|cuantas|cuanto|cuanta|lista|listar|ver|muestra|mostrar|ensena|guardad|cread|boveda|my|mine|how many|list|show|saved|created|vault)\b/;
 
 function normalize(value: string): string {
   return value
@@ -51,8 +52,12 @@ export async function resolveDirectVaultLookup(
   const collection = detectOwnedLookup(messages);
   if (!collection) return null;
 
+  const language = detectResponseLanguage(messages);
+
   if (context.actor.isAnonymous) {
-    return directResponse("Para consultar tu bóveda necesitas iniciar sesión con una cuenta registrada.");
+    return directResponse(language === "es"
+      ? "Para consultar tu bóveda necesitas iniciar sesión con una cuenta registrada."
+      : "To view your vault, you need to sign in with a registered account.");
   }
 
   const table = collection === "combos" ? "created_combos" : "created_builds";
@@ -64,13 +69,19 @@ export async function resolveDirectVaultLookup(
     .limit(6);
 
   if (error) {
-    return directResponse(`No pude consultar tus ${collection} en este momento. Inténtalo de nuevo.`);
+    return directResponse(language === "es"
+      ? `No pude consultar tus ${collection} en este momento. Inténtalo de nuevo.`
+      : `I could not load your ${collection} right now. Please try again.`);
   }
 
   const items = Array.isArray(data) ? data : [];
-  const label = collection === "combos" ? "combos" : "builds";
+  const label = collection === "combos"
+    ? language === "es" ? "combos" : "combos"
+    : language === "es" ? "builds" : "builds";
   if (items.length === 0) {
-    return directResponse(`No tienes ${label} creados todavía en tu bóveda.`);
+    return directResponse(language === "es"
+      ? `No tienes ${label} creados todavía en tu bóveda.`
+      : `You do not have any ${label} in your vault yet.`);
   }
 
   const basePath = collection === "combos" ? "/vault/combos-created" : "/vault/builds-created";
@@ -79,7 +90,11 @@ export async function resolveDirectVaultLookup(
     const slug = typeof item.slug === "string" ? encodeURIComponent(item.slug) : "";
     return slug ? `- [${title}](${basePath}/${slug})` : `- ${title}`;
   });
-  const suffix = items.length === 6 ? " Te muestro los 6 más recientes." : "";
+  const suffix = items.length === 6
+    ? language === "es" ? " Te muestro los 6 más recientes." : " Showing the 6 most recent ones."
+    : "";
 
-  return directResponse(`Sí, tienes ${items.length} ${label} creado${items.length === 1 ? "" : "s"} en tu bóveda.${suffix}\n\n${lines.join("\n")}`);
+  return directResponse(language === "es"
+    ? `Sí, tienes ${items.length} ${label} creado${items.length === 1 ? "" : "s"} en tu bóveda.${suffix}\n\n${lines.join("\n")}`
+    : `You have ${items.length} ${label} in your vault.${suffix}\n\n${lines.join("\n")}`);
 }
