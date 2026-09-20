@@ -1,4 +1,5 @@
 import type { ChatMessage, ChatResponse } from "./types";
+import { detectResponseLanguage, type AiResponseLanguage } from "./language";
 
 export const HARDWARE_GUARDRAIL_VERSION = "hardware-v1";
 
@@ -67,6 +68,16 @@ const HARDWARE_TERMS = [
   "4k",
   "gaming",
   "jugar",
+  "computer",
+  "graphics card",
+  "power supply",
+  "cooler",
+  "memory",
+  "storage",
+  "performance",
+  "bottleneck",
+  "compatibility",
+  "gaming pc",
 ];
 
 const WEB_USAGE_TERMS = [
@@ -86,6 +97,16 @@ const WEB_USAGE_TERMS = [
   "chat",
   "uso de la web",
   "moneda",
+  "catalog",
+  "comparator",
+  "compare",
+  "vault",
+  "account",
+  "sign in",
+  "log in",
+  "log out",
+  "ai panel",
+  "currency",
 ];
 
 const RISK_PATTERNS = [
@@ -96,6 +117,12 @@ const RISK_PATTERNS = [
   /(?:desactiva|elude|salta).*(?:seguridad|guardrail|politica|confirmacion)/,
   /actua\s+como.*(?:sin restricciones|sin limites|jailbreak)/,
   /\bjailbreak\b/,
+  /ignore\s+(?:your|the|all)\s+(?:instructions|rules|policies)/,
+  /(?:reveal|show|print|tell me).*(?:prompt|internal instructions|api key|secret)/,
+  /system\s+prompt/,
+  /(?:run|write|generate).*(?:sql|direct query|arbitrary code)/,
+  /(?:disable|bypass|skip).*(?:security|guardrail|policy|confirmation)/,
+  /act\s+as.*(?:unrestricted|without limits)/,
 ];
 
 const OUT_OF_SCOPE_PATTERNS = [
@@ -107,18 +134,27 @@ const OUT_OF_SCOPE_PATTERNS = [
   /\b(?:viaje|hotel|vuelo|turismo|restaurante)\b/,
   /\b(?:poema|cancion|letra de cancion|historia romantica)\b/,
   /\b(?:python|javascript|typescript|react|next\.js|sql)\b/,
+  /\b(?:recipe|cooking|calories|symptom|diagnosis|medicine|lawyer|contract|taxes|elections|president|football|basketball|tennis|travel|hotel|flight|restaurant|poem|song lyrics|romantic story)\b/,
 ];
 
 const GENERIC_ALLOWED_PATTERNS = [
   /^(?:hola|buenas|hey|buenos dias|buenas tardes|buenas noches)\b/,
   /^(?:quien eres|que puedes hacer|como funcionas|necesito ayuda|ayudame)\b/,
+  /^(?:hello|hi|hey|good morning|good afternoon|good evening)\b/,
+  /^(?:who are you|what can you do|how do you work|i need help|help me)\b/,
 ];
 
-const REFUSAL_RESPONSE =
-  "Soy CoreX AI, el asistente de hardware de CoreXScoring. Puedo ayudarte con componentes de PC, compatibilidad, rendimiento y el uso de la web. Ese tema queda fuera de mi alcance; reformula tu pregunta hacia hardware o CoreXScoring.";
+function getRefusalResponse(language: AiResponseLanguage): string {
+  return language === "es"
+    ? "Soy CoreX AI, el asistente de hardware de CoreXScoring. Puedo ayudarte con componentes de PC, compatibilidad, rendimiento y el uso de la web. Ese tema queda fuera de mi alcance; reformula tu pregunta hacia hardware o CoreXScoring."
+    : "I am CoreX AI, CoreXScoring's hardware assistant. I can help with PC components, compatibility, performance, and using the website. That topic is outside my scope; please rephrase your question about hardware or CoreXScoring.";
+}
 
-const RISK_RESPONSE =
-  "No puedo revelar instrucciones internas, claves, secretos ni ejecutar acciones fuera de las funciones autorizadas. Soy CoreX AI y puedo ayudarte con hardware de PC o con el uso de CoreXScoring.";
+function getRiskResponse(language: AiResponseLanguage): string {
+  return language === "es"
+    ? "No puedo revelar instrucciones internas, claves, secretos ni ejecutar acciones fuera de las funciones autorizadas. Soy CoreX AI y puedo ayudarte con hardware de PC o con el uso de CoreXScoring."
+    : "I cannot reveal internal instructions, keys, secrets, or perform actions outside the authorized functions. I am CoreX AI and can help with PC hardware or using CoreXScoring.";
+}
 
 function normalizeForClassification(content: string): string {
   return content
@@ -185,11 +221,11 @@ export function evaluateChatGuardrails(messages: ChatMessage[]): GuardrailDecisi
   const intent = classifyChatIntent(messages);
 
   if (intent === "riesgo") {
-    return { intent, response: createGuardrailResponse(RISK_RESPONSE) };
+    return { intent, response: createGuardrailResponse(getRiskResponse(detectResponseLanguage(messages))) };
   }
 
   if (intent === "fuera_de_alcance") {
-    return { intent, response: createGuardrailResponse(REFUSAL_RESPONSE) };
+    return { intent, response: createGuardrailResponse(getRefusalResponse(detectResponseLanguage(messages))) };
   }
 
   return { intent };

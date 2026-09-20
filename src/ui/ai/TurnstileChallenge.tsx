@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 declare global {
   interface Window {
@@ -21,14 +22,12 @@ interface TurnstileChallengeProps {
 const SCRIPT_ID = "corex-turnstile-script";
 
 export default function TurnstileChallenge({ siteKey, onVerify, onExpire, onError }: TurnstileChallengeProps) {
+  const t = useTranslations("ai");
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
-  const onVerifyRef = useRef(onVerify);
-  const onExpireRef = useRef(onExpire);
-  const onErrorRef = useRef(onError);
-  onVerifyRef.current = onVerify;
-  onExpireRef.current = onExpire;
-  onErrorRef.current = onError;
+  const handleVerify = useEffectEvent((token: string) => onVerify(token));
+  const handleExpire = useEffectEvent(() => onExpire());
+  const handleError = useEffectEvent(() => onError());
 
   useEffect(() => {
     let isActive = true;
@@ -36,9 +35,9 @@ export default function TurnstileChallenge({ siteKey, onVerify, onExpire, onErro
       if (!isActive || !containerRef.current || !window.turnstile || widgetIdRef.current) return;
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: siteKey,
-        callback: (token) => onVerifyRef.current(token),
-        "expired-callback": () => onExpireRef.current(),
-        "error-callback": () => onErrorRef.current(),
+        callback: handleVerify,
+        "expired-callback": handleExpire,
+        "error-callback": handleError,
         theme: "dark",
       });
     };
@@ -53,7 +52,7 @@ export default function TurnstileChallenge({ siteKey, onVerify, onExpire, onErro
       script.async = true;
       script.defer = true;
       script.addEventListener("load", render, { once: true });
-      script.addEventListener("error", () => onErrorRef.current(), { once: true });
+      script.addEventListener("error", handleError, { once: true });
       document.head.appendChild(script);
     }
 
@@ -64,5 +63,5 @@ export default function TurnstileChallenge({ siteKey, onVerify, onExpire, onErro
     };
   }, [siteKey]);
 
-  return <div ref={containerRef} aria-label="Verificación antiabuso" />;
+  return <div ref={containerRef} aria-label={t("turnstile.label")} />;
 }

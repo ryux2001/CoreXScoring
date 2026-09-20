@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react'; // 🚀 Importamos useState y useEffect
 import { BarChart2, AlertCircle } from 'lucide-react'; // 🚀 Añadimos un icono de alerta si quieres
 import { useCompareStore } from '@/store/useCompareStore';
+import { getComparisonErrorMessage } from '@/lib/comparison-errors';
+import { useTranslations } from 'next-intl';
 
 interface CompareButtonProps {
   id: string | number;
@@ -18,6 +20,7 @@ interface CompareButtonProps {
 }
 
 export default function CompareButton(product: CompareButtonProps) {
+  const t = useTranslations('common');
   const addItem = useCompareStore((state) => state.addItem);
   const removeItem = useCompareStore((state) => state.removeItem);
   const items = useCompareStore((state) => state.items);
@@ -45,7 +48,7 @@ export default function CompareButton(product: CompareButtonProps) {
       const result = addItem(product);
       if (!result.success) {
         // 🚀 En lugar de alert(), guardamos el error en nuestro estado local
-        setCustomError(result.error || "Error al añadir el producto");
+         setCustomError(getComparisonErrorMessage(result.error, t));
       }
     }
   };
@@ -61,12 +64,12 @@ export default function CompareButton(product: CompareButtonProps) {
         }`}
       >
         <BarChart2 size={14} strokeWidth={2.5} />
-        COMPARAR
+        {t('compare')}
       </button>
 
       {/* 👑 TU NUEVA ALERTA PERSONALIZADA (ESTILO CYBERPUNK/TECHNICAL) */}
       {customError && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 rounded-xl border border-red-900/40 bg-zinc-950 px-4 py-3 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-sm w-[90vw]">
+        <div role="alert" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 rounded-xl border border-red-900/40 bg-zinc-950 px-4 py-3 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-sm w-[90vw]">
           {/* Indicador de Alerta */}
           <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-950/50 border border-red-800 text-red-400">
             <AlertCircle size={12} strokeWidth={3} />
@@ -75,7 +78,7 @@ export default function CompareButton(product: CompareButtonProps) {
           {/* Mensaje de Error */}
           <div className="flex flex-col min-w-0">
             <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em] text-red-500">
-              SISTEMA DE COMPARACIÓN
+              {t('comparisonSystem')}
             </span>
             <span className="font-technical mt-0.5 text-xs font-medium leading-tight tracking-tight text-zinc-300">
               {customError}

@@ -1,5 +1,6 @@
 import type { AiSupabaseClient } from "./tools/types";
 import type { ComparisonContext, PageContext, PageEntityType, PageRoute } from "./types";
+import { getLocalizedPathname } from "@/i18n/routing";
 
 interface PageLocation {
   route: PageRoute;
@@ -25,7 +26,7 @@ function asRow(value: unknown): Row {
 }
 
 function getPageLocation(pathname: string): PageLocation {
-  const segments = pathname.split("/").filter(Boolean).map((segment) => {
+  const segments = getLocalizedPathname(pathname).split("/").filter(Boolean).map((segment) => {
     try { return decodeURIComponent(segment); } catch { return segment; }
   });
   const [root, second, third] = segments;

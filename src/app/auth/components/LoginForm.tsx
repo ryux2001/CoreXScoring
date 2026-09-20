@@ -1,28 +1,16 @@
 "use client";
 
 import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthConfirmUrl } from "@/lib/authRedirects";
 import { useAuthStore } from "@/store/useAuthStore";
 
-function getLoginErrorMessage(error: { status?: number; message?: string }) {
-  const message = error.message?.toLowerCase() || "";
-
-  if (message.includes("email not confirmed")) {
-    return "Confirma tu email antes de iniciar sesión.";
-  }
-
-  if (error.status === 400) {
-    return "Credenciales inválidas. Revisa tu email o contraseña.";
-  }
-
-  return error.message || "No se pudo iniciar sesión. Inténtalo de nuevo.";
-}
-
 export default function LoginForm() {
+  const t = useTranslations("auth");
   const setUser = useAuthStore((state) => state.setUser);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,6 +20,15 @@ export default function LoginForm() {
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [canResendConfirmation, setCanResendConfirmation] = useState(false);
   const router = useRouter();
+
+  const getLoginErrorMessage = (error: { status?: number; message?: string }) => {
+    const message = error.message?.toLowerCase() || "";
+
+    if (message.includes("email not confirmed")) return t("confirmEmailBeforeSignIn");
+    if (error.status === 400) return t("invalidCredentials");
+
+    return t("signInError");
+  };
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,14 +50,14 @@ export default function LoginForm() {
       }
 
       if (!data.session || !data.user) {
-        setErrorMsg("No se pudo crear una sesión válida. Inténtalo de nuevo.");
+        setErrorMsg(t("invalidSession"));
         return;
       }
 
       setUser(data.user);
       router.push("/catalog");
-    } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "No se pudo iniciar sesión.");
+    } catch {
+      setErrorMsg(t("signInError"));
     } finally {
       setLoading(false);
     }
@@ -78,15 +75,15 @@ export default function LoginForm() {
 
     setResendMsg(
       error
-        ? "No se pudo reenviar el email. Inténtalo de nuevo."
-        : "Hemos reenviado el email de confirmación.",
+        ? t("resendConfirmationError")
+        : t("confirmationEmailResent"),
     );
     setResending(false);
   };
 
   return (
     <form onSubmit={handleLogin} className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tighter text-white">Bienvenido de nuevo</h1>
+      <h1 className="text-3xl font-bold tracking-tighter text-white">{t("welcomeBack")}</h1>
 
       {errorMsg && (
         <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-400">
@@ -101,7 +98,7 @@ export default function LoginForm() {
               disabled={resending || !email.trim()}
               className="mt-3 text-left text-xs font-semibold text-white underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {resending ? "Reenviando..." : "Reenviar email de confirmación"}
+              {resending ? t("resending") : t("resendConfirmationEmail")}
             </button>
           )}
           {resendMsg && <p className="mt-2 text-xs text-zinc-300">{resendMsg}</p>}
@@ -111,7 +108,7 @@ export default function LoginForm() {
       <div className="space-y-4">
         <div>
           <label htmlFor="email" className="mb-2 block text-sm font-medium text-zinc-400">
-            Email
+            {t("email")}
           </label>
           <div className="relative">
             <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -121,7 +118,7 @@ export default function LoginForm() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="juan@example.com"
+              placeholder={t("emailPlaceholder")}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-12 py-3.5 text-zinc-200 transition-all focus:outline-none focus:ring-1 focus:ring-white/20"
             />
           </div>
@@ -129,7 +126,7 @@ export default function LoginForm() {
 
         <div>
           <label htmlFor="pass" className="mb-2 block text-sm font-medium text-zinc-400">
-            Contraseña
+            {t("password")}
           </label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -139,7 +136,7 @@ export default function LoginForm() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="........"
+              placeholder={t("passwordPlaceholder")}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-12 py-3.5 text-zinc-200 transition-all focus:outline-none focus:ring-1 focus:ring-white/20"
             />
           </div>
@@ -148,7 +145,7 @@ export default function LoginForm() {
 
       <div className="flex items-center justify-end text-sm">
         <Link href="/auth/forgot-password" className="text-zinc-400 transition-colors hover:text-white">
-          Recuperar contraseña
+          {t("forgotPassword")}
         </Link>
       </div>
 
@@ -157,7 +154,7 @@ export default function LoginForm() {
         type="submit"
         className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-4 text-lg font-bold text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar sesión"}
+        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : t("signIn")}
       </button>
     </form>
   );

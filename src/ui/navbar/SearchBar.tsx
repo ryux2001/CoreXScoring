@@ -1,9 +1,13 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useRef, useEffect, useId } from "react";
+import { useRouter } from "@/i18n/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { localizeProducts } from "@/lib/content/translations";
+import type { Locale } from "@/i18n/routing";
 
 interface SearchSuggestion {
   name: string;
@@ -22,6 +26,8 @@ export default function SearchBar({
   showCloseButton = false,
   onClose,
 }: SearchBarProps) {
+  const t = useTranslations("nav");
+  const locale = useLocale() as Locale;
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -78,13 +84,14 @@ export default function SearchBar({
       if (requestId !== requestIdRef.current) return;
       if (error) throw error;
 
-      setSuggestions(data || []);
+      const localizedSuggestions = await localizeProducts(supabase, (data || []) as Record<string, unknown>[], locale);
+      setSuggestions(localizedSuggestions as unknown as SearchSuggestion[]);
       setShowSuggestions(true);
     } catch {
       if (requestId !== requestIdRef.current) return;
       setSuggestions([]);
       setShowSuggestions(true);
-      setSearchError("No se pudo buscar ahora. Inténtalo de nuevo.");
+      setSearchError(t("searchError"));
     } finally {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
@@ -121,10 +128,10 @@ export default function SearchBar({
       <form role="search" onSubmit={handleSubmit} className="relative flex w-full items-center">
         <input
           type="text"
-          placeholder="Buscar componente..."
+          placeholder={t("searchPlaceholder")}
           value={searchTerm}
           role="combobox"
-          aria-label="Buscar componentes"
+          aria-label={t("searchComponents")}
           aria-autocomplete="list"
           aria-expanded={showSuggestions}
           aria-controls={suggestionsId}
@@ -164,7 +171,7 @@ export default function SearchBar({
         />
         <button
           type="submit"
-          aria-label="Buscar"
+          aria-label={t("search")}
           className="absolute left-1 top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
           <Search className="h-4 w-4" />
@@ -173,7 +180,7 @@ export default function SearchBar({
         {showCloseButton ? (
           <button
             type="button"
-            aria-label="Cerrar búsqueda"
+            aria-label={t("closeSearch")}
             onClick={closeSearch}
             className="absolute right-1 top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           >
@@ -182,7 +189,7 @@ export default function SearchBar({
         ) : searchTerm ? (
           <button
             type="button"
-            aria-label="Limpiar búsqueda"
+            aria-label={t("clearSearch")}
             onClick={clearSearch}
             className="absolute right-1 top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           >
@@ -192,7 +199,7 @@ export default function SearchBar({
       </form>
 
       <div aria-live="polite" className="sr-only">
-        {isLoading ? "Buscando componentes" : searchError || (showSuggestions && suggestions.length === 0 ? "Sin resultados" : "")}
+        {isLoading ? t("searchingComponents") : searchError || (showSuggestions && suggestions.length === 0 ? t("noResults") : "")}
       </div>
 
       {showSuggestions && searchTerm.trim().length >= 2 && (
@@ -203,7 +210,7 @@ export default function SearchBar({
         >
           {isLoading ? (
             <p className="px-4 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Buscando...
+              {t("searching")}
             </p>
           ) : searchError ? (
             <p className="px-4 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-red-400">
@@ -211,7 +218,7 @@ export default function SearchBar({
             </p>
           ) : suggestions.length === 0 ? (
             <p className="px-4 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Sin resultados
+              {t("noResults")}
             </p>
           ) : (
           <div className="py-2">

@@ -2,6 +2,7 @@
 
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabaseClient';
 import { getOAuthCallbackUrl } from '@/lib/authRedirects';
 
@@ -11,6 +12,7 @@ interface GoogleAuthButtonProps {
 }
 
 export default function GoogleAuthButton({ linkIdentity = false, next = '/catalog' }: GoogleAuthButtonProps) {
+  const t = useTranslations('auth');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +29,7 @@ export default function GoogleAuthButton({ linkIdentity = false, next = '/catalo
       : await supabase.auth.signInWithOAuth({ provider: 'google', options });
 
     if (result.error) {
-      setError('No se pudo continuar con Google. Inténtalo de nuevo.');
+      setError(t('googleContinueError'));
       setLoading(false);
     }
   };
@@ -41,7 +43,7 @@ export default function GoogleAuthButton({ linkIdentity = false, next = '/catalo
         className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-700 bg-white px-6 py-3.5 text-sm font-bold text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleMark />}
-        {linkIdentity ? 'Vincular cuenta de Google' : 'Continuar con Google'}
+        {linkIdentity ? t('linkGoogleAccount') : t('continueWithGoogle')}
       </button>
       {error && (
         <p className="flex items-center gap-2 text-xs text-red-400">

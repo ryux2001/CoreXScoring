@@ -3,11 +3,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import {
-  DELETE_CONFIRMATION_TEXT,
   MAX_DELETE_REQUEST_BYTES,
   parseDeleteAccountRequest,
 } from '@/lib/auth/delete-account-policy';
-import { ApiRateLimitUnavailableError, requireApiRateLimit } from '@/lib/api-security';
+import { ApiRateLimitUnavailableError, readLimitedText, requireApiRateLimit } from '@/lib/api-security';
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
@@ -63,22 +62,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Tipo de contenido no permitido.' }, { status: 415 });
   }
 
-  const contentLength = Number(request.headers.get('content-length'));
-  if (Number.isFinite(contentLength) && contentLength > MAX_DELETE_REQUEST_BYTES) {
-    return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
-  }
-
-  const rawBody = await request.text();
-  if (new TextEncoder().encode(rawBody).byteLength > MAX_DELETE_REQUEST_BYTES) {
-    return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
+  let rawBody: string;
+  try {
+    rawBody = await readLimitedText(request, MAX_DELETE_REQUEST_BYTES);
+  } catch (error) {
+    const status = error instanceof Error && 'status' in error ? Number(error.status) : 400;
+    const message = status === 411
+      ? 'Content-Length requerido.'
+      : status === 413
+        ? 'Solicitud demasiado grande.'
+        : 'Solicitud inválida.';
+    return NextResponse.json({ error: message }, { status });
   }
 
   const body = parseDeleteAccountRequest(rawBody);
   if (!body) return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 });
-
-  if (body.confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_TEXT) {
-    return NextResponse.json({ error: 'Confirmación inválida.' }, { status: 400 });
-  }
 
   const { data: reauthenticated, error: reauthenticationError } = await supabase.auth.signInWithPassword({
     email: user.email,

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, X, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useCompareStore } from "@/store/useCompareStore";
 
 interface CompareCartDropdownProps {
@@ -10,6 +11,8 @@ interface CompareCartDropdownProps {
 }
 
 export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps) {
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const items = useCompareStore((state) => state.items);
@@ -22,7 +25,7 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
   const isBuildComparison = componentType === "BUILD" || items.some((item) => (
     item.comparisonType === "build" || String(item.type || "").toUpperCase() === "BUILD"
   ));
-  const comparisonLabel = isBuildComparison ? "Builds" : isComboComparison ? "Combos" : "Componentes";
+  const comparisonLabel = isBuildComparison ? t("builds") : isComboComparison ? t("combos") : t("components");
 
   useEffect(() => {
     if (!isCartOpen) return;
@@ -58,7 +61,7 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
           if (!isCartOpen) onOpen?.();
           setIsCartOpen((previous) => !previous);
         }}
-        aria-label={`Abrir comparativa${items.length > 0 ? ` (${items.length} seleccionados)` : ""}`}
+        aria-label={t("openComparison", { count: items.length })}
         aria-expanded={isCartOpen}
         aria-controls="comparison-dropdown"
         className="relative flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-zinc-900 text-zinc-300 transition-all hover:border-white/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
@@ -86,7 +89,7 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
           <div
             id="comparison-dropdown"
             role="dialog"
-            aria-label="Comparativa de productos"
+            aria-label={t("productComparison")}
             className="fixed left-4 right-4 top-[72px] z-50 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-80"
           >
             
@@ -94,11 +97,11 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-3">
               <div className="flex flex-col">
                 <span className="font-display text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Comparativa ({items.length}/3)
+                  {t("comparisonCount", { count: items.length, max: 3 })}
                 </span>
                 {items.length > 0 && (
                   <span className="font-technical mt-1 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
-                    Comparando: <span className="text-zinc-400">{comparisonLabel}</span>
+                    {t("comparing")}: <span className="text-zinc-400">{comparisonLabel}</span>
                   </span>
                 )}
               </div>
@@ -109,7 +112,7 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
                   className="font-display flex min-h-11 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-tight text-zinc-600 transition-colors hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   <Trash2 size={10} />
-                  Limpiar
+                  {t("clear")}
                 </button>
               )}
             </div>
@@ -118,37 +121,48 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
             {items.length === 0 ? (
               <div className="flex h-24 flex-col items-center justify-center text-center">
                 <p className="font-display text-xs font-bold uppercase tracking-wider text-zinc-600">
-                  No hay productos seleccionados
+                  {t("noProductsSelected")}
                 </p>
                 <p className="font-technical mt-1 max-w-[200px] text-[11px] text-zinc-700">
-                  Explora el catálogo y pulsa &quot;Comparar&quot; en los componentes.
+                  {t("comparisonEmptyDescription")}
                 </p>
               </div>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {items.map((item) => (
-                  <div 
-                    key={item.id} 
-                    className="flex items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-zinc-900/20 p-2.5 hover:border-zinc-800 transition-colors"
-                  >
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-display truncate text-sm font-semibold tracking-tight text-white">
-                        {item.name}
-                      </span>
-                      <span className="font-technical mt-0.5 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
-                        {item.brand} · {item.type}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      aria-label={`Quitar ${item.name} de la comparativa`}
-                      onClick={() => removeItem(item.id)}
-                      className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-600 transition-all hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                {items.map((item) => {
+                  const itemIsBuild = item.comparisonType === "build" || String(item.type || "").toUpperCase() === "BUILD";
+                  const itemIsCombo = item.comparisonType === "combo" || String(item.type || "").toUpperCase() === "COMBO";
+                  const itemTypeLabel = itemIsBuild
+                    ? tCommon("comparisonTypes.build")
+                    : itemIsCombo
+                      ? tCommon("comparisonTypes.combo")
+                      : `${item.brand} · ${item.type}`;
+                  const itemDisplayName = item.name || itemTypeLabel;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-zinc-900/20 p-2.5 hover:border-zinc-800 transition-colors"
                     >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-display truncate text-sm font-semibold tracking-tight text-white">
+                          {itemDisplayName}
+                        </span>
+                        <span className="font-technical mt-0.5 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+                          {itemTypeLabel}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={t("removeFromComparison", { name: itemDisplayName })}
+                        onClick={() => removeItem(item.id)}
+                        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-600 transition-all hover:bg-zinc-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -166,7 +180,7 @@ export default function CompareCartDropdown({ onOpen }: CompareCartDropdownProps
                 tabIndex={items.length < 2 ? -1 : undefined}
                 style={{ pointerEvents: items.length < 2 ? 'none' : 'auto' }}
               >
-                {items.length < 2 ? "Añade al menos 2 productos" : "Comparar Componentes"}
+                {items.length < 2 ? t("addAtLeastTwoProducts") : t("compareComponents")}
               </Link>
             </div>
 

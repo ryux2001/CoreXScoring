@@ -2,6 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 import { consumeApiRateLimit } from '@/lib/api-security';
+import { normalizeCategory, toStoredCategory } from './catalog-categories';
+
+export { normalizeCategory, toStoredCategory, UNCATEGORIZED_CATEGORY } from './catalog-categories';
 
 export type CatalogKind = 'builds' | 'combos';
 export type CatalogSlot = 'cpu' | 'gpu' | 'ram' | 'motherboard' | 'storage' | 'psu';
@@ -115,10 +118,6 @@ export async function loadCatalogRows(db: SupabaseClient, kind: CatalogKind): Pr
   });
 }
 
-export function normalizeCategory(category: unknown): string {
-  return typeof category === 'string' && category.trim() ? category.trim() : 'Sin categoría';
-}
-
 export async function loadCatalogCategoryOrders(
   db: SupabaseClient,
   kind: CatalogKind,
@@ -130,7 +129,10 @@ export async function loadCatalogCategoryOrders(
     .order('sort_order', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as CatalogCategoryOrder[];
+  return ((data ?? []) as CatalogCategoryOrder[]).map((item) => ({
+    ...item,
+    category: normalizeCategory(item.category),
+  }));
 }
 
 export async function loadCatalogRow(
@@ -223,7 +225,7 @@ export async function ensureCatalogCategoryOrder(
   kind: CatalogKind,
   category: string,
 ): Promise<void> {
-  const normalizedCategory = normalizeCategory(category);
+  const normalizedCategory = toStoredCategory(normalizeCategory(category));
   const { data: existing, error: existingError } = await db
     .from('catalog_category_orders')
     .select('category')

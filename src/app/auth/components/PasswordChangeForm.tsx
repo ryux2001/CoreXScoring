@@ -2,7 +2,8 @@
 
 import { AlertCircle, CheckCircle2, Lock, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabaseClient';
 import { isAcceptablePassword } from '@/lib/auth/password-policy';
 
@@ -17,6 +18,7 @@ export default function PasswordChangeForm({
   recovery = false,
   successRedirect,
 }: PasswordChangeFormProps) {
+  const t = useTranslations('auth');
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
@@ -31,19 +33,19 @@ export default function PasswordChangeForm({
     setSuccessMsg(null);
 
     if (requireCurrentPassword && !currentPassword) {
-      setErrorMsg('Introduce tu contraseña actual.');
+      setErrorMsg(t('enterCurrentPassword'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMsg('Las contraseñas nuevas no coinciden.');
+      setErrorMsg(t('newPasswordsDoNotMatch'));
       return;
     }
 
     setLoading(true);
 
     if (!isAcceptablePassword(password)) {
-      setErrorMsg('La contraseña debe tener entre 8 y 128 caracteres.');
+      setErrorMsg(t('passwordLengthRequirement'));
       setLoading(false);
       return;
     }
@@ -57,13 +59,13 @@ export default function PasswordChangeForm({
         body: JSON.stringify({ password }),
       });
 
-      if (!response.ok) error = { message: 'No se pudo cambiar la contraseña.' };
+      if (!response.ok) error = { message: t('changePasswordError') };
     } else {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       const email = userData.user?.email;
 
       if (userError || !email) {
-        error = userError ?? { message: 'Sesión no válida.' };
+        error = userError ?? { message: t('invalidSession') };
       } else {
         const { error: reauthenticationError } = await supabase.auth.signInWithPassword({
           email,
@@ -82,7 +84,7 @@ export default function PasswordChangeForm({
     }
 
     if (error) {
-      setErrorMsg('No se pudo cambiar la contraseña. Revisa los datos e inténtalo de nuevo.');
+      setErrorMsg(t('changePasswordDetailsError'));
     } else if (successRedirect) {
       router.push(successRedirect);
       router.refresh();
@@ -90,7 +92,7 @@ export default function PasswordChangeForm({
       setCurrentPassword('');
       setPassword('');
       setConfirmPassword('');
-      setSuccessMsg('Tu contraseña se ha cambiado correctamente.');
+      setSuccessMsg(t('passwordChanged'));
     }
 
     setLoading(false);
@@ -115,7 +117,7 @@ export default function PasswordChangeForm({
       {requireCurrentPassword && (
         <div>
           <label htmlFor="current_password" className="mb-2 block text-sm font-medium text-zinc-400">
-            Contraseña actual
+            {t('currentPassword')}
           </label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -133,7 +135,7 @@ export default function PasswordChangeForm({
 
       <div>
         <label htmlFor="new_password" className="mb-2 block text-sm font-medium text-zinc-400">
-          Nueva contraseña
+          {t('newPassword')}
         </label>
         <div className="relative">
           <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -150,7 +152,7 @@ export default function PasswordChangeForm({
 
       <div>
         <label htmlFor="confirm_password" className="mb-2 block text-sm font-medium text-zinc-400">
-          Confirmar nueva contraseña
+          {t('confirmNewPassword')}
         </label>
         <div className="relative">
           <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-zinc-600" />
@@ -170,7 +172,7 @@ export default function PasswordChangeForm({
         type="submit"
         className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-white px-6 py-4 text-lg font-bold text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Cambiar contraseña'}
+        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : t('changePassword')}
       </button>
     </form>
   );

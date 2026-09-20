@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 import { createGoogleDeleteIntent, GOOGLE_DELETE_INTENT_COOKIE, GOOGLE_DELETE_INTENT_TTL_SECONDS } from '@/lib/auth/google-delete-intent';
-import { DELETE_CONFIRMATION_TEXT } from '@/lib/auth/delete-account-policy';
-import { ApiRateLimitUnavailableError, requireApiRateLimit } from '@/lib/api-security';
+import { getDeleteConfirmationText } from '@/lib/auth/delete-account-policy';
+import { isLocale } from '@/i18n/routing';
+import { ApiRateLimitUnavailableError, readLimitedJson, requireApiRateLimit } from '@/lib/api-security';
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
@@ -11,8 +12,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Origen no permitido.' }, { status: 403 });
   }
 
-  const body = await request.json().catch(() => null) as { confirmation?: unknown } | null;
-  if (typeof body?.confirmation !== 'string' || body.confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_TEXT) {
+  let body: { confirmation?: unknown; locale?: unknown } | null;
+  try {
+    body = await readLimitedJson<{ confirmation?: unknown; locale?: unknown }>(request, 1 * 1024);
+  } catch (error) {
+    const status = error instanceof Error && 'status' in error ? Number(error.status) : 400;
+    return NextResponse.json({ error: status === 413 ? 'Solicitud demasiado grande.' : 'Solicitud inválida.' }, { status });
+  }
+  if (typeof body?.confirmation !== 'string' || typeof body.locale !== 'string' || !isLocale(body.locale) || body.confirmation.trim().toUpperCase() !== getDeleteConfirmationText(body.locale)) {
     return NextResponse.json({ error: 'Confirmación inválida.' }, { status: 400 });
   }
 

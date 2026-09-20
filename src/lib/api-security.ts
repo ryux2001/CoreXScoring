@@ -35,15 +35,85 @@ export function jsonResponse<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, { ...init, headers });
 }
 
-export async function readLimitedJson<T>(request: Request, maxBytes: number): Promise<T> {
+export type ReadLimitedBodyOptions = {
+  requireContentLength?: boolean;
+};
+
+export async function readLimitedJson<T>(
+  request: Request,
+  maxBytes: number,
+  options: ReadLimitedBodyOptions = {},
+): Promise<T> {
   const contentType = request.headers.get('content-type')?.toLowerCase() || '';
   if (!/^application\/json(?:\s*;|$)/.test(contentType)) {
     throw new ApiRequestError('El contenido debe ser JSON.', 415);
   }
 
-  const contentLength = Number(request.headers.get('content-length'));
-  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-    throw new ApiRequestError('Solicitud demasiado grande.', 413);
+  const body = await readLimitedBody(request, maxBytes, options);
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new ApiRequestError('Solicitud inválida.', 400);
+  }
+}
+
+export async function readLimitedText(
+  request: Request,
+  maxBytes: number,
+  options: ReadLimitedBodyOptions = {},
+): Promise<string> {
+  return readLimitedBody(request, maxBytes, options);
+}
+
+export async function readOptionalLimitedJson<T>(
+  request: Request,
+  maxBytes: number,
+): Promise<T | undefined> {
+  if (!request.body) {
+    const contentLengthHeader = request.headers.get('content-length');
+    if (contentLengthHeader === null || contentLengthHeader === '0') return undefined;
+    if (!/^\d+$/.test(contentLengthHeader)) {
+      throw new ApiRequestError('Content-Length inválido.', 411);
+    }
+    if (Number(contentLengthHeader) > maxBytes) {
+      throw new ApiRequestError('Solicitud demasiado grande.', 413);
+    }
+    throw new ApiRequestError('Solicitud inválida.', 400);
+  }
+
+  const body = await readLimitedBody(request, maxBytes, { requireContentLength: false });
+  if (body.length === 0) return undefined;
+
+  const contentType = request.headers.get('content-type')?.toLowerCase() || '';
+  if (!/^application\/json(?:\s*;|$)/.test(contentType)) {
+    throw new ApiRequestError('El contenido debe ser JSON.', 415);
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new ApiRequestError('Solicitud inválida.', 400);
+  }
+}
+
+async function readLimitedBody(
+  request: Request,
+  maxBytes: number,
+  { requireContentLength = true }: ReadLimitedBodyOptions,
+) {
+  const contentLengthHeader = request.headers.get('content-length');
+  if (contentLengthHeader === null) {
+    if (requireContentLength) throw new ApiRequestError('Content-Length requerido.', 411);
+  } else if (!/^\d+$/.test(contentLengthHeader)) {
+    throw new ApiRequestError('Content-Length inválido.', 411);
+  } else {
+    const contentLength = Number(contentLengthHeader);
+    if (!Number.isSafeInteger(contentLength)) {
+      throw new ApiRequestError('Content-Length inválido.', 411);
+    }
+    if (contentLength > maxBytes) {
+      throw new ApiRequestError('Solicitud demasiado grande.', 413);
+    }
   }
 
   const reader = request.body?.getReader();
@@ -68,11 +138,7 @@ export async function readLimitedJson<T>(request: Request, maxBytes: number): Pr
   }
 
   const body = new TextDecoder().decode(concatBytes(chunks, totalBytes));
-  try {
-    return JSON.parse(body) as T;
-  } catch {
-    throw new ApiRequestError('Solicitud inválida.', 400);
-  }
+  return body;
 }
 
 export class ApiRequestError extends Error {

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
-import { usePathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { usePathname } from "@/i18n/navigation";
+import { getComparisonErrorMessage } from "@/lib/comparison-errors";
 import {
   Bot,
   ChevronDown,
@@ -25,6 +27,7 @@ import { useCompareStore, type CompareProduct } from "@/store/useCompareStore";
 import { useAiVisiblePriceStore } from "@/store/useAiVisiblePriceStore";
 import type { AiQuotaStatus } from "@/lib/ai/limits";
 import { sanitizeChatHref } from "@/lib/ai/privacy";
+import { getLocalizedPathname } from "@/i18n/routing";
 import TurnstileChallenge from "./TurnstileChallenge";
 
 type MobileMode = "collapsed" | "compact" | "expanded";
@@ -32,12 +35,6 @@ type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: numb
 type ChatErrorPayload = { error?: string; code?: string; retryable?: boolean; requestId?: string; retryAfterSeconds?: number; providers?: string[] };
 type ExternalConsentRequest = { providers: string[] };
 
-const QUICK_PROMPTS = [
-  "¿Qué puedes hacer por mí?",
-  "Quiero información de un componente",
-  "Recomiéndame una build",
-  "¿Qué es CoreXScoring?",
-] as const;
 const MOBILE_TOAST_MAX_LENGTH = 120;
 const INPUT_MIN_HEIGHT = 36;
 const INPUT_MAX_HEIGHT = 112;
@@ -46,7 +43,8 @@ const DESKTOP_CHAT_MAX_WIDTH = 580;
 const DESKTOP_CHAT_INITIAL_WIDTH = 400;
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
-const markdownComponents: Components = {
+function getMarkdownComponents(externalLinkConfirmation: string): Components {
+  return {
   a: ({ children, href, title }) => {
     const safeHref = sanitizeChatHref(href);
     if (!safeHref) return <span>{children}</span>;
@@ -58,7 +56,7 @@ const markdownComponents: Components = {
       target={safeHref.external ? "_blank" : undefined}
       rel={safeHref.external ? "noreferrer noopener" : undefined}
       onClick={(event) => {
-        if (safeHref.external && !window.confirm("Este enlace abre un sitio externo. ¿Quieres continuar?")) event.preventDefault();
+        if (safeHref.external && !window.confirm(externalLinkConfirmation)) event.preventDefault();
       }}
       className="font-semibold text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 transition-colors hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
     >
@@ -66,7 +64,8 @@ const markdownComponents: Components = {
     </a>
     );
   },
-};
+  };
+}
 
 function getMobileToastPreview(content: string): string {
   const normalizedContent = content.replace(/\s+/g, " ").trim();
@@ -75,19 +74,20 @@ function getMobileToastPreview(content: string): string {
   return `${normalizedContent.slice(0, MOBILE_TOAST_MAX_LENGTH).trimEnd()}...`;
 }
 
-function formatQuotaNumber(value: number): string {
-  return new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 }).format(value);
+function formatQuotaNumber(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
 }
 
-function formatQuotaReset(value: string): string {
+function formatQuotaReset(value: string, locale: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "al finalizar el día";
-  return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
 function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageContext {
   const pathname = window.location.pathname;
-  const segments = pathname.split("/").filter(Boolean);
+  const localizedPathname = getLocalizedPathname(pathname);
+  const segments = localizedPathname.split("/").filter(Boolean);
   const root = segments[0];
   const route: PageContext["route"] = root === "catalog"
     ? "catalog"
@@ -119,7 +119,8 @@ function getFrontendPriceContext(
   evaluatedPrices: Record<string, number>,
   visibleEditorContext: AiFrontendPriceContext | null,
 ): AiFrontendPriceContext | undefined {
-  if (pathname.startsWith("/comparator")) {
+  const localizedPathname = getLocalizedPathname(pathname);
+  if (localizedPathname.startsWith("/comparator")) {
     const visibleIds = new Set(comparisonItems.map((item) => String(item.id)));
     const items = Object.entries(evaluatedPrices)
       .filter(([productId]) => visibleIds.has(productId))
@@ -129,7 +130,7 @@ function getFrontendPriceContext(
     }
   }
 
-  if (visibleEditorContext && pathname.startsWith("/vault/")) return visibleEditorContext;
+  if (visibleEditorContext && localizedPathname.startsWith("/vault/")) return visibleEditorContext;
 
   return undefined;
 }
@@ -149,21 +150,21 @@ function humanizePageIdentifier(value: string): string {
     .replace(/\b(\w)/g, (character) => character.toUpperCase());
 }
 
-function getPageStatusLabel(pathname: string): string {
-  const segments = pathname.split("/").filter(Boolean);
+function getPageStatusLabel(pathname: string, getLabel: (key: string, values?: Record<string, string>) => string): string {
+  const segments = getLocalizedPathname(pathname).split("/").filter(Boolean);
   const root = segments[0];
   const identifier = root === "vault" ? segments[2] : segments[1];
-  if (root === "catalog" && identifier) return `${humanizePageIdentifier(identifier)}`;
-  if (root === "combos" && identifier) return `Combo: ${humanizePageIdentifier(identifier)}`;
-  if (root === "builds" && identifier) return `Build: ${humanizePageIdentifier(identifier)}`;
-  if (root === "vault" && segments[1] === "combos-created" && identifier) return `Combo creado: ${humanizePageIdentifier(identifier)}`;
-  if (root === "vault" && segments[1] === "builds-created" && identifier) return `Build creada: ${humanizePageIdentifier(identifier)}`;
-  if (root === "catalog") return "Catálogo";
-  if (root === "combos") return "Combos";
-  if (root === "builds") return "Builds";
-  if (root === "comparator") return "Comparador";
-  if (root === "vault") return "Bóveda";
-  return "Inicio";
+  if (root === "catalog" && identifier) return humanizePageIdentifier(identifier);
+  if (root === "combos" && identifier) return getLabel("pageContext.combo", { title: humanizePageIdentifier(identifier) });
+  if (root === "builds" && identifier) return getLabel("pageContext.build", { title: humanizePageIdentifier(identifier) });
+  if (root === "vault" && segments[1] === "combos-created" && identifier) return getLabel("pageContext.createdCombo", { title: humanizePageIdentifier(identifier) });
+  if (root === "vault" && segments[1] === "builds-created" && identifier) return getLabel("pageContext.createdBuild", { title: humanizePageIdentifier(identifier) });
+  if (root === "catalog") return getLabel("pageContext.catalog");
+  if (root === "combos") return getLabel("pageContext.combos");
+  if (root === "builds") return getLabel("pageContext.builds");
+  if (root === "comparator") return getLabel("pageContext.comparator");
+  if (root === "vault") return getLabel("pageContext.vault");
+  return getLabel("pageContext.home");
 }
 
 function findFocusableElements(container: HTMLElement) {
@@ -172,10 +173,10 @@ function findFocusableElements(container: HTMLElement) {
   )).filter((element) => !element.hasAttribute("inert"));
 }
 
-function ThinkingWave() {
+function ThinkingWave({ label }: { label: string }) {
   return (
     <span className="ai-thinking-wave" aria-hidden="true">
-      {Array.from("Pensando…").map((character, index) => (
+      {Array.from(label).map((character, index) => (
         <span
           key={`${character}-${index}`}
           style={{ "--ai-wave-delay": `${index * 72}ms` } as CSSProperties}
@@ -264,41 +265,50 @@ function ChatPanel({
   expandButtonRef,
   challenge,
 }: ChatPanelProps) {
+  const t = useTranslations("ai");
+  const locale = useLocale();
   const hasActions = Boolean(onMinimize || onExpand || onReduce || onOpenHistory || onHideDesktop);
+  const markdownComponents = getMarkdownComponents(t("externalLinkConfirmation"));
+  const quickPrompts = [
+    t("quickPrompts.capabilities"),
+    t("quickPrompts.componentInformation"),
+    t("quickPrompts.recommendBuild"),
+    t("quickPrompts.about"),
+  ];
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col" aria-label="Conversación con CoreX AI">
+    <section className="flex min-h-0 flex-1 flex-col" aria-label={t("chat.regionLabel")}>
       <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-zinc-950/95 px-4 py-3.5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100 shadow-[0_8px_28px_rgba(34,211,238,0.12)]">
             <Bot aria-hidden="true" size={18} strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
-            <h2 className="font-display truncate text-base font-bold tracking-tight text-white">{conversationTitle || "CoreX AI"}</h2>
+            <h2 className="font-display truncate text-base font-bold tracking-tight text-white">{conversationTitle || t("chat.title")}</h2>
             <p className="font-technical text-[12px] text-zinc-500 font-extrabold">
               {conversationMode === "temporary"
-                ? "Chat temporal"
+                ? t("chat.provider.temporary")
                 : sessionKind === "anonymous"
-                ? "Modo invitado · hardware"
+                ? t("chat.provider.guest")
                 : provider === "local"
-                ? "Modelo local · llama.cpp"
+                ? t("chat.provider.local")
                 : provider === "cerebras"
-                ? "Cerebras · respaldo"
+                ? t("chat.provider.cerebras")
                 : provider === "openrouter"
-                ? "OpenRouter · respaldo"
+                ? t("chat.provider.openrouter")
                 : provider === "guardrail" && model === "vault-direct-v1"
-                  ? "Bóveda · datos privados"
+                  ? t("chat.provider.privateVault")
                 : provider === "guardrail"
-                  ? "CoreX AI · alcance protegido"
+                  ? t("chat.provider.protectedScope")
                   : provider === "groq"
-                    ? "Groq · principal"
-                    : "Chat asistente"}
+                    ? t("chat.provider.groq")
+                    : t("chat.provider.assistant")}
             </p>
             <p
               className="font-technical max-w-[13rem] truncate text-[10px] font-semibold text-cyan-200/75"
               style={pageStatusMaxWidth ? { maxWidth: `${pageStatusMaxWidth}px` } : undefined}
               title={pageStatus}
-              aria-label={`Contexto actual: ${pageStatus}`}
+              aria-label={t("chat.currentContext", { context: pageStatus })}
             >
               {pageStatus}
             </p>
@@ -311,7 +321,7 @@ function ChatPanel({
               <button
                 type="button"
                 onClick={onToggleQuota}
-                aria-label="Ver límites de uso de CoreX AI"
+                aria-label={t("quota.open")}
                 aria-expanded={isQuotaOpen}
                 aria-controls={`${id}-quota`}
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
@@ -319,40 +329,40 @@ function ChatPanel({
                 <Info aria-hidden="true" size={16} />
               </button>
               {isQuotaOpen && (
-                <div id={`${id}-quota`} role="dialog" aria-label="Límites de uso" className="absolute right-0 top-11 z-30 w-64 rounded-xl border border-white/10 bg-zinc-900 p-3.5 text-left shadow-[0_16px_36px_rgba(0,0,0,0.42)]">
+                <div id={`${id}-quota`} role="dialog" aria-label={t("quota.dialogLabel")} className="absolute right-0 top-11 z-30 w-64 rounded-xl border border-white/10 bg-zinc-900 p-3.5 text-left shadow-[0_16px_36px_rgba(0,0,0,0.42)]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-bold text-white">Uso de CoreX AI</p>
-                      <p className="mt-0.5 text-[10px] leading-relaxed text-zinc-400">Tu cuota diaria personal.</p>
+                      <p className="text-xs font-bold text-white">{t("quota.title")}</p>
+                      <p className="mt-0.5 text-[10px] leading-relaxed text-zinc-400">{t("quota.description")}</p>
                     </div>
-                    <button type="button" onClick={onRefreshQuota} disabled={quotaState === "loading"} aria-label="Actualizar cuota" className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">
+                    <button type="button" onClick={onRefreshQuota} disabled={quotaState === "loading"} aria-label={t("quota.refresh")} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">
                       <RefreshCw aria-hidden="true" size={13} className={quotaState === "loading" ? "animate-spin" : ""} />
                     </button>
                   </div>
                   {quotaState === "loading" && !quota ? (
-                    <div className="mt-3 space-y-2" aria-label="Cargando cuota">
+                    <div className="mt-3 space-y-2" aria-label={t("quota.loading")}>
                       <div className="h-9 animate-pulse rounded-lg bg-white/5" />
                       <div className="h-9 animate-pulse rounded-lg bg-white/5" />
                     </div>
                   ) : quota ? (
                     <div className="mt-3 space-y-2">
                       <div className="rounded-lg bg-black/30 px-3 py-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Mensajes</p>
-                        <p className="mt-0.5 text-sm font-bold text-cyan-100">{formatQuotaNumber(quota.messagesRemaining)} <span className="font-normal text-zinc-400">de {formatQuotaNumber(quota.messagesLimit)} restantes</span></p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{t("quota.messages")}</p>
+                        <p className="mt-0.5 text-sm font-bold text-cyan-100">{formatQuotaNumber(quota.messagesRemaining, locale)} <span className="font-normal text-zinc-400">{t("quota.remainingOf", { limit: formatQuotaNumber(quota.messagesLimit, locale) })}</span></p>
                       </div>
                       <div className="rounded-lg bg-black/30 px-3 py-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Tokens</p>
-                        <p className="mt-0.5 text-sm font-bold text-cyan-100">{formatQuotaNumber(quota.tokensRemaining)} <span className="font-normal text-zinc-400">de {formatQuotaNumber(quota.tokensLimit)} restantes</span></p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{t("quota.tokens")}</p>
+                        <p className="mt-0.5 text-sm font-bold text-cyan-100">{formatQuotaNumber(quota.tokensRemaining, locale)} <span className="font-normal text-zinc-400">{t("quota.remainingOf", { limit: formatQuotaNumber(quota.tokensLimit, locale) })}</span></p>
                       </div>
-                      <p className="px-0.5 text-[10px] leading-relaxed text-zinc-500">Se reinicia {formatQuotaReset(quota.resetAt)}. Los límites compartidos de red pueden aplicarse antes.</p>
+                      <p className="px-0.5 text-[10px] leading-relaxed text-zinc-500">{t("quota.resetNotice", { resetAt: formatQuotaReset(quota.resetAt, locale) || t("quota.endOfDay") })}</p>
                     </div>
                   ) : (
-                    <p className="mt-3 text-xs leading-relaxed text-zinc-400">No se pudo cargar tu cuota. Puedes seguir usando el chat e intentarlo de nuevo.</p>
+                    <p className="mt-3 text-xs leading-relaxed text-zinc-400">{t("quota.loadError")}</p>
                   )}
                 </div>
               )}
             </div>
-            <button type="button" onClick={onOpenHistory} aria-label="Abrir historial de chats" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
+            <button type="button" onClick={onOpenHistory} aria-label={t("history.open")} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">
               <History aria-hidden="true" size={16} />
             </button>
             {onExpand && (
@@ -360,7 +370,7 @@ function ChatPanel({
                 type="button"
                 onClick={onExpand}
                 ref={expandButtonRef}
-                aria-label="Expandir chat"
+                aria-label={t("chat.expand")}
                 className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
                 <Maximize2 aria-hidden="true" size={16} />
@@ -370,7 +380,7 @@ function ChatPanel({
               <button
                 type="button"
                 onClick={onReduce}
-                aria-label="Reducir chat"
+                aria-label={t("chat.reduce")}
                 className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
                 <ChevronDown aria-hidden="true" size={18} />
@@ -380,7 +390,7 @@ function ChatPanel({
               <button
                 type="button"
                 onClick={onMinimize}
-                aria-label="Minimizar chat"
+                aria-label={t("chat.minimize")}
                 className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
                 <Minimize2 aria-hidden="true" size={16} />
@@ -390,7 +400,7 @@ function ChatPanel({
               <button
                 type="button"
                 onClick={onHideDesktop}
-                aria-label="Ocultar CoreX AI en escritorio"
+                aria-label={t("chat.hideDesktop")}
                 className="hidden min-h-9 min-w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 md:inline-flex"
               >
                 <PanelRightClose aria-hidden="true" size={16} />
@@ -403,9 +413,9 @@ function ChatPanel({
       <div id={id} className="ai-chat-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto bg-black px-4 py-5" aria-live="polite">
         {messages.length === 0 && !isSending && !error && (
           <div className="mx-auto flex w-full max-w-xl flex-col justify-center gap-3 py-4">
-            <p className="font-display text-center text-lg font-bold tracking-tight text-white">¿En qué puedo ayudarte?</p>
+            <p className="font-display text-center text-lg font-bold tracking-tight text-white">{t("chat.emptyTitle")}</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {QUICK_PROMPTS.map((prompt) => (
+              {quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
@@ -445,9 +455,9 @@ function ChatPanel({
         ))}
 
         {isSending && (
-          <div className="flex justify-start" aria-label="CoreX AI está escribiendo">
+          <div className="flex justify-start" aria-label={t("chat.thinkingLabel")}>
             <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-cyan-300/10 bg-zinc-900/75 px-4 py-3 text-xs text-zinc-400 shadow-[0_10px_28px_rgba(0,0,0,0.12)]">
-              <ThinkingWave />
+              <ThinkingWave label={t("chat.thinking")} />
             </div>
           </div>
         )}
@@ -458,7 +468,7 @@ function ChatPanel({
             {error.retryable && (
               error.retryAfterSeconds && error.retryAfterSeconds > 0 ? (
                 <span className="ml-1 font-semibold text-red-50">
-                  Reintenta en {error.retryAfterSeconds} s.
+                  {t("chat.retryAfter", { seconds: error.retryAfterSeconds })}
                 </span>
               ) : (
                 <button
@@ -466,7 +476,7 @@ function ChatPanel({
                   onClick={onRetry}
                   className="ml-2 font-bold text-white underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
-                  Reintentar
+                  {t("chat.retry")}
                 </button>
               )
             )}
@@ -481,7 +491,7 @@ function ChatPanel({
             onClick={onContinue}
             className="rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-left text-xs font-semibold text-cyan-100 transition-colors hover:bg-cyan-300/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
           >
-            La respuesta se cortó por longitud. Continuar respuesta
+            {t("chat.continueResponse")}
           </button>
         )}
 
@@ -503,7 +513,7 @@ function ChatPanel({
           onSend();
         }}
       >
-        <label className="sr-only" htmlFor={`${id}-input`}>Escribe un mensaje para CoreX AI</label>
+        <label className="sr-only" htmlFor={`${id}-input`}>{t("chat.inputLabel")}</label>
         <div className="flex items-end gap-2 rounded-[1.25rem] border border-zinc-800 bg-black/70 px-3.5 py-2.5 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-[border-color,box-shadow] focus-within:border-cyan-400/50 focus-within:shadow-[0_0_0_3px_rgba(34,211,238,0.1),0_10px_28px_rgba(0,0,0,0.2)]">
           <textarea
             ref={inputRef}
@@ -525,14 +535,14 @@ function ChatPanel({
             }}
             rows={1}
             maxLength={4_000}
-            placeholder="Escribe…"
+            placeholder={t("chat.inputPlaceholder")}
             className="ai-chat-input font-technical max-h-28 min-h-9 min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent py-2 text-sm leading-5 text-zinc-100 outline-none placeholder:text-zinc-600"
           />
           {isSending ? (
             <button
               type="button"
               onClick={onStop}
-              aria-label="Detener respuesta"
+              aria-label={t("chat.stop")}
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-cyan-100 transition-colors hover:border-cyan-500/35 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
             >
               <Square aria-hidden="true" size={13} fill="currentColor" />
@@ -541,20 +551,22 @@ function ChatPanel({
             <button
               type="submit"
               disabled={!draft.trim()}
-              aria-label="Enviar mensaje"
+              aria-label={t("chat.send")}
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-500 text-cyan-950 transition-colors hover:bg-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-cyan-100 disabled:opacity-100"
             >
               <SendHorizontal aria-hidden="true" size={16} />
             </button>
           )}
         </div>
-        <p className="mt-2 px-1 text-[10px] leading-relaxed text-zinc-500">La IA puede equivocarse. Verifica datos importantes.</p>
+        <p className="mt-2 px-1 text-[10px] leading-relaxed text-zinc-500">{t("chat.disclaimer")}</p>
       </form>
     </section>
   );
 }
 
 export default function AISidebar() {
+  const t = useTranslations("ai");
+  const tCommon = useTranslations("common");
   const pathname = usePathname() || "/";
   const comparisonItems = useCompareStore((state) => state.items);
   const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
@@ -599,6 +611,7 @@ export default function AISidebar() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const desktopResizeStartRef = useRef<{ pointerId: number; clientX: number; width: number } | null>(null);
   const lastMessageRef = useRef("");
+  const pendingContinuationRef = useRef(false);
   const mobileInputRef = useRef<HTMLTextAreaElement>(null);
   const desktopInputRef = useRef<HTMLTextAreaElement>(null);
   const desktopShowButtonRef = useRef<HTMLButtonElement>(null);
@@ -640,22 +653,26 @@ export default function AISidebar() {
     ? getMobileToastPreview(lastAssistantContent)
     : null;
   const pageStatus = pathname.startsWith("/catalog/") && catalogPriceEvaluation
-    ? `${getPageStatusLabel(pathname)} | Precio: ${catalogPriceEvaluation.price}${catalogPriceEvaluation.currency === "EUR" ? "€" : "$"} · C/P: ${catalogPriceEvaluation.qualityPriceScore.toFixed(2)}`
-    : getPageStatusLabel(pathname);
+    ? t("pageContext.priceStatus", {
+      title: getPageStatusLabel(pathname, (key, values) => t(key, values)),
+      price: `${catalogPriceEvaluation.price}${catalogPriceEvaluation.currency === "EUR" ? "€" : "$"}`,
+      qualityPriceScore: catalogPriceEvaluation.qualityPriceScore.toFixed(2),
+    })
+    : getPageStatusLabel(pathname, (key, values) => t(key, values));
 
   const applyComparisonAction = (action: ComparisonUiAction): string | null => {
     const comparisonStore = useCompareStore.getState();
     if (action.type === "replace") {
       const result = comparisonStore.applyComparisonSnapshot(action.items as unknown as CompareProduct[], action.evaluatedPrices);
-      return result.success ? null : result.error || "No se pudo actualizar la comparación.";
+       return result.success ? null : getComparisonErrorMessage(result.error, tCommon);
     }
     if (action.type === "add") {
       const result = comparisonStore.addItem(action.item as unknown as CompareProduct);
-      return result.success ? null : result.error || "No se pudo actualizar la comparación.";
+       return result.success ? null : getComparisonErrorMessage(result.error, tCommon);
     }
 
     const isPresent = comparisonStore.items.some((item) => String(item.id) === action.itemId);
-    if (!isPresent) return "Ese componente ya no está en la comparación actual.";
+    if (!isPresent) return t("errors.itemNoLongerInComparison");
     if (action.type === "set_price") {
       comparisonStore.setEvaluatedPrice(action.itemId, action.price);
       return null;
@@ -707,11 +724,11 @@ export default function AISidebar() {
     try {
       const response = await fetch("/api/ai/conversations", { cache: "no-store" });
       const payload = await response.json() as { conversations?: ConversationSummary[]; canSave?: boolean; error?: string };
-      if (!response.ok) throw new Error(payload.error || "No se pudo cargar el historial.");
+      if (!response.ok) throw new Error(payload.error || t("errors.loadHistory"));
       setConversations(Array.isArray(payload.conversations) ? payload.conversations : []);
       setCanSaveChats(payload.canSave === true);
     } catch (requestError) {
-      setHistoryError(requestError instanceof Error ? requestError.message : "No se pudo cargar el historial.");
+      setHistoryError(requestError instanceof Error ? requestError.message : t("errors.loadHistory"));
     } finally {
       setIsHistoryLoading(false);
     }
@@ -728,7 +745,7 @@ export default function AISidebar() {
     try {
       const response = await fetch(`/api/ai/conversations/${encodeURIComponent(selectedId)}`, { cache: "no-store" });
       const payload = await response.json() as { conversation?: ConversationRecord; error?: string };
-      if (!response.ok || !payload.conversation) throw new Error(payload.error || "No se pudo cargar la conversación.");
+      if (!response.ok || !payload.conversation) throw new Error(payload.error || t("errors.loadConversation"));
       const selected = payload.conversation;
       setConversationMode("saved");
       setConversationId(selected.id);
@@ -742,7 +759,7 @@ export default function AISidebar() {
       setSessionKind("authenticated");
       setIsHistoryOpen(false);
     } catch (requestError) {
-      setHistoryError(requestError instanceof Error ? requestError.message : "No se pudo cargar la conversación.");
+      setHistoryError(requestError instanceof Error ? requestError.message : t("errors.loadConversation"));
     } finally {
       setIsHistoryLoading(false);
     }
@@ -750,7 +767,7 @@ export default function AISidebar() {
 
   const startConversation = (mode: AiConversationMode) => {
     if (mode === "saved" && !canSaveChats) {
-      setHistoryError("Inicia sesión para guardar conversaciones. El chat temporal sigue disponible.");
+      setHistoryError(t("history.signInRequired"));
       return;
     }
     resetConversation(mode);
@@ -764,7 +781,7 @@ export default function AISidebar() {
       body: JSON.stringify({ title }),
     });
     const payload = await response.json() as { error?: string };
-    if (!response.ok) throw new Error(payload.error || "No se pudo renombrar el chat.");
+    if (!response.ok) throw new Error(payload.error || t("errors.renameChat"));
     const normalizedTitle = title.trim().slice(0, 80);
     setConversations((current) => current.map((conversation) => conversation.id === selectedId ? { ...conversation, title: normalizedTitle } : conversation));
     if (conversationId === selectedId) setConversationTitle(normalizedTitle);
@@ -773,7 +790,7 @@ export default function AISidebar() {
   const deleteConversation = async (conversation: ConversationSummary) => {
     const response = await fetch(`/api/ai/conversations/${encodeURIComponent(conversation.id)}`, { method: "DELETE" });
     const payload = await response.json() as { error?: string };
-    if (!response.ok) throw new Error(payload.error || "No se pudo eliminar el chat.");
+    if (!response.ok) throw new Error(payload.error || t("errors.deleteChat"));
     setConversations((current) => current.filter((item) => item.id !== conversation.id));
     if (conversationId === conversation.id) resetConversation("temporary");
   };
@@ -815,25 +832,28 @@ export default function AISidebar() {
           body: JSON.stringify({ provider }),
         });
         const payload = await response.json() as { error?: string };
-        if (!response.ok) throw new Error(payload.error || "No se pudo guardar el consentimiento.");
+        if (!response.ok) throw new Error(payload.error || t("errors.saveConsent"));
       }
       setExternalConsent(null);
-      void sendMessage(lastMessageRef.current, true);
+      const wasContinuation = pendingContinuationRef.current;
+      pendingContinuationRef.current = false;
+      void sendMessage(lastMessageRef.current, true, undefined, wasContinuation);
     } catch (consentError) {
-      setError({ message: consentError instanceof Error ? consentError.message : "No se pudo guardar el consentimiento.", retryable: true });
+      setError({ message: consentError instanceof Error ? consentError.message : t("errors.saveConsent"), retryable: true });
     } finally {
       setIsGrantingConsent(false);
     }
   };
 
-  const sendMessage = async (rawMessage = draft, isRetry = false, suppliedTurnstileToken?: string) => {
+  const sendMessage = async (rawMessage = draft, isRetry = false, suppliedTurnstileToken?: string, isContinuation = false) => {
     const content = rawMessage.trim();
-    if (!content || isSending) return;
+    if ((!content && !isContinuation) || isSending) return;
 
+    pendingContinuationRef.current = isContinuation;
     const userMessage: ChatMessage = { role: "user", content };
-    const nextMessages = isRetry ? messages : [...messages, userMessage];
-    lastMessageRef.current = content;
-    if (!isRetry) {
+    const nextMessages = isContinuation || isRetry ? messages : [...messages, userMessage];
+    if (!isContinuation) lastMessageRef.current = content;
+    if (!isRetry && !isContinuation) {
       setMessages(nextMessages);
       setDraft("");
       setCanContinue(false);
@@ -861,6 +881,7 @@ export default function AISidebar() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextMessages.slice(-12),
+          ...(isContinuation ? { continuation: true } : {}),
           conversationMode,
           ...(conversationId ? { conversationId } : {}),
           cacheSessionId,
@@ -909,7 +930,7 @@ export default function AISidebar() {
           setSessionKind("anonymous");
         }
         setError({
-          message: errorPayload.error || "No se pudo obtener una respuesta.",
+          message: errorPayload.error || t("errors.getResponse"),
           retryable: errorPayload.retryable !== false,
           retryAfterSeconds,
         });
@@ -922,7 +943,7 @@ export default function AISidebar() {
       const responseMessage = comparisonActionError
         ? {
             role: "assistant" as const,
-            content: `No pude actualizar la comparación: ${comparisonActionError}`,
+            content: t("errors.comparisonUpdateAssistant", { error: comparisonActionError }),
           }
         : payload.message;
       setMessages((currentMessages) => [...currentMessages, responseMessage]);
@@ -958,10 +979,10 @@ export default function AISidebar() {
       if (requestError instanceof DOMException && requestError.name === "AbortError") return;
       console.error("CoreX AI chat network error", {
         name: requestError instanceof Error ? requestError.name : "unknown_error",
-        message: requestError instanceof Error ? requestError.message : "No se pudo conectar con el asistente.",
+        message: requestError instanceof Error ? requestError.message : t("errors.connectAssistant"),
       });
       setError({
-        message: requestError instanceof Error ? requestError.message : "No se pudo conectar con el asistente.",
+        message: requestError instanceof Error ? requestError.message : t("errors.connectAssistant"),
         retryable: true,
       });
     } finally {
@@ -997,7 +1018,7 @@ export default function AISidebar() {
           code: errorPayload.code || "unknown_error",
         });
         setError({
-          message: errorPayload.error || "No se pudo confirmar la acción.",
+          message: errorPayload.error || t("errors.confirmAction"),
           retryable: false,
         });
         return;
@@ -1011,10 +1032,10 @@ export default function AISidebar() {
     } catch (requestError) {
       console.error("CoreX AI action confirmation network error", {
         name: requestError instanceof Error ? requestError.name : "unknown_error",
-        message: requestError instanceof Error ? requestError.message : "No se pudo confirmar la acción.",
+        message: requestError instanceof Error ? requestError.message : t("errors.confirmAction"),
       });
       setError({
-        message: requestError instanceof Error ? requestError.message : "No se pudo confirmar la acción.",
+        message: requestError instanceof Error ? requestError.message : t("errors.confirmAction"),
         retryable: false,
       });
     } finally {
@@ -1033,14 +1054,14 @@ export default function AISidebar() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actionId: pendingAction.id }),
       });
-      if (!response.ok) throw new Error("La propuesta ya no puede cancelarse.");
+      if (!response.ok) throw new Error(t("errors.proposalCannotBeCancelled"));
       setPendingAction(null);
       setMessages((currentMessages) => [...currentMessages, {
         role: "assistant",
-        content: "No se realizó ningún cambio en tu bóveda.",
+        content: t("pendingAction.cancelledMessage"),
       }]);
     } catch (error) {
-      setError({ message: error instanceof Error ? error.message : "No se pudo cancelar la propuesta.", retryable: false });
+      setError({ message: error instanceof Error ? error.message : t("errors.cancelProposal"), retryable: false });
     }
   };
 
@@ -1052,7 +1073,10 @@ export default function AISidebar() {
 
   const continueResponse = () => {
     void sendMessage(
-      "Continúa exactamente tu respuesta anterior desde donde se interrumpió. No repitas contenido ni ejecutes acciones o tools.",
+       "",
+       false,
+       undefined,
+       true,
     );
   };
 
@@ -1177,22 +1201,22 @@ export default function AISidebar() {
     onRefreshQuota: () => void loadQuota(),
     challenge: isTurnstileRequired ? (
       TURNSTILE_SITE_KEY ? (
-        <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] p-3" role="status" aria-label="Verificación antiabuso requerida">
-          <p className="mb-3 text-xs leading-relaxed text-cyan-100">Completa la verificación para continuar usando CoreX AI como invitado.</p>
+        <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] p-3" role="status" aria-label={t("turnstile.requiredLabel")}>
+          <p className="mb-3 text-xs leading-relaxed text-cyan-100">{t("turnstile.requiredDescription")}</p>
           <TurnstileChallenge
             siteKey={TURNSTILE_SITE_KEY}
             onVerify={(token) => {
               setTurnstileToken(token);
               setError(null);
-              void sendMessage(lastMessageRef.current, true, token);
+               void sendMessage(lastMessageRef.current, true, token, pendingContinuationRef.current);
             }}
             onExpire={() => setTurnstileToken(null)}
-            onError={() => setError({ message: "No se pudo cargar la verificación antiabuso.", retryable: true })}
+            onError={() => setError({ message: t("errors.loadTurnstile"), retryable: true })}
           />
         </div>
       ) : (
         <div role="alert" className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-xs leading-relaxed text-red-100">
-          La verificación antiabuso está activada, pero falta su configuración pública.
+          {t("turnstile.missingConfiguration")}
         </div>
       )
     ) : undefined,
@@ -1296,15 +1320,15 @@ export default function AISidebar() {
                 <ShieldCheck aria-hidden="true" size={19} />
               </span>
               <div>
-                <h2 id="corex-ai-external-consent-title" className="font-display text-lg font-bold text-white">Transferencia a un proveedor externo</h2>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-300">Para responder, CoreX AI puede enviar tu mensaje, los últimos mensajes del chat y el contexto técnico necesario al proveedor seleccionado.</p>
+                <h2 id="corex-ai-external-consent-title" className="font-display text-lg font-bold text-white">{t("externalConsent.title")}</h2>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("externalConsent.description")}</p>
               </div>
             </div>
-            <p className="mt-4 text-xs leading-relaxed text-zinc-400">No se envían API keys ni campos internos. Los chats guardados se conservan hasta 90 días y puedes eliminarlos antes.</p>
-            <p className="mt-3 text-xs text-cyan-100">Proveedor{externalConsent.providers.length > 1 ? "es" : ""}: {externalConsent.providers.join(", ")}</p>
+            <p className="mt-4 text-xs leading-relaxed text-zinc-400">{t("externalConsent.dataNotice")}</p>
+            <p className="mt-3 text-xs text-cyan-100">{t("externalConsent.providers", { providers: externalConsent.providers.join(", ") })}</p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button ref={externalConsentCancelRef} type="button" onClick={() => setExternalConsent(null)} disabled={isGrantingConsent} className="min-h-10 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">Cancelar</button>
-              <button ref={externalConsentAcceptRef} type="button" onClick={() => void confirmExternalConsent()} disabled={isGrantingConsent} className="min-h-10 rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-cyan-950 transition-colors hover:bg-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">{isGrantingConsent ? "Guardando…" : "Continuar y enviar"}</button>
+              <button ref={externalConsentCancelRef} type="button" onClick={() => { pendingContinuationRef.current = false; setExternalConsent(null); }} disabled={isGrantingConsent} className="min-h-10 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-300 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">{t("externalConsent.cancel")}</button>
+              <button ref={externalConsentAcceptRef} type="button" onClick={() => void confirmExternalConsent()} disabled={isGrantingConsent} className="min-h-10 rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-cyan-950 transition-colors hover:bg-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:opacity-50">{isGrantingConsent ? t("externalConsent.saving") : t("externalConsent.continue")}</button>
             </div>
           </div>
         </div>
@@ -1317,7 +1341,7 @@ export default function AISidebar() {
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Ajustar el ancho del chat"
+            aria-label={t("chat.resizeWidth")}
             aria-valuemin={DESKTOP_CHAT_MIN_WIDTH}
             aria-valuemax={DESKTOP_CHAT_MAX_WIDTH}
             aria-valuenow={desktopPanelWidth}
@@ -1355,7 +1379,7 @@ export default function AISidebar() {
           ref={desktopShowButtonRef}
           type="button"
           onClick={showDesktopChat}
-          aria-label="Mostrar CoreX AI en escritorio"
+          aria-label={t("chat.showDesktop")}
           className="group fixed right-0 top-24 z-40 hidden h-12 items-center gap-2 rounded-l-xl border border-r-0 border-cyan-200/25 bg-zinc-950/95 py-1.5 pl-2 pr-3 text-cyan-100 shadow-[-8px_8px_28px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] hover:border-cyan-200/45 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 xl:inline-flex"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200/20 bg-cyan-300/10 text-cyan-100 transition-colors group-hover:bg-cyan-300/15">
@@ -1371,7 +1395,7 @@ export default function AISidebar() {
             type="button"
             onClick={() => setMobileMode("compact")}
             className="fixed bottom-24 right-4 z-50 max-h-[4.5rem] w-56 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 px-4 py-3 text-left text-xs leading-relaxed text-zinc-300 shadow-[0_14px_36px_rgba(0,0,0,0.4)] backdrop-blur transition hover:border-cyan-200/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
-            aria-label="Abrir la última respuesta de CoreX AI"
+            aria-label={t("chat.openLatestResponse")}
           >
             <span className="font-display mr-1 text-cyan-100">CoreX AI</span>
             {mobileToastPreview}
@@ -1383,7 +1407,7 @@ export default function AISidebar() {
             ref={bubbleRef}
             type="button"
             onClick={() => setMobileMode("compact")}
-            aria-label="Abrir CoreX AI"
+            aria-label={t("chat.open")}
             className="fixed bottom-4 right-4 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full border border-cyan-200/30 bg-zinc-950 text-cyan-100 shadow-[0_12px_32px_rgba(8,145,178,0.28)] transition-transform hover:-translate-y-0.5 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
           >
             <Bot aria-hidden="true" size={23} strokeWidth={1.8} />
@@ -1411,7 +1435,7 @@ export default function AISidebar() {
         )}
 
         {mobileMode === "expanded" && (
-          <div style={expandedPanelStyle} className="fixed inset-x-3 top-[72px] z-[60] flex overflow-hidden rounded-3xl border border-white/15 bg-zinc-950 shadow-[0_28px_80px_rgba(0,0,0,0.62)]" role="dialog" aria-modal="true" aria-label="CoreX AI">
+          <div style={expandedPanelStyle} className="fixed inset-x-3 top-[72px] z-[60] flex overflow-hidden rounded-3xl border border-white/15 bg-zinc-950 shadow-[0_28px_80px_rgba(0,0,0,0.62)]" role="dialog" aria-modal="true" aria-label={t("chat.title")}>
             <div ref={expandedPanelRef} tabIndex={-1} className="flex min-h-0 flex-1 outline-none">
               {isHistoryOpen ? (
                 <ChatHistoryPanel

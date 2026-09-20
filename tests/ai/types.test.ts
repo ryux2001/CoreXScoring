@@ -4,6 +4,7 @@ import { isChatRequest, MAX_CHAT_MESSAGE_LENGTH, normalizePageContext } from "@/
 describe("AI request contracts", () => {
   it("accepts a bounded chat request", () => {
     expect(isChatRequest({ messages: [{ role: "user", content: "Compara una CPU y una GPU" }] })).toBe(true);
+    expect(isChatRequest({ messages: [{ role: "user", content: "Explica esto" }, { role: "assistant", content: "Respuesta incompleta" }], continuation: true })).toBe(true);
   });
 
   it("rejects oversized history and messages", () => {
@@ -18,6 +19,7 @@ describe("AI request contracts", () => {
       messages: [{ role: "user", content: "confirma" }],
       action: { id: "action-1", digest: "not-a-digest" },
     })).toBe(false);
+    expect(isChatRequest({ messages: [{ role: "user", content: "Hola" }], continuation: "yes" })).toBe(false);
   });
 
   it("keeps only allowlisted page query parameters", () => {

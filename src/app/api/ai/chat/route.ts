@@ -4,7 +4,7 @@ import { AiGatewayError, getPotentialExternalProviders, getServerToolCapabilitie
 import { AiActionExecutionError, confirmPendingAction } from "@/lib/ai/actions";
 import { resolveDirectVaultLookup } from "@/lib/ai/vault-direct";
 import { getAiChatCredential } from "@/lib/ai/chat-settings";
-import { appendAiConversationTurn, getAiConversation, getConversationPromptMessages } from "@/lib/ai/conversations";
+import { appendAiConversationAssistantMessage, appendAiConversationTurn, getAiConversation, getConversationPromptMessages } from "@/lib/ai/conversations";
 import {
   AiQuotaUnavailableError,
   AiBudgetUnavailableError,
@@ -305,6 +305,7 @@ export async function POST(request: NextRequest) {
   }
 
   const normalizedMessages = normalizeMessages(body.messages);
+  const isContinuation = body.continuation === true;
   const isAnonymous = user.is_anonymous === true;
   const conversationMode = body.conversationMode === "saved" ? "saved" : "temporary";
   if (conversationMode === "saved" && isAnonymous) {
@@ -417,7 +418,9 @@ export async function POST(request: NextRequest) {
     const isAlreadyStored = lastStoredMessage?.role === latestUserMessage.role
       && lastStoredMessage.content === latestUserMessage.content;
     const effectiveMessages = (conversationMode === "saved"
-      ? [...storedMessages, ...(isAlreadyStored ? [] : [latestUserMessage])]
+      ? isContinuation
+        ? storedMessages.length > 0 ? storedMessages : normalizedMessages
+        : [...storedMessages, ...(isAlreadyStored ? [] : [latestUserMessage])]
       : normalizedMessages).slice(-12);
     const serverDrafts = await resolveServerDrafts(
       supabase,
@@ -473,7 +476,7 @@ export async function POST(request: NextRequest) {
       comboDraft: effectiveComboDraft,
       catalogPriceEvaluation,
       priceContext: frontendPriceContext || pagePriceContext,
-      allowedTools: getServerToolCapabilities(effectiveMessages, {
+      allowedTools: isContinuation ? [] : getServerToolCapabilities(effectiveMessages, {
         actor: { id: user.id, isAnonymous },
         buildDraft: effectiveBuildDraft,
         comboDraft: effectiveComboDraft,
@@ -486,7 +489,7 @@ export async function POST(request: NextRequest) {
       completionModel = userCredential.model;
     }
 
-    const directVaultResponse = await resolveDirectVaultLookup(effectiveMessages, toolContext);
+    const directVaultResponse = isContinuation ? null : await resolveDirectVaultLookup(effectiveMessages, toolContext);
     if (directVaultResponse) {
       completionProvider = directVaultResponse.provider;
       completionModel = directVaultResponse.model;
@@ -496,7 +499,7 @@ export async function POST(request: NextRequest) {
         actualTokens: 0,
       });
       if (budgetReservationId) await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 0, 0);
-      const savedResponse = conversationMode === "saved" && latestUserMessage
+      const savedResponse = conversationMode === "saved" && !isContinuation && latestUserMessage
         ? await persistSavedResponse({
           response: directVaultResponse,
           userId: user.id,
@@ -555,6 +558,9 @@ export async function POST(request: NextRequest) {
       createAiProviderCircuit(quotaAdmin),
       request.signal,
       body.cacheSessionId,
+      isContinuation
+        ? "Continue exactly the previous assistant response from where it was interrupted. Do not repeat content and do not execute actions or tools."
+        : undefined,
     );
 
     completionProvider = completion.provider;
@@ -585,16 +591,25 @@ export async function POST(request: NextRequest) {
         actualTokens: completion.usage.inputTokens + completion.usage.outputTokens,
       });
     }
-    const savedCompletion = conversationMode === "saved"
-      ? await persistSavedResponse({
+    let savedCompletion = completion;
+    if (conversationMode === "saved" && isContinuation && body.conversationId) {
+      await appendAiConversationAssistantMessage({
+        userId: user.id,
+        conversationId: body.conversationId,
+        assistantMessage: completion.message,
+        buildDraft: completion.buildDraft || effectiveBuildDraft,
+        comboDraft: completion.comboDraft || effectiveComboDraft,
+      });
+    } else if (conversationMode === "saved" && !isContinuation) {
+      savedCompletion = await persistSavedResponse({
         response: completion,
         userId: user.id,
         conversationId: body.conversationId,
         latestUserMessage,
         buildDraft: completion.buildDraft || effectiveBuildDraft,
         comboDraft: completion.comboDraft || effectiveComboDraft,
-      })
-      : completion;
+      });
+    }
 
     await recordAiRequest(supabase, {
       userId: user.id,

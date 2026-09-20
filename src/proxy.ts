@@ -1,8 +1,26 @@
 import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
+import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import {
+  getEnglishCanonicalPathname,
+  getLocalizedPathname,
+  isPathWithinRoute,
+  isLocale,
+  isUnsupportedLocalePath,
+  routing,
+} from '@/i18n/routing';
+import {
+  getApiBodyRejection,
+  getUnsafeApiRejection,
+  isMutatingApiRequest,
+} from '@/lib/security/api-request-policy';
 import { buildContentSecurityPolicy } from '@/lib/security-headers';
+
+const handleI18nRouting = createMiddleware(routing);
+const authFlowRoutes = ['/auth/confirm', '/auth/oauth/callback', '/auth/oauth/delete-confirm', '/auth/recovery/confirm'];
+const protectedRoutes = ['/vault', '/dashboard', '/settings'];
 
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
@@ -23,26 +41,73 @@ export async function proxy(request: NextRequest) {
   };
 
   if (isMutatingApiRequest(request)) {
-    const apiRejection = rejectUnsafeApiRequest(request);
-    if (apiRejection) return addContentSecurityPolicies(apiRejection);
+    const apiRejection = getUnsafeApiRejection(request);
+    if (apiRejection) {
+      return addContentSecurityPolicies(NextResponse.json(
+        { error: apiRejection.message },
+        { status: apiRejection.status },
+      ));
+    }
+
+    const bodyRejection = await getApiBodyRejection(request);
+    if (bodyRejection) {
+      return addContentSecurityPolicies(NextResponse.json(
+        { error: bodyRejection.message },
+        { status: bodyRejection.status },
+      ));
+    }
   }
 
-  const createResponse = () => {
-    const nextResponse = NextResponse.next({ request: { headers: requestHeaders } });
+  const createResponse = (previousResponse?: NextResponse) => {
+    if (previousResponse?.headers.has('location')) {
+      return addContentSecurityPolicies(previousResponse);
+    }
+
+    const rewrite = previousResponse?.headers.get('x-middleware-rewrite');
+    const responseRequestHeaders = mergeMiddlewareRequestHeaders(previousResponse, requestHeaders);
+    const nextResponse = rewrite
+      ? NextResponse.rewrite(new URL(rewrite, request.url), { request: { headers: responseRequestHeaders } })
+      : NextResponse.next({ request: { headers: responseRequestHeaders } });
+    previousResponse?.cookies.getAll().forEach((cookie) => nextResponse.cookies.set(cookie));
     return addContentSecurityPolicies(nextResponse);
   };
 
-  let response = createResponse();
+  const pathname = request.nextUrl.pathname;
+  const localizedPathname = getLocalizedPathname(pathname);
+  const englishCanonicalPathname = getEnglishCanonicalPathname(pathname);
+  if (englishCanonicalPathname) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = englishCanonicalPathname;
+    return addContentSecurityPolicies(NextResponse.redirect(redirectUrl, 308));
+  }
 
-  const protectedRoutes = ['/vault', '/dashboard', '/settings'];
-  const isProtectedRoute = protectedRoutes.some((route) => (
-    request.nextUrl.pathname.startsWith(route)
-  ));
-  const authFlowRoutes = ['/auth/confirm', '/auth/oauth/callback', '/auth/oauth/delete-confirm', '/auth/recovery/confirm', '/auth/update-password'];
-  const isAuthFlowRoute = authFlowRoutes.includes(request.nextUrl.pathname);
+  if (isUnsupportedLocalePath(pathname)) {
+    const notFoundUrl = new URL('/en/__invalid-locale', request.url);
+    return addContentSecurityPolicies(NextResponse.rewrite(notFoundUrl, {
+      request: { headers: requestHeaders },
+    }));
+  }
+
+  const isAuthFlowRoute = authFlowRoutes.includes(localizedPathname);
+  if (isAuthFlowRoute && localizedPathname !== pathname) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = localizedPathname;
+    return addContentSecurityPolicies(NextResponse.redirect(callbackUrl, 307));
+  }
+
+  const isApiRequest = pathname.startsWith('/api/');
+  const isPublicAssetRequest = isKnownPublicAsset(pathname);
+  const intlResponse = !isApiRequest && !isAuthFlowRoute && !isPublicAssetRequest
+    ? createResponse(handleI18nRouting(request))
+    : null;
+  let response = intlResponse ?? createResponse();
+
+  if (intlResponse?.headers.has('location')) return addContentSecurityPolicies(intlResponse);
+
+  const isProtectedRoute = protectedRoutes.some((route) => isPathWithinRoute(localizedPathname, route));
   const needsSessionHandling = isProtectedRoute
-    || (request.nextUrl.pathname.startsWith('/auth') && !isAuthFlowRoute)
-    || request.nextUrl.pathname === '/auth/update-password';
+    || (localizedPathname.startsWith('/auth') && !isAuthFlowRoute)
+    || localizedPathname === '/auth/update-password';
 
   if (!needsSessionHandling) return response;
 
@@ -60,7 +125,7 @@ export async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
 
-          response = createResponse();
+          response = createResponse(response);
 
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
@@ -88,24 +153,45 @@ export async function proxy(request: NextRequest) {
   };
 
   if (isProtectedRoute && !authenticatedSession) {
-    return redirectWithSessionCookies(new URL('/auth', request.url));
+    return redirectWithSessionCookies(getLocalizedUrl('/auth', request));
   }
 
-  if (request.nextUrl.pathname === '/auth/update-password' && !authenticatedSession) {
-    return redirectWithSessionCookies(new URL('/auth', request.url));
+  if (localizedPathname === '/auth/update-password' && !authenticatedSession) {
+    return redirectWithSessionCookies(getLocalizedUrl('/auth', request));
   }
 
-  if (request.nextUrl.pathname.startsWith('/auth') && authenticatedSession && !isAuthFlowRoute) {
-    return redirectWithSessionCookies(new URL('/', request.url));
+  if (localizedPathname.startsWith('/auth') && authenticatedSession && !isAuthFlowRoute && localizedPathname !== '/auth/update-password') {
+    return redirectWithSessionCookies(getLocalizedUrl('/', request));
   }
 
   return response;
 }
 
+function mergeMiddlewareRequestHeaders(response: NextResponse | undefined, baseHeaders: Headers) {
+  const headers = new Headers(baseHeaders);
+  const requestHeaderPrefix = 'x-middleware-request-';
+
+  response?.headers.forEach((value, name) => {
+    if (name.startsWith(requestHeaderPrefix)) {
+      headers.set(name.slice(requestHeaderPrefix.length), value);
+    }
+  });
+
+  return headers;
+}
+
+function getLocalizedUrl(pathname: string, request: NextRequest) {
+  const [firstSegment] = request.nextUrl.pathname.split('/').filter(Boolean);
+  const localePrefix = isLocale(firstSegment) && firstSegment !== routing.defaultLocale
+    ? `/${firstSegment}`
+    : '';
+  return new URL(`${localePrefix}${pathname === '/' ? '/' : pathname}`, request.url);
+}
+
 export const config = {
   matcher: [
     {
-      source: '/((?!_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!_next|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },
@@ -115,26 +201,12 @@ export const config = {
   ],
 };
 
-function isMutatingApiRequest(request: NextRequest) {
-  return request.nextUrl.pathname.startsWith('/api/')
-    && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
-}
-
-function rejectUnsafeApiRequest(request: NextRequest) {
-  const origin = request.headers.get('origin');
-  if (origin !== request.nextUrl.origin) {
-    return NextResponse.json({ error: 'Origen no permitido.' }, { status: 403 });
-  }
-
-  const fetchSite = request.headers.get('sec-fetch-site');
-  if (fetchSite && fetchSite !== 'same-origin') {
-    return NextResponse.json({ error: 'Solicitud cross-site no permitida.' }, { status: 403 });
-  }
-
-  const contentLength = Number(request.headers.get('content-length'));
-  if (Number.isFinite(contentLength) && contentLength > 128 * 1024) {
-    return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
-  }
-
-  return null;
+function isKnownPublicAsset(pathname: string) {
+  return pathname === '/icon.png'
+    || pathname === '/favicon.ico'
+    || pathname === '/robots.txt'
+    || pathname === '/sitemap.xml'
+    || pathname === '/manifest.webmanifest'
+    || pathname.startsWith('/images/')
+    || /^\/(?:window|vercel|next|globe|file)\.svg$/.test(pathname);
 }
