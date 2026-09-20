@@ -8,10 +8,29 @@ import Metrics from '@/app/[locale]/(main)/combos/[slug]/components/Metrics';
 import FpsCard from '@/app/[locale]/(main)/combos/[slug]/components/FpsCard';
 import type { Locale } from '@/i18n/routing';
 import { localizeBuilds } from '@/lib/content/translations';
+import type { Metadata } from 'next';
+import { createLocalizedMetadata } from '@/lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
 interface BuildDetailPageProps {
   params: Promise<{ locale: string; slug: string }>;
   searchParams: Promise<{ currency?: string }>;
+}
+
+export async function generateMetadata({ params }: BuildDetailPageProps): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  const { data: build } = await supabase.from('builds').select('id, title').eq('slug', slug).single();
+  const [localizedBuild] = build
+    ? await localizeBuilds(supabase, [build], locale as Locale)
+    : [];
+  const name = String(localizedBuild?.title || slug);
+  return createLocalizedMetadata({
+    locale: locale as Locale,
+    pathname: `/builds/${slug}`,
+    title: `${name} | CoreXScoring`,
+    description: t('buildDescription', { name }),
+  });
 }
 
 export default async function BuildDetailPage({

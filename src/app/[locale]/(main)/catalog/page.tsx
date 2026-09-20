@@ -8,6 +8,8 @@ import Pagination from './components/Pagination' // Importamos el nuevo componen
 import { getTranslations } from 'next-intl/server'
 import type { Locale } from '@/i18n/routing'
 import { localizeProducts } from '@/lib/content/translations'
+import type { Metadata } from 'next';
+import { createLocalizedMetadata } from '@/lib/seo/metadata';
 
 interface CatalogPageProps {
   params: Promise<{ locale: string }>;
@@ -92,22 +94,22 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
         />
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 sm:gap-8">
-          {localizedProducts.map((product: any) => {
+          {localizedProducts.map((product) => {
             const price = resolveProductPrice(product, currency);
             return <Card
-              key={product.id}
-              id={product.id}
-              slug={product.slug}
-              type={product.type}
-              brand={product.brand}
-              name={product.name}
+              key={String(product.id)}
+              id={String(product.id)}
+              slug={String(product.slug)}
+              type={String(product.type)}
+              brand={String(product.brand)}
+              name={String(product.name)}
               price={price.value}
               priceSource={price.source}
               showMsrpBadge
               currency={currency}
-              specs={product.specs}
-              compatibility={product.compatibility}
-              release_date={product.release_date}
+              specs={product.specs as never}
+              compatibility={product.compatibility as never}
+              release_date={typeof product.release_date === 'string' ? product.release_date : null}
               wholeCardClickable
             />
           })}
@@ -126,4 +128,10 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
       </div>
     </main>
   );
+}
+
+export async function generateMetadata({ params }: CatalogPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  return createLocalizedMetadata({ locale: locale as Locale, pathname: '/catalog', title: t('catalogTitle'), description: t('catalogDescription') });
 }

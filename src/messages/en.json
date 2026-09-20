@@ -3,6 +3,21 @@
     "title": "CoreXScoring",
     "description": "Compare PC components and create custom builds"
   },
+  "seo": {
+    "homeTitle": "CoreXScoring | PC hardware scoring and builds",
+    "homeDescription": "Compare PC components, evaluate performance and create custom builds.",
+    "catalogTitle": "PC Component Catalog | CoreXScoring",
+    "catalogDescription": "Browse and compare CPUs, GPUs, RAM, storage and other PC components.",
+    "combosTitle": "PC Component Combos | CoreXScoring",
+    "combosDescription": "Explore curated PC component combinations with compatibility and performance scoring.",
+    "buildsTitle": "PC Builds | CoreXScoring",
+    "buildsDescription": "Explore complete PC builds with component details, scoring and estimated performance.",
+    "comparatorTitle": "PC Comparator | CoreXScoring",
+    "comparatorDescription": "Interactively compare PC components, combos and builds.",
+    "productDescription": "Review specifications, compatibility, performance and value for {name}.",
+    "comboDescription": "Review components, compatibility, performance and value for {name}.",
+    "buildDescription": "Review components, scoring and estimated performance for {name}."
+  },
   "common": {
     "english": "English",
     "spanish": "Spanish",
@@ -14,6 +29,7 @@
     "languageInvalid": "Select a supported language.",
     "languageUpdateError": "The language preference could not be updated. Try again.",
     "languageSignInRequired": "You must be signed in to update your language.",
+    "languageChanged": "Language changed to {language}.",
     "loading": "Loading...",
     "activeCurrency": "Active currency:",
     "compare": "Compare",
@@ -22,6 +38,8 @@
     "backToCoreXScoring": "Back to CoreXScoring",
     "pageNotFound": "Page not found",
     "pageNotFoundDescription": "The requested page does not exist or is no longer available.",
+    "unexpectedError": "Something went wrong while loading this page.",
+    "tryAgain": "Try again",
     "comparisonTypes": { "combo": "Combo", "build": "Build" },
     "comparisonErrors": {
       "maxSlots": "You can compare up to {max} items at once.",

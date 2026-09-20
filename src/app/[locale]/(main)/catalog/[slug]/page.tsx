@@ -11,6 +11,9 @@ import DescriptionCard from "./components/DescriptionCard";
 import GpuFpsCard from "./components/GpuFpsCard";
 import type { Locale } from '@/i18n/routing';
 import { localizeProducts } from '@/lib/content/translations';
+import type { Metadata } from 'next';
+import { createLocalizedMetadata } from '@/lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
 interface ProductPageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -104,4 +107,20 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
       </div>
     </main>
   );
+}
+
+export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  const { data: product } = await supabase.from('products').select('id, name').eq('slug', slug).single();
+  const [localizedProduct] = product
+    ? await localizeProducts(supabase, [product], locale as Locale)
+    : [];
+  const name = String(localizedProduct?.name || slug);
+  return createLocalizedMetadata({
+    locale: locale as Locale,
+    pathname: `/catalog/${slug}`,
+    title: `${name} | CoreXScoring`,
+    description: t('productDescription', { name }),
+  });
 }

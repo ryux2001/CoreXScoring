@@ -12,6 +12,8 @@ import {
 import { getTranslations } from 'next-intl/server';
 import type { Locale } from '@/i18n/routing';
 import { localizeCombos } from '@/lib/content/translations';
+import type { Metadata } from 'next';
+import { createLocalizedMetadata } from '@/lib/seo/metadata';
 
 type ComboRecord = Record<string, unknown> & {
   category: string;
@@ -25,6 +27,12 @@ interface CombosPageProps {
     q?: string;
     category?: string;
   }>;
+}
+
+export async function generateMetadata({ params }: CombosPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  return createLocalizedMetadata({ locale: locale as Locale, pathname: '/combos', title: t('combosTitle'), description: t('combosDescription') });
 }
 
 export default async function CombosPage({ params, searchParams }: CombosPageProps) {

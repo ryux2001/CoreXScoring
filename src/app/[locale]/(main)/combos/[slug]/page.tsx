@@ -9,10 +9,29 @@ import Metrics from './components/Metrics';
 import FpsCard from './components/FpsCard';
 import type { Locale } from '@/i18n/routing';
 import { localizeCombos } from '@/lib/content/translations';
+import type { Metadata } from 'next';
+import { createLocalizedMetadata } from '@/lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
 interface ComboDetailPageProps {
   params: Promise<{ locale: string; slug: string }>;
   searchParams: Promise<{ currency?: string }>;
+}
+
+export async function generateMetadata({ params }: ComboDetailPageProps): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  const { data: combo } = await supabase.from('combos').select('id, title').eq('slug', slug).single();
+  const [localizedCombo] = combo
+    ? await localizeCombos(supabase, [combo], locale as Locale)
+    : [];
+  const name = String(localizedCombo?.title || slug);
+  return createLocalizedMetadata({
+    locale: locale as Locale,
+    pathname: `/combos/${slug}`,
+    title: `${name} | CoreXScoring`,
+    description: t('comboDescription', { name }),
+  });
 }
 
 export default async function ComboDetailPage({ params, searchParams }: ComboDetailPageProps) {

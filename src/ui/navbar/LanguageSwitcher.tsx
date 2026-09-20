@@ -3,22 +3,30 @@
 import { Globe2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { getLocaleSwitchTarget, type Locale } from "@/i18n/routing";
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ onLanguageChange }: { onLanguageChange?: () => void }) {
   const currentLocale = useLocale() as Locale;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const t = useTranslations("common");
   const selectId = useId();
+  const [announcement, setAnnouncement] = useState("");
+
+  useEffect(() => {
+    const mainContent = document.getElementById("main-content");
+    mainContent?.focus({ preventScroll: true });
+  }, [pathname]);
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextLocale = event.target.value as Locale;
     const target = getLocaleSwitchTarget(pathname, searchParams.toString(), window.location.hash, nextLocale);
 
+    setAnnouncement(t("languageChanged", { language: nextLocale === "en" ? t("english") : t("spanish") }));
+    onLanguageChange?.();
     router.replace(target.href, {
       locale: target.locale,
       scroll: false,
@@ -41,6 +49,7 @@ export default function LanguageSwitcher() {
         <option value="en" className="bg-zinc-950">{t("english")}</option>
         <option value="es" className="bg-zinc-950">{t("spanish")}</option>
       </select>
+      <span className="sr-only" aria-live="polite">{announcement}</span>
     </div>
   );
 }

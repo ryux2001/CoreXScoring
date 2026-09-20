@@ -69,7 +69,7 @@ export default function LanguagePreferenceForm({ initialLanguage }: { initialLan
         : null;
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
+    <form onSubmit={handleSubmit} aria-busy={loading} className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
       <label htmlFor="account_language" className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
         {t("language")}
       </label>
@@ -106,7 +106,7 @@ export default function LanguagePreferenceForm({ initialLanguage }: { initialLan
         disabled={loading}
         className="mt-4 flex cursor-pointer items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-bold text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : t("saveLanguage")}
+        {loading ? <><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /><span>{t("loading")}</span></> : t("saveLanguage")}
       </button>
     </form>
   );

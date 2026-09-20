@@ -3,6 +3,21 @@
     "title": "CoreXScoring",
     "description": "Compara componentes y crea configuraciones de PC"
   },
+  "seo": {
+    "homeTitle": "CoreXScoring | Scoring y configuraciones de PC",
+    "homeDescription": "Compara componentes de PC, evalúa el rendimiento y crea configuraciones personalizadas.",
+    "catalogTitle": "Catálogo de componentes de PC | CoreXScoring",
+    "catalogDescription": "Explora y compara CPUs, GPUs, RAM, almacenamiento y otros componentes de PC.",
+    "combosTitle": "Combos de componentes de PC | CoreXScoring",
+    "combosDescription": "Explora combinaciones de componentes con scoring de compatibilidad y rendimiento.",
+    "buildsTitle": "Configuraciones de PC | CoreXScoring",
+    "buildsDescription": "Explora configuraciones completas de PC con detalles, scoring y rendimiento estimado.",
+    "comparatorTitle": "Comparador de PC | CoreXScoring",
+    "comparatorDescription": "Compara de forma interactiva componentes, combos y configuraciones de PC.",
+    "productDescription": "Consulta especificaciones, compatibilidad, rendimiento y valor de {name}.",
+    "comboDescription": "Consulta componentes, compatibilidad, rendimiento y valor de {name}.",
+    "buildDescription": "Consulta componentes, scoring y rendimiento estimado de {name}."
+  },
   "common": {
     "english": "Inglés",
     "spanish": "Español",
@@ -14,6 +29,7 @@
     "languageInvalid": "Selecciona un idioma compatible.",
     "languageUpdateError": "No se pudo actualizar el idioma. Inténtalo de nuevo.",
     "languageSignInRequired": "Debes iniciar sesión para actualizar tu idioma.",
+    "languageChanged": "Idioma cambiado a {language}.",
     "loading": "Cargando...",
     "activeCurrency": "Moneda activa:",
     "compare": "Comparar",
@@ -22,6 +38,8 @@
     "backToCoreXScoring": "Volver a CoreXScoring",
     "pageNotFound": "Página no encontrada",
     "pageNotFoundDescription": "La página solicitada no existe o ya no está disponible.",
+    "unexpectedError": "Algo salió mal al cargar esta página.",
+    "tryAgain": "Intentar de nuevo",
     "comparisonTypes": { "combo": "Combo", "build": "Build" },
     "comparisonErrors": {
       "maxSlots": "Puedes comparar hasta {max} elementos a la vez.",

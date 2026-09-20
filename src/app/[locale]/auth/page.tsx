@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { createNoIndexMetadata } from "@/lib/seo/metadata";
 import AuthClientWrapper from "./AuthClientWrapper";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("auth");
-  return { title: t("metadataTitle"), description: t("metadataDescription") };
+  return { ...createNoIndexMetadata(), title: t("metadataTitle"), description: t("metadataDescription") };
 }
 
 interface AuthPageProps {

@@ -69,7 +69,7 @@ export default function CompareButton(product: CompareButtonProps) {
 
       {/* 👑 TU NUEVA ALERTA PERSONALIZADA (ESTILO CYBERPUNK/TECHNICAL) */}
       {customError && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 rounded-xl border border-red-900/40 bg-zinc-950 px-4 py-3 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-sm w-[90vw]">
+        <div role="alert" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 rounded-xl border border-red-900/40 bg-zinc-950 px-4 py-3 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-sm w-[90vw]">
           {/* Indicador de Alerta */}
           <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-950/50 border border-red-800 text-red-400">
             <AlertCircle size={12} strokeWidth={3} />

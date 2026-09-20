@@ -7,10 +7,16 @@ import type { GameData } from '@/lib/fpsCombos/types';
 import type { CompareProduct } from '@/store/useCompareStore';
 import type { Locale } from '@/i18n/routing';
 import { localizeBuilds, localizeCombos, localizeProducts } from '@/lib/content/translations';
+import type { Metadata } from 'next';
+import { createNoIndexMetadata } from '@/lib/seo/metadata';
 
 interface ComparatorPageProps {
   params: Promise<{ locale: string; slugs?: string[] }>;
   searchParams: Promise<{ currency?: string }>;
+}
+
+export function generateMetadata(): Metadata {
+  return createNoIndexMetadata();
 }
 
 export default async function ComparatorPage({ params, searchParams }: ComparatorPageProps) {

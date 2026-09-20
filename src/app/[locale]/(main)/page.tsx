@@ -11,10 +11,18 @@ import HomeComparisonCard from './components/home/HomeComparisonCard';
 import HomeComponentList from './components/home/HomeComponentList';
 import { getTranslations } from 'next-intl/server';
 import type { Locale } from '@/i18n/routing';
+import type { Metadata } from 'next';
+import { createLocalizedMetadata } from '@/lib/seo/metadata';
 
 interface HomePageProps {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ currency?: string }>;
+}
+
+export async function generateMetadata({ params }: HomePageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  return createLocalizedMetadata({ locale: locale as Locale, pathname: '/', title: t('homeTitle'), description: t('homeDescription') });
 }
 
 function sectionItems(section: HomeSection): HomeCatalogItem[] {

@@ -13,7 +13,7 @@ export default function MainLayout({
     <div className="flex min-h-screen flex-col">
       <CurrencyPreferenceSync />
       <Navbar />
-      <div className="ai-sidebar-offset min-w-0 flex-1">{children}</div>
+      <div id="main-content" tabIndex={-1} className="ai-sidebar-offset min-w-0 flex-1 outline-none">{children}</div>
       <div className="ai-sidebar-offset">
         <Footer />
       </div>

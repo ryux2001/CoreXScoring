@@ -15,6 +15,8 @@ import { getTranslations } from 'next-intl/server';
 import type { Build } from '@/lib/scoringBuilds';
 import type { Locale } from '@/i18n/routing';
 import { localizeBuilds } from '@/lib/content/translations';
+import type { Metadata } from 'next';
+import { createLocalizedMetadata } from '@/lib/seo/metadata';
 
 interface BuildsPageProps {
   params: Promise<{ locale: string }>;
@@ -24,6 +26,12 @@ interface BuildsPageProps {
     category?: string;
     page?: string;
   }>;
+}
+
+export async function generateMetadata({ params }: BuildsPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  return createLocalizedMetadata({ locale: locale as Locale, pathname: '/builds', title: t('buildsTitle'), description: t('buildsDescription') });
 }
 
 export default async function BuildsPage({ params, searchParams }: BuildsPageProps) {
