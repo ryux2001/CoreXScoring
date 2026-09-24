@@ -186,7 +186,7 @@
     "metadataTitle": "Autenticarse - CoreXScoring",
     "metadataDescription": "Inicia sesión con Google en CoreXScoring.",
     "guestMode": "Modo invitado",
-    "createAccount": "Crear cuenta",
+    "createAccount": "Autenticarme",
     "greeting": "Hola, {name}",
     "defaultUser": "Usuario",
     "signOut": "Cerrar sesión",
