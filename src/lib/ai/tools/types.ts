@@ -36,6 +36,8 @@ export interface AiToolSuccess {
   catalogPriceEvaluation?: CatalogPriceEvaluation;
   catalogPriceUpdate?: CatalogPriceEvaluation;
   comparisonAction?: ComparisonUiAction;
+  /** Respuesta final verificada que no necesita otra ronda del modelo. */
+  finalResponse?: string;
 }
 
 export interface AiToolFailure {

@@ -54,7 +54,7 @@ const GET_GAME_FPS_TOOL: AiToolDefinition = {
   type: "function",
   function: {
     name: "get_game_fps",
-    description: "Consulta los FPS verificados de una o varias GPUs para un juego concreto. Usa la tabla games y su gpu_fps_base, con resolución 1080p/1440p/4K y preset bajo/medio/alto/ultra. Si la pregunta se refiere a la página, comparación, combo o build actual, puedes omitir gpuIds y se usarán los componentes visibles. Nunca sustituyas este dato por los FPS agregados de products.",
+    description: "Consulta los FPS verificados de una o varias GPUs para un juego concreto. En el comparador calcula directamente cada GPU o cada build/combo visible con sus scores reales de CPU/RAM, siguiendo la misma fórmula de la tabla visual. Usa games.gpu_fps_base, resolución 1080p/1440p/4K y preset bajo/medio/alto/ultra. Si falta el juego en el comparador, pide ese dato y no encadenes más tools. Nunca sustituyas este dato por los FPS agregados de products.",
     parameters: {
       type: "object",
       properties: {
@@ -241,7 +241,7 @@ const GET_CURRENT_COMPARISON_TOOL: AiToolDefinition = {
   type: "function",
   function: {
     name: "get_current_comparison",
-    description: "Lee los componentes de catálogo que el usuario tiene actualmente en el comparador y devuelve sus datos, métricas y notas verificadas. Solo funciona en la página del comparador.",
+    description: "Lee los elementos que el usuario tiene actualmente en el comparador (componentes, combos o builds), identifica el tipo, devuelve sus datos, precios evaluados y un veredicto sensible al precio. Solo funciona en la página del comparador.",
     parameters: {
       type: "object",
       properties: {},
@@ -304,7 +304,7 @@ const PROPOSE_UPDATE_COMPARISON_TOOL: AiToolDefinition = {
   type: "function",
   function: {
     name: "propose_update_comparison",
-    description: "Prepara una única actualización local y atómica del comparador. Úsala para quitar varios componentes, añadir varios componentes con precios temporales o limpiar y reemplazar toda la comparativa. Antes identifica cada producto por ID usando get_current_comparison y/o search_components. No ejecuta cambios persistentes.",
+    description: "Prepara una única actualización local y atómica del comparador. Úsala para quitar uno o varios elementos, añadir componentes/combos/builds, personalizar precios por componente o pieza, o limpiar y reemplazar toda la comparativa. Antes identifica los IDs con get_current_comparison y la búsqueda correspondiente. Nunca mezcla tipos incompatibles y no ejecuta cambios persistentes.",
     parameters: {
       type: "object",
       properties: {
@@ -317,6 +317,7 @@ const PROPOSE_UPDATE_COMPARISON_TOOL: AiToolDefinition = {
             type: "object",
             properties: {
               id: { type: "string", description: "ID exacto de un componente encontrado." },
+              entityType: { type: "string", enum: ["product", "combo", "build"], description: "Tipo de entidad. Debe coincidir con el tipo actual de la comparativa." },
               price: { type: "number", minimum: 0.01, maximum: 1000000, description: "Precio temporal opcional." },
             },
             required: ["id"],
@@ -329,7 +330,7 @@ const PROPOSE_UPDATE_COMPARISON_TOOL: AiToolDefinition = {
           maxItems: 3,
           items: {
             type: "object",
-            properties: { id: { type: "string" }, price: { type: "number", minimum: 0.01, maximum: 1000000 } },
+            properties: { id: { type: "string", description: "ID del componente o pieza." }, slot: { type: "string", description: "Pieza de una build/combo: cpu, gpu, ram, motherboard, storage o psu." }, price: { type: "number", minimum: 0.01, maximum: 1000000 } },
             required: ["id", "price"],
             additionalProperties: false,
           },

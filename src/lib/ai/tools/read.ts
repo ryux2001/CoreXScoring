@@ -6,6 +6,7 @@ import { calculateComboFps, type GameData } from "@/lib/fpsCombos";
 import { calculateCatalogPriceEvaluation, isCatalogValueProfile } from "@/lib/catalog/price-evaluation";
 import { convertPrice, isCurrency } from "@/lib/currency";
 import { resolveProductPrice } from "@/lib/catalog/product-price";
+import { getComparisonFpsResult, type ComparisonFpsItem } from "@/lib/fpsCombos/comparison";
 import type { ComparisonUiAction, PageContext } from "../types";
 import type { AiToolContext, AiToolResult } from "./types";
 import { AI_PRODUCT_SELECT } from "../privacy";
@@ -91,7 +92,7 @@ function asRow(value: unknown): Row {
 }
 
 function asRows(value: unknown): Row[] {
-  return Array.isArray(value) ? value.map(asRow) : [];
+  return Array.isArray(value) ? value.map(asRow) : value && typeof value === "object" ? [asRow(value)] : [];
 }
 
 function asText(value: unknown, fallback = ""): string {
@@ -288,19 +289,41 @@ function getPartPrice(record: Row, part: string, currency: Currency): number {
   }
 }
 
-function summarizeCombo(combo: Row, currency: Currency): Row {
+function applyComparisonPartPrices(
+  record: Row,
+  parts: string[],
+  currency: Currency,
+  priceContext: AiToolContext["priceContext"],
+): Row {
+  const effective = { ...record };
+  for (const part of parts) {
+    const product = asRow(record[part]);
+    const customPrice = getVerifiedPriceOverride(product, currency, priceContext);
+    if (customPrice === null) continue;
+    effective[`custom_price_${part}_${currency.toLowerCase()}`] = customPrice;
+    effective[`custom_price_${part}_${currency === "EUR" ? "usd" : "eur"}`] = convertPrice(
+      customPrice,
+      currency,
+      currency === "EUR" ? "USD" : "EUR",
+    );
+  }
+  return effective;
+}
+
+function summarizeCombo(combo: Row, currency: Currency, priceContext?: AiToolContext["priceContext"]): Row {
+  const effectiveCombo = applyComparisonPartPrices(combo, ["cpu", "gpu", "ram"], currency, priceContext);
   let scoring: Row = {};
   try {
-    scoring = getComboNotes(combo, currency) as unknown as Row;
+    scoring = getComboNotes(effectiveCombo, currency) as unknown as Row;
   } catch {
     // Incomplete combos still return their component identities below.
   }
 
   const parts = ["cpu", "gpu", "ram"].map((part) => {
-    const product = asRow(combo[part]);
+    const product = asRow(effectiveCombo[part]);
     let price = 0;
     try {
-      price = roundNumber(getComboPartPrice(combo, part as "cpu" | "gpu" | "ram", currency));
+      price = roundNumber(getComboPartPrice(effectiveCombo, part as "cpu" | "gpu" | "ram", currency));
     } catch {
       price = 0;
     }
@@ -314,11 +337,11 @@ function summarizeCombo(combo: Row, currency: Currency): Row {
 
   return {
     source: "CoreXScoring · combos públicos",
-    id: asText(combo.id),
-    slug: asText(combo.slug),
-    title: asText(combo.title),
-    category: asText(combo.category),
-    active: combo.is_active === true,
+    id: asText(effectiveCombo.id),
+    slug: asText(effectiveCombo.slug),
+    title: asText(effectiveCombo.title),
+    category: asText(effectiveCombo.category),
+    active: effectiveCombo.is_active === true,
     currency,
     parts,
     totalPrice: roundNumber(parts.reduce((total, part) => total + part.price, 0)),
@@ -326,10 +349,16 @@ function summarizeCombo(combo: Row, currency: Currency): Row {
   };
 }
 
-function summarizeBuild(build: Row, currency: Currency): Row {
+function summarizeBuild(build: Row, currency: Currency, priceContext?: AiToolContext["priceContext"]): Row {
+  const effectiveBuild = applyComparisonPartPrices(
+    build,
+    ["cpu", "gpu", "ram", "motherboard", "storage", "psu"],
+    currency,
+    priceContext,
+  );
   let scoring: Row = {};
   try {
-    scoring = getBuildNotes(build, currency) as unknown as Row;
+    scoring = getBuildNotes(effectiveBuild, currency) as unknown as Row;
   } catch {
     // Incomplete builds still return their component identities below.
   }
@@ -337,21 +366,62 @@ function summarizeBuild(build: Row, currency: Currency): Row {
   const partNames = ["cpu", "gpu", "ram", "motherboard", "storage", "psu"];
   const parts = partNames.map((part) => ({
     part,
-    component: getComponentIdentity(build[part]),
-    price: getPartPrice(build, part, currency),
+    component: getComponentIdentity(effectiveBuild[part]),
+    price: getPartPrice(effectiveBuild, part, currency),
   }));
 
   return {
     source: "CoreXScoring · builds públicas",
-    id: asText(build.id),
-    slug: asText(build.slug),
-    title: asText(build.title),
-    category: asText(build.category),
-    active: build.is_active === true,
+    id: asText(effectiveBuild.id),
+    slug: asText(effectiveBuild.slug),
+    title: asText(effectiveBuild.title),
+    category: asText(effectiveBuild.category),
+    active: effectiveBuild.is_active === true,
     currency,
     parts,
     totalPrice: roundNumber(parts.reduce((total, part) => total + part.price, 0)),
     scoring: roundRecord(scoring),
+  };
+}
+
+function getScore(record: Row, keys: string[]): number {
+  const scoring = asRow(record.scoring);
+  for (const key of keys) {
+    const value = asNumber(scoring[key]);
+    if (value !== null) return value;
+  }
+  return 0;
+}
+
+function getComparisonVerdict(items: Row[], entityType: string): Row | undefined {
+  if (items.length < 2) return undefined;
+  const performanceKeys = entityType === "build"
+    ? ["gaming", "Gaming", "potencia", "Potencia"]
+    : ["Gaming", "gaming", "Potencia", "potencia"];
+  const valueKeys = entityType === "build"
+    ? ["calidadPrecio", "Calidad Precio", "Calidad precio", "Calidad/precio", "qualityPrice"]
+    : ["Calidad Precio", "Calidad precio", "Calidad/precio", "calidadPrecio", "qualityPrice"];
+  const scored = items.map((item) => {
+    const performance = getScore(item, performanceKeys);
+    const value = getScore(item, valueKeys);
+    return {
+      id: asText(item.id),
+      name: asText(item.name || item.title, "Elemento"),
+      performance,
+      value,
+      overall: roundNumber(performance * 0.7 + value * 0.3),
+    };
+  });
+  const by = (key: "performance" | "value" | "overall") => [...scored].sort((left, right) => right[key] - left[key]);
+  const performanceRanking = by("performance");
+  const valueRanking = by("value");
+  const overallRanking = by("overall");
+  return {
+    rule: "70% rendimiento principal + 30% calidad/precio; el precio evaluado vigente tiene prioridad.",
+    winnerByPerformance: performanceRanking[0],
+    winnerByValue: valueRanking[0],
+    winnerOverall: overallRanking[0],
+    ranking: overallRanking,
   };
 }
 
@@ -417,7 +487,10 @@ function getVisibleFpsGpuIds(context: AiToolContext): string[] {
   const pageContext = context.pageContext;
   if (!pageContext) return [];
   if (pageContext.route === "comparator") {
-    return pageContext.comparison?.itemIds || [];
+    const comparisonItems = pageContext.comparison?.items || [];
+    return comparisonItems.flatMap((item) => item.entityType === "product"
+      ? item.componentType === "gpu" ? [item.id] : []
+      : (item.parts || []).filter((part) => part.slot === "gpu").map((part) => part.id));
   }
   if (pageContext.entityType === "product" && pageContext.entityId) {
     return [pageContext.entityId];
@@ -535,9 +608,126 @@ export async function getComponent(args: unknown, context: AiToolContext): Promi
   return getToolSuccess({ component: getProductSummary(asRow(data)) });
 }
 
+async function getComparisonFps(
+  input: Row,
+  context: AiToolContext,
+): Promise<AiToolResult> {
+  const pageContext = context.pageContext;
+  const comparison = pageContext?.route === "comparator" ? pageContext.comparison : undefined;
+  const comparisonItems = comparison?.items || [];
+  const itemIds = comparison?.itemIds || [];
+  if (itemIds.length === 0 || comparisonItems.length !== itemIds.length) {
+    return getToolFailure("La comparación actual está vacía o todavía no está disponible.");
+  }
+
+  const entityTypes = new Set(comparisonItems.map((item) => item.entityType));
+  if (entityTypes.size !== 1) {
+    return getToolFailure("No se pueden comparar FPS entre componentes, combos y builds mezclados.");
+  }
+  const entityType = [...entityTypes][0];
+  const [{ data: products, error: productError }, { data: combos, error: comboError }, { data: builds, error: buildError }] = await Promise.all([
+    entityType === "product" ? getProductQuery(context.supabase).in("id", itemIds) : Promise.resolve({ data: [], error: null }),
+    entityType === "combo" ? getActiveComboQuery(context.supabase).in("id", itemIds) : Promise.resolve({ data: [], error: null }),
+    entityType === "build" ? getActiveBuildQuery(context.supabase).in("id", itemIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (productError || comboError || buildError) return getToolFailure("No se pudo consultar la comparación actual para calcular FPS.");
+
+  const rows = new Map(asRows(entityType === "product" ? products : entityType === "combo" ? combos : builds).map((row) => [asText(row.id), row]));
+  const items: ComparisonFpsItem[] = itemIds.flatMap((id) => {
+    const row = rows.get(id);
+    return row
+      ? [{
+          ...row,
+          id,
+          comparisonType: entityType,
+          type: entityType === "product" ? asText(row.type) : entityType.toUpperCase(),
+        }]
+      : [];
+  });
+  if (items.length !== itemIds.length) return getToolFailure("Uno de los elementos de la comparación ya no está disponible.");
+
+  const gameId = sanitizeIdentifier(input.gameId);
+  const gameSlug = sanitizeSearch(input.gameSlug).toLowerCase();
+  const gameName = sanitizeSearch(input.gameName);
+  if (!gameId && !gameSlug && !gameName) {
+    const { data, error } = await context.supabase
+      .from("games")
+      .select("id,slug,name")
+      .order("name", { ascending: true })
+      .limit(20);
+    if (error) return getToolFailure("No se pudo consultar el catálogo de juegos.");
+    const games = asRows(data).map((game) => ({ id: asText(game.id), slug: asText(game.slug), name: asText(game.name) }));
+    return {
+      ok: true,
+      data: { needsGame: true, games, message: "Indica el juego para calcular los FPS de la comparación." },
+      finalResponse: "Para comparar los FPS de estas configuraciones necesito el juego. Indícame, por ejemplo, Cyberpunk 2077; mantendré la resolución 4K si ya la has indicado.",
+    };
+  }
+
+  let gameQuery = getGameQuery(context.supabase).limit(1);
+  if (gameId) gameQuery = gameQuery.eq("id", gameId);
+  else if (gameSlug) gameQuery = gameQuery.eq("slug", gameSlug);
+  else gameQuery = gameQuery.ilike("name", `%${gameName}%`);
+  const { data: gameData, error: gameError } = await gameQuery.maybeSingle();
+  if (gameError) return getToolFailure("No se pudo consultar el juego solicitado.");
+  if (!gameData) return getToolFailure("No encontré ese juego en la base de datos de rendimiento.");
+
+  const game = getGameData(asRow(gameData));
+  const preset = GAME_PRESETS.has(sanitizeSearch(input.preset).toLowerCase())
+    ? sanitizeSearch(input.preset).toLowerCase()
+    : "medio";
+  const requestedResolution = sanitizeSearch(input.resolution).toLowerCase() as GameResolution;
+  const selectedResolutions = GAME_RESOLUTIONS.includes(requestedResolution) ? [requestedResolution] : GAME_RESOLUTIONS;
+  const results = items.map((item) => {
+    const fps = Object.fromEntries(selectedResolutions.map((resolution) => [
+      resolution,
+      getComparisonFpsResult(item, game, preset, resolution),
+    ]));
+    return {
+      id: asText(item.id),
+      name: asText(item.name || item.title, "Elemento"),
+      fps,
+    };
+  });
+  const rankingResolution = requestedResolution && GAME_RESOLUTIONS.includes(requestedResolution) ? requestedResolution : null;
+  const ranking = rankingResolution
+    ? [...results]
+      .filter((result) => typeof result.fps[rankingResolution] === "number")
+      .sort((left, right) => Number(right.fps[rankingResolution]) - Number(left.fps[rankingResolution]))
+    : [];
+  const winner = ranking[0];
+  const second = ranking[1];
+  const winnerFps = winner && rankingResolution ? Number(winner.fps[rankingResolution]) : null;
+  const secondFps = second && rankingResolution ? Number(second.fps[rankingResolution]) : null;
+  const resolutionLabel = rankingResolution === "4k" ? "4K" : rankingResolution || "todas las resoluciones";
+  const finalResponse = [
+    `FPS en ${resolutionLabel}, preset ${preset}, para ${game.name}:`,
+    ...results.map((result) => `- ${result.name}: ${rankingResolution ? `${result.fps[rankingResolution] ?? "sin datos"} FPS` : `${result.fps["1080p"] ?? "sin datos"} / ${result.fps["1440p"] ?? "sin datos"} / ${result.fps["4k"] ?? "sin datos"} FPS (1080p / 1440p / 4K)`}`),
+    ...(winner && rankingResolution && winnerFps !== null
+      ? [`Ganadora: ${winner.name} con ${winnerFps} FPS${secondFps !== null ? `, ${winnerFps - secondFps} FPS más que la siguiente.` : "."}`]
+      : ["Indica una resolución concreta si quieres un ganador único."]),
+  ].join("\n");
+
+  return {
+    ok: true,
+    data: {
+      source: "CoreXScoring · games.gpu_fps_base",
+      mode: "comparison_estimate",
+      entityType,
+      game: { id: game.id, slug: game.slug, name: game.name },
+      preset,
+      resolution: rankingResolution || "all",
+      results,
+      ranking,
+    },
+    finalResponse,
+  };
+}
+
 /** Tool: consulta FPS por juego desde games.gpu_fps_base y nunca desde products.benchmarks. */
 export async function getGameFps(args: unknown, context: AiToolContext): Promise<AiToolResult> {
   const input = asRow(args);
+  if (context.pageContext?.route === "comparator") return getComparisonFps(input, context);
   const gameId = sanitizeIdentifier(input.gameId);
   const gameSlug = sanitizeSearch(input.gameSlug).toLowerCase();
   const gameName = sanitizeSearch(input.gameName);
@@ -703,12 +893,21 @@ export async function compareComponents(args: unknown, context: AiToolContext): 
     requestedIds: ids,
     foundCount: components.length,
     components,
+    verdict: getComparisonVerdict(components, "product"),
     rankingByGamingScore: ranked.map((component, index) => ({
       position: index + 1,
       id: component.id,
       name: component.name,
       gamingScore: getObject(component.scoring).Gaming ?? null,
     })),
+    rankingByValueScore: [...components]
+      .sort((left, right) => getScore(right, ["Calidad Precio", "Calidad precio", "Calidad/precio", "calidadPrecio"]) - getScore(left, ["Calidad Precio", "Calidad precio", "Calidad/precio", "calidadPrecio"]))
+      .map((component, index) => ({
+        position: index + 1,
+        id: component.id,
+        name: component.name,
+        valueScore: getScore(component, ["Calidad Precio", "Calidad precio", "Calidad/precio", "calidadPrecio"]),
+      })),
   });
 }
 
@@ -851,30 +1050,57 @@ export async function getCurrentPageContext(args: unknown, context: AiToolContex
   });
 }
 
-/** Tool: lee la comparación local actual usando únicamente IDs verificados por el servidor. */
+/** Tool: lee la comparación local actual usando entidades verificadas por el servidor. */
 export async function getCurrentComparison(args: unknown, context: AiToolContext): Promise<AiToolResult> {
   void args;
   const pageContext = context.pageContext;
-  const itemIds = pageContext?.route === "comparator" ? pageContext.comparison?.itemIds || [] : [];
-  if (itemIds.length === 0) return getToolFailure("No hay componentes de catálogo en la comparación actual.");
+  const comparison = pageContext?.route === "comparator" ? pageContext.comparison : undefined;
+  const itemIds = comparison?.itemIds || [];
+  if (itemIds.length === 0) return getToolFailure("La comparación actual está vacía.");
 
   const currency = getCurrency(new URLSearchParams(pageContext?.search || "").get("currency"));
-  const { data, error } = await getProductQuery(context.supabase).in("id", itemIds);
-  if (error) return getToolFailure("No se pudo consultar la comparación actual.");
+  const comparisonItems = comparison?.items?.length === itemIds.length
+    ? comparison.items
+    : itemIds.map((id) => ({ id, entityType: "product" as const }));
+  const entityTypes = new Set(comparisonItems.map((item) => item.entityType));
+  if (entityTypes.size > 1) return getToolFailure("No se pueden comparar componentes, combos y builds entre sí. La comparativa debe contener un único tipo.");
+  const entityType = [...entityTypes][0] || "product";
+  const [{ data: products, error: productError }, { data: combos, error: comboError }, { data: builds, error: buildError }] = await Promise.all([
+    entityType === "product"
+      ? getProductQuery(context.supabase).in("id", itemIds)
+      : Promise.resolve({ data: [], error: null }),
+    entityType === "combo"
+      ? getActiveComboQuery(context.supabase).in("id", itemIds)
+      : Promise.resolve({ data: [], error: null }),
+    entityType === "build"
+      ? getActiveBuildQuery(context.supabase).in("id", itemIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (productError || comboError || buildError) return getToolFailure("No se pudo consultar la comparación actual.");
 
-  const productsById = new Map(asRows(data).map((product) => [asText(product.id), product]));
-  const components = itemIds
-    .map((id) => productsById.get(id))
-    .filter((product): product is Row => Boolean(product))
-    .map((product) => getProductSummary(product, currency, context.priceContext));
+  const rowsById = new Map<string, Row>(
+    asRows(entityType === "product" ? products : entityType === "combo" ? combos : builds)
+      .map((row) => [asText(row.id), row]),
+  );
+  const items = itemIds.flatMap((id) => {
+    const row = rowsById.get(id);
+    if (!row) return [];
+    if (entityType === "product") return [getProductSummary(row, currency, context.priceContext)];
+    return [entityType === "combo"
+      ? summarizeCombo(row, currency, context.priceContext)
+      : summarizeBuild(row, currency, context.priceContext)];
+  });
 
-  if (components.length < itemIds.length) return getToolFailure("Uno de los componentes de la comparación ya no está disponible.");
+  if (items.length < itemIds.length) return getToolFailure("Uno de los elementos de la comparación ya no está disponible.");
 
   return getToolSuccess({
     currency,
-    count: components.length,
-    components,
-    note: "Estos datos proceden de la comparación local actual y fueron reconsultados por el servidor.",
+    entityType,
+    count: items.length,
+    items,
+    ...(entityType === "product" ? { components: items } : {}),
+    verdict: getComparisonVerdict(items, entityType),
+    note: "Estos datos proceden de la comparación local actual y fueron reconsultados por el servidor. El veredicto combina rendimiento y calidad/precio usando los precios evaluados vigentes.",
   });
 }
 
@@ -882,6 +1108,62 @@ function getComparisonIds(context: AiToolContext): string[] {
   return context.pageContext?.route === "comparator"
     ? context.pageContext.comparison?.itemIds || []
     : [];
+}
+
+function getComparisonEntities(context: AiToolContext) {
+  const comparison = context.pageContext?.route === "comparator" ? context.pageContext.comparison : undefined;
+  return comparison?.items?.length
+    ? comparison.items
+    : (comparison?.itemIds || []).map((id) => ({ id, entityType: "product" as const }));
+}
+
+async function resolveComparisonRows(
+  context: AiToolContext,
+  entities: Array<{ id: string; entityType: "product" | "combo" | "build" }>,
+): Promise<{ rows: Map<string, Row>; error: boolean }> {
+  const productIds = entities.filter((entity) => entity.entityType === "product").map((entity) => entity.id);
+  const comboIds = entities.filter((entity) => entity.entityType === "combo").map((entity) => entity.id);
+  const buildIds = entities.filter((entity) => entity.entityType === "build").map((entity) => entity.id);
+  const [{ data: products, error: productError }, { data: combos, error: comboError }, { data: builds, error: buildError }] = await Promise.all([
+    productIds.length ? getProductQuery(context.supabase).in("id", productIds) : Promise.resolve({ data: [], error: null }),
+    comboIds.length ? getActiveComboQuery(context.supabase).in("id", comboIds) : Promise.resolve({ data: [], error: null }),
+    buildIds.length ? getActiveBuildQuery(context.supabase).in("id", buildIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  const rows = new Map<string, Row>();
+  asRows(products).forEach((row) => rows.set(`product:${asText(row.id)}`, row));
+  asRows(combos).forEach((row) => rows.set(`combo:${asText(row.id)}`, row));
+  asRows(builds).forEach((row) => rows.set(`build:${asText(row.id)}`, row));
+  return { rows, error: Boolean(productError || comboError || buildError) };
+}
+
+function getComparisonUiItem(
+  row: Row,
+  entityType: "product" | "combo" | "build",
+  currency: Currency,
+  priceContext: AiToolContext["priceContext"],
+): Row {
+  if (entityType === "product") {
+    return {
+      ...row,
+      comparisonType: "product",
+      price: resolveProductPrice(row, currency).value,
+      currency,
+    };
+  }
+  const parts = entityType === "combo" ? ["cpu", "gpu", "ram"] : ["cpu", "gpu", "ram", "motherboard", "storage", "psu"];
+  const effective = applyComparisonPartPrices(row, parts, currency, priceContext);
+  const totalPrice = parts.reduce((total, part) => total + (entityType === "combo"
+    ? getComboPartPrice(effective, part as "cpu" | "gpu" | "ram", currency)
+    : getPartPrice(effective, part, currency)), 0);
+  return {
+    ...effective,
+    type: entityType.toUpperCase(),
+    comparisonType: entityType,
+    name: asText(effective.title),
+    brand: entityType.toUpperCase(),
+    price: roundNumber(totalPrice),
+    currency,
+  };
 }
 
 /** Tool: prepara una acción local para añadir un producto ya resuelto al comparador. */
@@ -936,19 +1218,23 @@ export async function proposeAddToComparison(args: unknown, context: AiToolConte
   };
 }
 
-/** Tool: prepara una acción local para quitar un producto que sigue en la comparación. */
+/** Tool: prepara una acción local para quitar un elemento que sigue en la comparación. */
 export async function proposeRemoveFromComparison(args: unknown, context: AiToolContext): Promise<AiToolResult> {
   const itemId = sanitizeIdentifier(asRow(args).id);
-  const currentIds = getComparisonIds(context);
+  const currentEntities = getComparisonEntities(context);
+  const currentIds = currentEntities.map((entity) => entity.id);
   if (!context.pageContext || context.pageContext.route !== "comparator") {
-    return getToolFailure("Abre el comparador para poder quitar un componente.");
+    return getToolFailure("Abre el comparador para poder quitar un elemento.");
   }
   if (!itemId || !currentIds.includes(itemId)) return getToolFailure("Ese componente no está en la comparación actual.");
 
-  const { data: product, error } = await getProductQuery(context.supabase).eq("id", itemId).maybeSingle();
-  if (error || !product) return getToolFailure("No pude validar el componente que quieres quitar.");
+  const entity = currentEntities.find((candidate) => candidate.id === itemId) || { id: itemId, entityType: "product" as const };
+  const resolved = await resolveComparisonRows(context, [entity]);
+  if (resolved.error) return getToolFailure("No pude validar el elemento que quieres quitar.");
+  const row = resolved.rows.get(`${entity.entityType}:${itemId}`);
+  if (!row) return getToolFailure("No pude validar el elemento que quieres quitar.");
 
-  const productName = asText(asRow(product).name, "el componente");
+  const productName = asText(row.name || row.title, "el elemento");
   return {
     ok: true,
     data: { status: "ready", message: `He preparado la eliminación de ${productName} de la comparación.` },
@@ -1010,17 +1296,18 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
   const input = asRow(args);
   const pageContext = context.pageContext;
   if (!pageContext || pageContext.route !== "comparator") {
-    return getToolFailure("Abre el comparador para poder actualizar varios componentes.");
+    return getToolFailure("Abre el comparador para poder actualizar la comparación.");
   }
 
   const mode = input.mode === "replace" ? "replace" : input.mode === "patch" ? "patch" : null;
   if (!mode) return getToolFailure("La actualización de la comparación no es válida.");
-  const currentIds = getComparisonIds(context);
+  const currentEntities = getComparisonEntities(context);
+  const currentIds = currentEntities.map((entity) => entity.id);
   const removeIds = Array.isArray(input.removeIds) ? input.removeIds.map(sanitizeIdentifier).filter(Boolean) : [];
   const rawAdditions = Array.isArray(input.additions) ? input.additions : [];
   const rawPriceOverrides = Array.isArray(input.priceOverrides) ? input.priceOverrides : [];
   if (removeIds.length > 3 || rawAdditions.length > 3 || rawPriceOverrides.length > 3) {
-    return getToolFailure("La comparación admite como máximo tres componentes por operación.");
+    return getToolFailure("La comparación admite como máximo tres elementos por operación.");
   }
   if (new Set(removeIds).size !== removeIds.length) return getToolFailure("No repitas un componente al quitarlo.");
   if (mode === "replace" && removeIds.length > 0) return getToolFailure("Usa replace sin removeIds: replace ya limpia la comparación.");
@@ -1028,15 +1315,25 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
     return getToolFailure("Uno de los componentes que quieres quitar ya no está en la comparación.");
   }
 
+  const currentType = currentEntities.length > 0 ? currentEntities[0].entityType : undefined;
+  if (new Set(currentEntities.map((entity) => entity.entityType)).size > 1) {
+    return getToolFailure("La comparación actual contiene tipos incompatibles. No se puede modificar una comparativa mixta.");
+  }
   const additions = rawAdditions.map(asRow).map((addition) => ({
     id: sanitizeIdentifier(addition.id),
+    entityType: addition.entityType === "combo" || addition.entityType === "build" || addition.entityType === "product"
+      ? addition.entityType
+      : currentType || "product",
     price: addition.price === undefined ? undefined : asNumber(addition.price),
   }));
   if (additions.some((addition) => !addition.id) || new Set(additions.map((addition) => addition.id)).size !== additions.length) {
-    return getToolFailure("Cada componente a añadir debe tener un ID único.");
+    return getToolFailure("Cada elemento a añadir debe tener un ID único.");
   }
   if (mode === "patch" && additions.some((addition) => currentIds.includes(addition.id))) {
-    return getToolFailure("No puedes añadir un componente que ya está en la comparación.");
+    return getToolFailure("No puedes añadir un elemento que ya está en la comparación.");
+  }
+  if (currentType && additions.some((addition) => addition.entityType !== currentType)) {
+    return getToolFailure("No puedes mezclar componentes, combos y builds en la misma comparación.");
   }
 
   const pageCurrency = getCurrency(new URLSearchParams(pageContext.search || "").get("currency"));
@@ -1054,7 +1351,7 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
     return null;
   };
   for (const addition of additions) {
-    if (addition.price !== undefined) {
+    if (addition.price !== undefined && addition.entityType === "product") {
       const error = registerPrice(addition.id, addition.price);
       if (error) return getToolFailure(error);
     }
@@ -1064,32 +1361,51 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
     if (error) return getToolFailure(error);
   }
 
-  const finalIds = mode === "replace"
-    ? additions.map((addition) => addition.id)
-    : [...currentIds.filter((id) => !removeIds.includes(id)), ...additions.map((addition) => addition.id)];
-  if (finalIds.length > 3) return getToolFailure("El resultado supera el límite de tres componentes en la comparación.");
-  if (new Set(finalIds).size !== finalIds.length) return getToolFailure("La comparación resultante contiene productos duplicados.");
-  if ([...requestedPrices.keys()].some((id) => !finalIds.includes(id))) {
-    return getToolFailure("Solo puedes asignar precio a componentes que permanezcan en la comparación.");
+  const finalEntities = mode === "replace"
+    ? additions.map(({ id, entityType }) => ({ id, entityType }))
+    : [...currentEntities.filter((entity) => !removeIds.includes(entity.id)), ...additions.map(({ id, entityType }) => ({ id, entityType }))];
+  if (finalEntities.length > 3) return getToolFailure("El resultado supera el límite de tres elementos en la comparación.");
+  if (new Set(finalEntities.map((entity) => entity.id)).size !== finalEntities.length) return getToolFailure("La comparación resultante contiene elementos duplicados.");
+
+  const resolved = await resolveComparisonRows(context, [...currentEntities, ...additions.map(({ id, entityType }) => ({ id, entityType }))]);
+  if (resolved.error) return getToolFailure("No se pudieron validar los elementos de la comparación.");
+  if (finalEntities.some((entity) => !resolved.rows.has(`${entity.entityType}:${entity.id}`))) {
+    return getToolFailure("No encontré uno de los elementos indicados en el comparador.");
   }
 
-  const idsToResolve = Array.from(new Set([...currentIds, ...additions.map((addition) => addition.id)]));
-  let productsById = new Map<string, Row>();
-  if (idsToResolve.length > 0) {
-    const { data, error } = await getProductQuery(context.supabase).in("id", idsToResolve);
-    if (error) return getToolFailure("No se pudieron validar los componentes de la comparación.");
-    productsById = new Map(asRows(data).map((product) => [asText(product.id), product]));
-  }
-  const finalProducts = finalIds.map((id) => productsById.get(id));
-  if (finalProducts.some((product) => !product)) return getToolFailure("No encontré uno de los componentes indicados en el catálogo.");
-
-  const productTypes = new Set(finalProducts.map((product) => asText(product!.type).toLowerCase()).filter(Boolean));
-  if (productTypes.size > 1 || [...productTypes].some((type) => !COMPONENT_TYPES.has(type))) {
-    return getToolFailure("Todos los componentes de la comparación deben ser del mismo tipo.");
+  const finalProducts = finalEntities.map((entity) => resolved.rows.get(`${entity.entityType}:${entity.id}`)!);
+  const finalTypes = new Set(finalEntities.map((entity) => entity.entityType));
+  if (finalTypes.size > 1) return getToolFailure("No puedes mezclar componentes, combos y builds en la misma comparación.");
+  if (finalEntities[0]?.entityType === "product") {
+    const productTypes = new Set(finalProducts.map((product) => asText(product.type).toLowerCase()).filter(Boolean));
+    if (productTypes.size > 1 || [...productTypes].some((type) => !COMPONENT_TYPES.has(type))) {
+      return getToolFailure("Todos los componentes de la comparación deben ser del mismo tipo.");
+    }
   }
 
   const evaluatedPrices: Record<string, number> = {};
+  const evaluatedPartPrices: Record<string, Record<string, number>> = {};
+  const finalIds = finalEntities.map((entity) => entity.id);
+  const finalParts = new Map<string, Set<string>>();
+  finalEntities.forEach((entity) => {
+    if (entity.entityType !== "product") {
+      const row = resolved.rows.get(`${entity.entityType}:${entity.id}`)!;
+      const parts = entity.entityType === "combo" ? ["cpu", "gpu", "ram"] : ["cpu", "gpu", "ram", "motherboard", "storage", "psu"];
+      finalParts.set(entity.id, new Set(parts.flatMap((part) => asText(row[`${part}_id`]) ? [asText(row[`${part}_id`])] : [])));
+    }
+  });
+  if ([...requestedPrices.keys()].some((id) => (
+    !finalEntities.some((entity) => entity.id === id)
+    && ![...finalParts.values()].some((partIds) => partIds.has(id))
+  ))) {
+    return getToolFailure("Solo puedes asignar precio a elementos o piezas que permanezcan en la comparación.");
+  }
   for (const item of context.priceContext?.items || []) {
+    const collection = finalEntities.find((entity) => finalParts.get(entity.id)?.has(item.productId));
+    if (item.isCustom && collection) {
+      const slot = item.slot || "";
+      if (slot) evaluatedPartPrices[collection.id] = { ...(evaluatedPartPrices[collection.id] || {}), [slot]: Number((context.priceContext?.currency === pageCurrency ? item.price : convertPrice(item.price, context.priceContext!.currency, pageCurrency)).toFixed(2)) };
+    }
     if (item.isCustom && finalIds.includes(item.productId)) {
       evaluatedPrices[item.productId] = Number((context.priceContext?.currency === pageCurrency
         ? item.price
@@ -1097,21 +1413,25 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
     }
   }
   for (const [id, price] of requestedPrices) evaluatedPrices[id] = price;
+  for (const override of rawPriceOverrides.map(asRow)) {
+    const id = sanitizeIdentifier(override.id);
+    const slot = sanitizeIdentifier(override.slot);
+    const price = requestedPrices.get(id);
+    if (!price || !slot) continue;
+    const collection = finalEntities.find((entity) => finalParts.get(entity.id)?.has(id));
+    if (collection) evaluatedPartPrices[collection.id] = { ...(evaluatedPartPrices[collection.id] || {}), [slot]: price };
+  }
 
-  const items = finalProducts.map((product) => {
-    const row = product!;
-    const selectedPrice = resolveProductPrice(row, pageCurrency).value;
-    return { ...row, comparisonType: "product", price: selectedPrice, currency: pageCurrency };
-  });
-  const names = finalProducts.map((product) => asText(product!.name, "Componente"));
-  const summary = finalProducts.length === 0
+  const items = finalEntities.map((entity) => getComparisonUiItem(resolved.rows.get(`${entity.entityType}:${entity.id}`)!, entity.entityType, pageCurrency, context.priceContext));
+  const names = finalEntities.map((entity) => asText(resolved.rows.get(`${entity.entityType}:${entity.id}`)!.name || resolved.rows.get(`${entity.entityType}:${entity.id}`)!.title, "Elemento"));
+  const summary = finalEntities.length === 0
     ? "He limpiado la comparación."
     : `Comparación actualizada con ${names.join(", ")}.`;
 
   return {
     ok: true,
     data: { status: "ready", message: summary },
-    comparisonAction: { type: "replace", items, evaluatedPrices, summary },
+    comparisonAction: { type: "replace", items, evaluatedPrices, evaluatedPartPrices, summary },
   };
 }
 

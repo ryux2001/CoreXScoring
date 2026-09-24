@@ -1,6 +1,6 @@
 "use client";
 
-import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore, type CompareProduct } from '@/store/useCompareStore';
@@ -85,7 +85,9 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   const items = useCompareStore((state) => state.items);
   const clearCompare = useCompareStore((state) => state.clearCompare);
   const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
+  const evaluatedPartPrices = useCompareStore((state) => state.evaluatedPartPrices);
   const setEvaluatedPrice = useCompareStore((state) => state.setEvaluatedPrice);
+  const setEvaluatedPartPrices = useCompareStore((state) => state.setEvaluatedPartPrices);
   const replaceItems = useCompareStore((state) => state.replaceItems);
   const applyComparisonSnapshot = useCompareStore((state) => state.applyComparisonSnapshot);
 
@@ -97,12 +99,18 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
         ? 'combos'
         : 'components'
   ));
-  const [comboPriceOverrides, setComboPriceOverrides] = useState<
-    Record<string | number, ComboPriceOverrides>
-  >({});
-  const [buildPriceOverrides, setBuildPriceOverrides] = useState<
-    Record<string | number, BuildPriceOverrides>
-  >({});
+  const comboPriceOverrides = useMemo<Record<string, ComboPriceOverrides>>(
+    () => Object.fromEntries(
+      items.filter(isComboItem).map((item) => [String(item.id), evaluatedPartPrices[String(item.id)] || {}]),
+    ),
+    [evaluatedPartPrices, items],
+  );
+  const buildPriceOverrides = useMemo<Record<string, BuildPriceOverrides>>(
+    () => Object.fromEntries(
+      items.filter(isBuildItem).map((item) => [String(item.id), evaluatedPartPrices[String(item.id)] || {}]),
+    ),
+    [evaluatedPartPrices, items],
+  );
   const comparisonScrollRef = useRef<HTMLDivElement>(null);
   const fpsScrollRef = useRef<HTMLDivElement>(null);
   const scrollSyncFrameRef = useRef<number | null>(null);
@@ -162,7 +170,7 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
     });
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (initialItems.length === 0 || hydratedRouteKey === initialItemsKey) return;
 
     const routeItems = initialItems.map((item) => ({
@@ -178,8 +186,6 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
 
     // Editorial and shared comparison URLs are the source of truth, never stale local storage.
     startTransition(() => {
-      setComboPriceOverrides({});
-      setBuildPriceOverrides({});
       setComparisonMode(
         routeItems.some((item) => isBuildItem(item))
           ? 'builds'
@@ -357,8 +363,8 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
           style={{ gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))` }}
         >
           {items.map((item) => {
-            const itemComboOverrides = comboPriceOverrides[item.id] || {};
-            const itemBuildOverrides = buildPriceOverrides[item.id] || {};
+            const itemComboOverrides = comboPriceOverrides[String(item.id)] || {};
+            const itemBuildOverrides = buildPriceOverrides[String(item.id)] || {};
             const currentPrice = getCurrentPrice(
               item,
               globalCurrency,
@@ -379,13 +385,9 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
                   }
                 }}
                 comboPriceOverrides={itemComboOverrides}
-                setComboPriceOverrides={(overrides) => {
-                  setComboPriceOverrides((previous) => ({ ...previous, [item.id]: overrides }));
-                }}
+                setComboPriceOverrides={(overrides) => setEvaluatedPartPrices(item.id, overrides)}
                 buildPriceOverrides={itemBuildOverrides}
-                setBuildPriceOverrides={(overrides) => {
-                  setBuildPriceOverrides((previous) => ({ ...previous, [item.id]: overrides }));
-                }}
+                setBuildPriceOverrides={(overrides) => setEvaluatedPartPrices(item.id, overrides)}
                 maxScores={maxScoresByCategory}
                 masterCategories={masterCategories}
               />
@@ -419,11 +421,7 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
 
       <div className="mt-12 flex justify-center">
         <button
-          onClick={() => {
-            setComboPriceOverrides({});
-            setBuildPriceOverrides({});
-            clearCompare();
-          }}
+          onClick={clearCompare}
           className="rounded-xl border border-zinc-900 hover:border-red-900/20 bg-zinc-950/40 px-5 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-red-400 transition-all cursor-pointer active:scale-95"
         >
           {t('clearAll')}

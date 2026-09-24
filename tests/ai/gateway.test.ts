@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getServerToolCapabilities, runChat } from "@/lib/ai/gateway";
 import { AI_TOOL_DEFINITIONS } from "@/lib/ai/tools";
 import { createQueryBuilder, createSupabaseStub } from "./helpers/query-builder";
-import { cpuFixture } from "./helpers/fixtures";
+import { cpuFixture, gameFixture, gpuFixture } from "./helpers/fixtures";
 import { mergeRecommendationState } from "@/lib/ai/recommendation-state";
 
 function providerResponse(body: unknown, status = 200): Response {
@@ -74,6 +74,55 @@ describe("AI gateway conversational protocol", () => {
     ];
 
     expect(getServerToolCapabilities(messages, { actor: { id: "user-1", isAnonymous: false } })).toContain("update_combo_recommendation_state");
+  });
+
+  it("finishes a comparator FPS request without reopening the general tool loop", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    const productBuilder = createQueryBuilder({ data: [gpuFixture], error: null });
+    const gameBuilder = createQueryBuilder({ data: gameFixture, error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "games" ? gameBuilder : productBuilder),
+    };
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "Qwen3.5-9B-UD-Q4_K_XL",
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: "fps-call",
+            type: "function",
+            function: {
+              name: "get_game_fps",
+              arguments: JSON.stringify({ gameSlug: gameFixture.slug, resolution: "4k", preset: "ultra" }),
+            },
+          }],
+        },
+      }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "Cual saca mas FPS en 4K en Cyberpunk 2077?" },
+    ], {
+      supabase: supabase as never,
+      actor: { id: "user-1", isAnonymous: false },
+      pageContext: {
+        pathname: "/comparator",
+        route: "comparator",
+        comparison: {
+          itemIds: [gpuFixture.id],
+          items: [{ id: gpuFixture.id, entityType: "product" }],
+        },
+      },
+    }, "gateway-comparator-fps");
+
+    expect(result.message.content).toContain("Cyberpunk 2077");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    const request = JSON.parse(String(init.body));
+    expect(request.tools.map((tool: { function: { name: string } }) => tool.function.name)).toEqual(["get_game_fps"]);
   });
 
   it("keeps a complete criteria answer on the recommendation tool path", () => {

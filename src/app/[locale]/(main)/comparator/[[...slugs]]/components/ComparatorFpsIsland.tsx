@@ -3,14 +3,15 @@
 import { useMemo, useState } from "react";
 import type { RefObject } from "react";
 import { Gamepad2, Sliders } from "lucide-react";
-import { calculateComboFps } from "@/lib/fpsCombos";
+import { getComparisonFpsKind, getComparisonFpsResult } from "@/lib/fpsCombos/comparison";
 import type { GameData } from "@/lib/fpsCombos/types";
-import { isBuildItem, isComboItem } from "./comparisonUtils";
 import { useTranslations } from "next-intl";
 
 type Resolution = "1080p" | "1440p" | "4k";
-type ComparisonKind = "gpu" | "combo" | "build";
-interface ComparisonItem {
+import type { ComparisonFpsItem, ComparisonFpsKind } from "@/lib/fpsCombos/comparison";
+
+type ComparisonKind = ComparisonFpsKind;
+interface ComparisonItem extends ComparisonFpsItem {
   id: string | number;
   type?: string;
   name?: string;
@@ -46,12 +47,8 @@ function normalizeGame(game: GameData): GameData {
 
 function getComparisonKind(items: ComparisonItem[]): ComparisonKind | null {
   if (items.length === 0) return null;
-  if (items.every(isBuildItem)) return "build";
-  if (items.every(isComboItem)) return "combo";
-
-  return items.every((item) => String(item?.type || "").toUpperCase() === "GPU")
-    ? "gpu"
-    : null;
+  const kinds = new Set(items.map(getComparisonFpsKind));
+  return kinds.size === 1 ? [...kinds][0] || null : null;
 }
 
 function getGamePresets(game: GameData): string[] {
@@ -65,20 +62,6 @@ function getGamePresets(game: GameData): string[] {
   });
 
   return presets.size > 0 ? Array.from(presets) : ["medio"];
-}
-
-function getDirectGpuFps(
-  item: ComparisonItem,
-  game: GameData,
-  resolution: Resolution,
-  preset: string,
-): number | null {
-  const gpuData = parseObject(game.gpu_fps_base)[String(item.id)];
-  const resolutionData = parseObject(gpuData)[resolution];
-  const value = parseObject(resolutionData)[preset];
-  const fps = Number(value);
-
-  return Number.isFinite(fps) && fps > 0 ? Math.round(fps) : null;
 }
 
 function getFpsStyles(fps: number | null) {
@@ -111,25 +94,18 @@ function getCollectionFps(
   preset: string,
   resolution: Resolution,
 ): number | null {
-  const result = calculateComboFps(item, game, preset, {
-    cpuGamingScore: 8.5,
-    ramGamingScore: 9,
-  });
-  const fps = result[resolution === "1080p" ? "fhd" : resolution === "1440p" ? "qhd" : "uhd"];
-
-  return fps > 0 ? fps : null;
+  return getComparisonFpsResult(item, game, preset, resolution);
 }
 
 function hasGameData(item: ComparisonItem, game: GameData, kind: ComparisonKind): boolean {
   if (kind === "gpu") {
-    const gpuData = parseObject(game.gpu_fps_base)[String(item.id)];
-    return Object.values(parseObject(gpuData)).some((resolutionData) =>
-      Object.values(parseObject(resolutionData)).some((value) => Number(value) > 0),
-    );
+    return getGamePresets(game).some((preset) => (
+      resolutions.some(({ key }) => getComparisonFpsResult(item, game, preset, key) !== null)
+    ));
   }
 
   return getGamePresets(game).some((preset) =>
-    Object.values(calculateComboFps(item, game, preset)).some((value) => value > 0),
+    resolutions.some(({ key }) => getComparisonFpsResult(item, game, preset, key) !== null),
   );
 }
 
@@ -249,9 +225,9 @@ export default function ComparatorFpsIsland({
                 </h3>
                 <div className="grid grid-cols-3 gap-2">
                   {resolutions.map(({ label, key }) => {
-                    const value = kind === "gpu"
-                      ? getDirectGpuFps(item, activeGame, key, activeQuality)
-                      : getCollectionFps(item, activeGame, activeQuality, key);
+                     const value = kind === "gpu"
+                       ? getComparisonFpsResult(item, activeGame, activeQuality, key)
+                       : getCollectionFps(item, activeGame, activeQuality, key);
                     const styles = getFpsStyles(value);
 
                     return (

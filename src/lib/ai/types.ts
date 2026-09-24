@@ -50,7 +50,25 @@ export interface PageContext {
 
 export interface ComparisonContext {
   itemIds: string[];
+  items?: ComparisonItemContext[];
+  comparisonType?: "components" | "combos" | "builds";
   componentType?: string;
+}
+
+export type ComparisonEntityType = "product" | "combo" | "build";
+
+export interface ComparisonItemPart {
+  id: string;
+  slot: string;
+}
+
+export interface ComparisonItemContext {
+  id: string;
+  entityType: ComparisonEntityType;
+  slug?: string;
+  title?: string;
+  componentType?: string;
+  parts?: ComparisonItemPart[];
 }
 
 export type AiPriceScope = "catalog" | "comparison" | "build" | "combo" | "draft_build" | "draft_combo";
@@ -60,6 +78,7 @@ export interface AiFrontendPriceItem {
   price: number;
   isCustom: boolean;
   slot?: string;
+  comparisonItemId?: string;
 }
 
 /** Precios visibles en el cliente; el servidor vuelve a validar componentes y cálculos. */
@@ -106,6 +125,7 @@ export type ComparisonUiAction =
       type: "replace";
       items: Record<string, unknown>[];
       evaluatedPrices: Record<string, number>;
+      evaluatedPartPrices?: Record<string, Record<string, number>>;
       summary: string;
     };
 
@@ -464,6 +484,26 @@ function isComparisonContext(value: unknown): value is ComparisonContext {
   return Array.isArray(comparison.itemIds)
     && comparison.itemIds.length <= 3
     && comparison.itemIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 120)
+    && (comparison.comparisonType === undefined || ["components", "combos", "builds"].includes(comparison.comparisonType))
+    && (comparison.items === undefined || (
+      Array.isArray(comparison.items)
+      && comparison.items.length <= 3
+      && comparison.items.every((item) => (
+        item && typeof item.id === "string" && item.id.length > 0 && item.id.length <= 120
+        && ["product", "combo", "build"].includes(item.entityType)
+        && (item.slug === undefined || (typeof item.slug === "string" && item.slug.length <= 120))
+        && (item.title === undefined || (typeof item.title === "string" && item.title.length <= 200))
+        && (item.componentType === undefined || (typeof item.componentType === "string" && item.componentType.length <= 30))
+        && (item.parts === undefined || (
+          Array.isArray(item.parts)
+          && item.parts.length <= 6
+          && item.parts.every((part) => (
+            part && typeof part.id === "string" && part.id.length > 0 && part.id.length <= 120
+            && typeof part.slot === "string" && part.slot.length <= 30
+          ))
+        ))
+      ))
+    ))
     && (comparison.componentType === undefined || (typeof comparison.componentType === "string" && comparison.componentType.length <= 30));
 }
 
@@ -536,6 +576,15 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
     .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value.slice(0, 100))}`)
     .join("&");
 
+  const comparisonItems = context.comparison?.items
+    ?.map((item) => ({
+      id: item.id.trim(),
+      entityType: item.entityType,
+      ...(item.slug ? { slug: item.slug.slice(0, 120) } : {}),
+    }))
+    .filter((item) => item.id.length > 0)
+    .slice(0, 3);
+
   return {
     pathname: context.pathname.slice(0, 300),
     search: safeSearch ? `?${safeSearch}` : undefined,
@@ -549,6 +598,8 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
       ? {
           comparison: {
             itemIds: Array.from(new Set(context.comparison.itemIds.map((id) => id.trim()).filter(Boolean))).slice(0, 3),
+            ...(comparisonItems && comparisonItems.length > 0 ? { items: comparisonItems } : {}),
+            ...(context.comparison.comparisonType ? { comparisonType: context.comparison.comparisonType } : {}),
             ...(context.comparison.componentType ? { componentType: context.comparison.componentType.slice(0, 30) } : {}),
           },
         }

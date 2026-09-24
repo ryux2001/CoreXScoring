@@ -29,8 +29,14 @@ function getAllowedProductIds(input: AiFrontendPriceContext, pageContext?: PageC
       : null;
   }
   if (input.scope === "comparison") {
-    return pageContext?.route === "comparator" && pageContext.comparison?.itemIds.length
-      ? new Set(pageContext.comparison.itemIds)
+    const comparisonItems = pageContext?.comparison?.items || [];
+    const productIds = comparisonItems.flatMap((item) => (
+      item.entityType === "product" ? [item.id] : (item.parts || []).map((part) => part.id)
+    ));
+    return pageContext?.route === "comparator" && productIds.length
+      ? new Set(productIds)
+      : pageContext?.route === "comparator" && pageContext.comparison?.itemIds.length
+        ? new Set(pageContext.comparison.itemIds)
       : null;
   }
   if (input.scope === "build" || input.scope === "combo") {
@@ -54,10 +60,13 @@ export async function resolveAiFrontendPriceContext(
   const allowedProductIds = getAllowedProductIds(input, pageContext);
   if (!allowedProductIds) return undefined;
 
-  const items = input.items.filter((item) => allowedProductIds.has(item.productId));
-  if (items.length === 0) return undefined;
+  const requestedItems = input.items.filter((item) => allowedProductIds.has(item.productId));
+  const hasTypedComparisonContext = Boolean(pageContext?.comparison?.items?.length);
+  if (requestedItems.length === 0 && (input.scope !== "comparison" || !hasTypedComparisonContext)) return undefined;
 
-  const uniqueIds = Array.from(new Set(items.map((item) => item.productId)));
+  const uniqueIds = input.scope === "comparison" && hasTypedComparisonContext
+    ? [...allowedProductIds]
+    : Array.from(new Set(requestedItems.map((item) => item.productId)));
   const { data, error } = await client.from("products").select(AI_PRODUCT_SELECT).in("id", uniqueIds);
   if (error || !data) return undefined;
 
@@ -66,19 +75,23 @@ export async function resolveAiFrontendPriceContext(
     return [asText(row.id), row];
   }));
 
-  const resolvedItems = items.flatMap((item) => {
-    const product = productsById.get(item.productId);
+  const requestedById = new Map(requestedItems.map((item) => [item.productId, item]));
+  const resolvedItems = uniqueIds.flatMap((productId) => {
+    const item = requestedById.get(productId);
+    const product = productsById.get(productId);
     if (!product) return [];
+    const price = item?.isCustom ? item.price : getProductPrice(product, input.currency);
+    if (!Number.isFinite(price) || price <= 0) return [];
     const evaluation = calculateCatalogPriceEvaluation({
       product,
-      productId: item.productId,
-      price: item.price,
+      productId,
+      price,
       currency: input.currency,
-      source: item.isCustom ? "manual" : "base",
+      source: item?.isCustom ? "manual" : "base",
     });
     if (!evaluation) return [];
     return [{
-      ...item,
+      ...(item || { productId, price, isCustom: false }),
       price: evaluation.price,
       name: asText(product.name) || "Componente",
       type: asText(product.type),

@@ -460,7 +460,7 @@ function hasComparisonMutationIntent(value: string): boolean {
 }
 
 function hasComparisonReadIntent(value: string): boolean {
-  return /\b(?:compara|comparar|comparacion|comparación|diferencia|diferencias|mejor|peor|estos|estas|compare|comparison|difference|differences|better|worse|these)\b/.test(normalizeIntentText(value));
+  return /\b(?:compara|comparar|comparacion|comparación|diferencia|diferencias|mejor|peor|estos|estas|esto|este|esta|primero|primera|segundo|segunda|elemento|compare|comparison|difference|differences|better|worse|these|this|first|second|item)\b/.test(normalizeIntentText(value));
 }
 
 function hasGameFpsIntent(value: string): boolean {
@@ -591,6 +591,9 @@ function getToolDefinitionsForMessages(
   }
 
   if (asksGameFps && !hasComparisonPriceIntent(latestUserMessage) && !hasCatalogPriceChangeIntent(latestUserMessage)) {
+    if (pageContext?.route === "comparator") {
+      return AI_TOOL_DEFINITIONS.filter((tool) => tool.function.name === "get_game_fps");
+    }
     return AI_TOOL_DEFINITIONS.filter((tool) => [
       "search_components",
       "get_component",
@@ -610,6 +613,10 @@ function getToolDefinitionsForMessages(
       "search_components",
       "get_component",
       "get_current_comparison",
+      "search_combos",
+      "search_builds",
+      "get_combo",
+      "get_build",
       "propose_add_to_comparison",
       "propose_remove_from_comparison",
       "propose_set_comparison_price",
@@ -624,6 +631,8 @@ function getToolDefinitionsForMessages(
       "get_game_fps",
       "get_current_comparison",
       "compare_components",
+      "get_combo",
+      "get_build",
     ].includes(tool.function.name));
   }
 
@@ -883,7 +892,11 @@ async function runProviderConversation({
     }
     const choice = payload.choices?.[0];
     const assistantMessage = choice?.message;
-    const toolCalls = assistantMessage?.tool_calls?.filter((toolCall) => toolCall.function?.name);
+    const rawToolCalls = assistantMessage?.tool_calls?.filter((toolCall) => toolCall.function?.name);
+    const isSingleComparatorFpsTool = toolDefinitions.length === 1
+      && toolDefinitions[0]?.function.name === "get_game_fps"
+      && toolContext.pageContext?.route === "comparator";
+    const toolCalls = isSingleComparatorFpsTool ? rawToolCalls?.slice(0, 1) : rawToolCalls;
 
     if (!assistantMessage) {
       throw new AiGatewayError(provider, 502, "missing_completion", "response");
@@ -1008,6 +1021,16 @@ async function runProviderConversation({
           ...(result.buildDraft ? { buildDraft: result.buildDraft } : {}),
           ...(result.comboDraft ? { comboDraft: result.comboDraft } : {}),
           ...(recommendationState ? { recommendationState } : {}),
+        };
+      }
+
+      if (result.ok && result.finalResponse) {
+        return {
+          message: { role: "assistant", content: result.finalResponse },
+          provider,
+          model: payload.model || model,
+          ...(usageReported ? { usage } : {}),
+          toolCalls: toolCallCount,
         };
       }
 

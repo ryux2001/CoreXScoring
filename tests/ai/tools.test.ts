@@ -14,6 +14,27 @@ function comparatorContext(itemIds: string[]) {
   };
 }
 
+const comboFixture = {
+  id: "combo-1440p",
+  title: "Combo 1440p",
+  slug: "combo-1440p",
+  category: "Gaming",
+  is_active: true,
+  cpu_id: cpuFixture.id,
+  gpu_id: gpuFixture.id,
+  ram_id: "ram-32gb",
+  cpu: cpuFixture,
+  gpu: gpuFixture,
+  ram: {
+    id: "ram-32gb",
+    name: "32 GB DDR5",
+    brand: "Kingston",
+    type: "ram",
+    price_base_usd: 100,
+    specs: { capacity: 32, speed: 6000, memory_type: "DDR5" },
+  },
+};
+
 describe("CoreX AI tools", () => {
   it("searches only the bounded catalog result set", async () => {
     const supabase = createSupabaseStub({ data: [cpuFixture], error: null });
@@ -137,6 +158,136 @@ describe("CoreX AI tools", () => {
       selectedPrice: { value: gpuFixture.price_base_usd },
       priceSource: "base",
     });
+  });
+
+  it("reads a combo comparison and returns a price-aware verdict", async () => {
+    const comboBuilder = createQueryBuilder({ data: [comboFixture], error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "combos" ? comboBuilder : createQueryBuilder({ data: [], error: null })),
+    };
+    const result = await getCurrentComparison({}, {
+      supabase: supabase as never,
+      actor,
+      pageContext: {
+        pathname: "/comparator",
+        route: "comparator",
+        comparison: {
+          itemIds: [comboFixture.id],
+          comparisonType: "combos",
+          items: [{ id: comboFixture.id, entityType: "combo" }],
+        },
+      },
+      priceContext: {
+        scope: "comparison",
+        currency: "USD",
+        totalPrice: 1_249,
+        items: [{ productId: gpuFixture.id, slot: "gpu", price: 500, isCustom: true, name: gpuFixture.name, type: "gpu", qualityPriceScore: 8 }],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toMatchObject({ entityType: "combo", count: 1, items: [{ id: comboFixture.id }] });
+  });
+
+  it("rejects a mixed build/combo current comparison before querying data", async () => {
+    const supabase = { from: vi.fn() };
+    const result = await getCurrentComparison({}, {
+      supabase: supabase as never,
+      actor,
+      pageContext: {
+        pathname: "/comparator",
+        route: "comparator",
+        comparison: {
+          itemIds: ["combo-1", "build-1"],
+          items: [
+            { id: "combo-1", entityType: "combo" },
+            { id: "build-1", entityType: "build" },
+          ],
+        },
+      },
+    });
+
+    expect(result).toEqual({ ok: false, error: "No se pueden comparar componentes, combos y builds entre sí. La comparativa debe contener un único tipo." });
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("applies a live price override to a combo part through the atomic snapshot", async () => {
+    const comboBuilder = createQueryBuilder({ data: [comboFixture], error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "combos" ? comboBuilder : createQueryBuilder({ data: [], error: null })),
+    };
+    const result = await proposeUpdateComparison({
+      mode: "patch",
+      priceOverrides: [{ id: gpuFixture.id, slot: "gpu", price: 500 }],
+      currency: "USD",
+    }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: {
+        pathname: "/comparator",
+        search: "?currency=USD",
+        route: "comparator",
+        comparison: {
+          itemIds: [comboFixture.id],
+          items: [{ id: comboFixture.id, entityType: "combo" }],
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.comparisonAction).toMatchObject({
+      type: "replace",
+      evaluatedPartPrices: { [comboFixture.id]: { gpu: 500 } },
+    });
+  });
+
+  it("returns a final game clarification for comparator FPS without entering another tool round", async () => {
+    const comboBuilder = createQueryBuilder({ data: [comboFixture], error: null });
+    const gamesBuilder = createQueryBuilder({ data: [{ id: gameFixture.id, slug: gameFixture.slug, name: gameFixture.name }], error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "combos" ? comboBuilder : table === "games" ? gamesBuilder : createQueryBuilder({ data: [], error: null })),
+    };
+    const result = await getGameFps({ resolution: "4k" }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: {
+        pathname: "/comparator",
+        route: "comparator",
+        comparison: {
+          itemIds: [comboFixture.id],
+          items: [{ id: comboFixture.id, entityType: "combo" }],
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.finalResponse).toContain("necesito el juego");
+  });
+
+  it("calculates comparator FPS with the shared build/combo formula", async () => {
+    const comboBuilder = createQueryBuilder({ data: [comboFixture], error: null });
+    const gamesBuilder = createQueryBuilder({ data: gameFixture, error: null });
+    const supabase = {
+      from: vi.fn((table: string) => table === "combos" ? comboBuilder : table === "games" ? gamesBuilder : createQueryBuilder({ data: [], error: null })),
+    };
+    const result = await getGameFps({ gameSlug: gameFixture.slug, resolution: "4k", preset: "ultra" }, {
+      supabase: supabase as never,
+      actor,
+      pageContext: {
+        pathname: "/comparator",
+        route: "comparator",
+        comparison: {
+          itemIds: [comboFixture.id],
+          items: [{ id: comboFixture.id, entityType: "combo" }],
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result).toMatchObject({ data: { mode: "comparison_estimate", resolution: "4k" } });
+      expect(result.finalResponse).not.toMatch(/games|gpu_fps_base|products|tabla|tool|CPU\/RAM/i);
+    }
   });
 
   it("prepares an add action only after validating the comparator and product", async () => {

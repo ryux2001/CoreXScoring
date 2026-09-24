@@ -92,6 +92,12 @@ function formatQuotaReset(value: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
+function getComparisonEntityType(item: CompareProduct): "product" | "combo" | "build" {
+  if (item.comparisonType === "combo" || String(item.type).toUpperCase() === "COMBO") return "combo";
+  if (item.comparisonType === "build" || String(item.type).toUpperCase() === "BUILD") return "build";
+  return "product";
+}
+
 function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageContext {
   const pathname = window.location.pathname;
   const localizedPathname = getLocalizedPathname(pathname);
@@ -109,14 +115,36 @@ function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageCon
             ? "vault"
             : root ? "other" : "home";
   const identifier = root === "vault" ? segments[2] || segments[1] : route === "comparator" ? undefined : segments[1];
+  const comparisonEntities = comparisonItems.slice(0, 3).map((item) => ({
+    id: String(item.id),
+    entityType: getComparisonEntityType(item),
+    ...(item.slug ? { slug: item.slug } : {}),
+  }));
+  const entityTypes = new Set(comparisonEntities.map((item) => item.entityType));
+  const componentTypes = new Set(
+    comparisonItems
+      .filter((item) => getComparisonEntityType(item) === "product")
+      .map((item) => String(item.type || "").toLowerCase())
+      .filter(Boolean),
+  );
+
   return {
     pathname,
     search: window.location.search,
     title: document.title,
     route,
     ...(identifier ? { identifier } : {}),
-    ...(route === "comparator" && comparisonItems.length > 0
-      ? { comparison: { itemIds: comparisonItems.map((item) => String(item.id)).slice(0, 3) } }
+    ...(route === "comparator" && comparisonEntities.length > 0
+      ? {
+          comparison: {
+            itemIds: comparisonEntities.map((item) => item.id),
+            items: comparisonEntities,
+            ...(entityTypes.size === 1
+              ? { comparisonType: [...entityTypes][0] === "product" ? "components" : [...entityTypes][0] === "combo" ? "combos" : "builds" }
+              : {}),
+            ...(componentTypes.size === 1 ? { componentType: [...componentTypes][0] } : {}),
+          },
+        }
       : {}),
   };
 }
@@ -125,14 +153,27 @@ function getFrontendPriceContext(
   pathname: string,
   comparisonItems: CompareProduct[],
   evaluatedPrices: Record<string, number>,
+  evaluatedPartPrices: Record<string, Record<string, number>>,
   visibleEditorContext: AiFrontendPriceContext | null,
 ): AiFrontendPriceContext | undefined {
   const localizedPathname = getLocalizedPathname(pathname);
   if (localizedPathname.startsWith("/comparator")) {
     const visibleIds = new Set(comparisonItems.map((item) => String(item.id)));
-    const items = Object.entries(evaluatedPrices)
+    const componentPrices = Object.entries(evaluatedPrices)
       .filter(([productId]) => visibleIds.has(productId))
       .map(([productId, price]) => ({ productId, price, isCustom: true }));
+    const collectionPrices = comparisonItems.flatMap((item) => {
+      const entityType = getComparisonEntityType(item);
+      if (entityType === "product") return [];
+      const overrides = evaluatedPartPrices[String(item.id)] || {};
+      return Object.entries(overrides).flatMap(([slot, price]) => {
+        const component = (item as unknown as Record<string, unknown>)[slot] as { id?: string | number } | undefined;
+        return component?.id !== undefined
+          ? [{ productId: String(component.id), price, isCustom: true, slot, comparisonItemId: String(item.id) }]
+          : [];
+      });
+    });
+    const items = [...componentPrices, ...collectionPrices];
     if (items.length > 0) {
       return { scope: "comparison", currency: new URLSearchParams(window.location.search).get("currency") === "EUR" ? "EUR" : "USD", items };
     }
@@ -602,6 +643,7 @@ export default function AISidebar() {
   const pathname = usePathname() || "/";
   const comparisonItems = useCompareStore((state) => state.items);
   const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
+  const evaluatedPartPrices = useCompareStore((state) => state.evaluatedPartPrices);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pendingUserMessage, setPendingUserMessage] = useState<ChatMessage | null>(null);
   const [failedUserMessage, setFailedUserMessage] = useState<ChatMessage | null>(null);
@@ -699,7 +741,11 @@ export default function AISidebar() {
   const applyComparisonAction = (action: ComparisonUiAction): string | null => {
     const comparisonStore = useCompareStore.getState();
     if (action.type === "replace") {
-      const result = comparisonStore.applyComparisonSnapshot(action.items as unknown as CompareProduct[], action.evaluatedPrices);
+      const result = comparisonStore.applyComparisonSnapshot(
+        action.items as unknown as CompareProduct[],
+        action.evaluatedPrices,
+        action.evaluatedPartPrices,
+      );
        return result.success ? null : getComparisonErrorMessage(result.error, tCommon);
     }
     if (action.type === "add") {
@@ -927,6 +973,7 @@ export default function AISidebar() {
         pathname,
         comparisonItems,
         evaluatedPrices,
+        evaluatedPartPrices,
         visibleEditorPriceContext,
       );
       const tokenForRequest = suppliedTurnstileToken || turnstileToken;
