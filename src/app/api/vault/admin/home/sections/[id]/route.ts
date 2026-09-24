@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAdminDb, getAdminUser } from '@/lib/admin/catalog';
-import { optionalHomeText, requiredHomeText } from '@/lib/admin/home';
+import { parseHomeEditorialTranslations, saveHomeEditorialTranslations } from '@/lib/admin/home';
 import { readLimitedJson } from '@/lib/api-security';
 
 export const runtime = 'nodejs';
@@ -29,6 +29,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   try {
     if (typeof body.is_active !== 'boolean') throw new Error('El estado de publicación no es válido.');
+    const translations = parseHomeEditorialTranslations(body.translations);
     const visualVariant = body.visual_variant;
     if (visualVariant !== 'default' && visualVariant !== 'spotlight' && visualVariant !== 'compact') {
       throw new Error('La variante visual no es válida.');
@@ -53,14 +54,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const { error } = await db.from('home_sections').update({
-      title: requiredHomeText(body.title, 'título', 120),
-      description: optionalHomeText(body.description, 'descripción', 360),
-      eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
+      title: translations.en.title,
+      description: translations.en.description,
+      eyebrow: translations.en.eyebrow,
       is_active: body.is_active,
       visual_variant: visualVariant,
       updated_at: new Date().toISOString(),
     }).eq('id', sectionId);
     if (error) throw error;
+    await saveHomeEditorialTranslations(db, 'home_section_translations', 'section_id', sectionId, translations);
     return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof Error && !('code' in error)) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAdminDb, getAdminUser } from '@/lib/admin/catalog';
-import { optionalHomeText, parseHomeContentType, requiredHomeText } from '@/lib/admin/home';
+import { parseHomeContentType, parseHomeEditorialTranslations, saveHomeEditorialTranslations } from '@/lib/admin/home';
 import { readLimitedJson } from '@/lib/api-security';
 
 export const runtime = 'nodejs';
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
   try {
     const contentType = parseHomeContentType(body.content_type);
     if (!contentType) throw new Error('El tipo de sección no es válido.');
+    const translations = parseHomeEditorialTranslations(body.translations);
     const db = getAdminDb();
     const { data: lastSection, error: orderError } = await db
       .from('home_sections')
@@ -36,15 +37,16 @@ export async function POST(request: NextRequest) {
     if (orderError) throw orderError;
 
     const { data, error } = await db.from('home_sections').insert({
-      title: requiredHomeText(body.title, 'título', 120),
-      description: optionalHomeText(body.description, 'descripción', 360),
-      eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
+      title: translations.en.title,
+      description: translations.en.description,
+      eyebrow: translations.en.eyebrow,
       content_type: contentType,
       visual_variant: 'default',
        is_active: false,
       sort_order: Number(lastSection?.sort_order ?? -1) + 1,
     }).select('id').single();
     if (error) throw error;
+    await saveHomeEditorialTranslations(db, 'home_section_translations', 'section_id', data.id, translations);
     return NextResponse.json({ id: data.id }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof Error && !('code' in error)) return NextResponse.json({ error: error.message }, { status: 400 });

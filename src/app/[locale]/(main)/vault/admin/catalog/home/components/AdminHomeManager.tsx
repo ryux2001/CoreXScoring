@@ -13,6 +13,10 @@ import {
   type HomeCatalogType,
   type HomeComparison,
   type HomeContentType,
+  type HomeEditorialTranslation,
+  type HomeEditorialTranslations,
+  type HomeHeroTranslation,
+  type HomeHeroTranslations,
   type HomeSection,
 } from '@/lib/admin/home';
 
@@ -55,6 +59,14 @@ function moveItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const nextItems = [...items];
   [nextItems[index], nextItems[nextIndex]] = [nextItems[nextIndex], nextItems[index]];
   return nextItems;
+}
+
+function getEditorialTranslations(value: HomeEditorialTranslations | undefined, fallback: HomeEditorialTranslation): HomeEditorialTranslations {
+  return { en: value?.en ?? fallback, es: value?.es ?? fallback };
+}
+
+function getHeroTranslations(value: HomeHeroTranslations | undefined, fallback: HomeHeroTranslation): HomeHeroTranslations {
+  return { en: value?.en ?? fallback, es: value?.es ?? fallback };
 }
 
 type SectionReadiness = {
@@ -197,17 +209,23 @@ function OverviewStat({ value, label, tone }: { value: number; label: string; to
 
 function HeroEditor({ hero, onSaved }: { hero: HomeAdminData['hero']; onSaved: () => void }) {
   const t = useTranslations('admin.home');
+  const tc = useTranslations('admin.catalog');
   const [form, setForm] = useState(hero);
+  const [translations, setTranslations] = useState<HomeHeroTranslations>(() => getHeroTranslations(hero.translations, hero));
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const update = (field: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [field]: value }));
+  const updateTranslation = (locale: 'en' | 'es', field: keyof HomeHeroTranslation, value: string) => setTranslations((current) => ({
+    ...current,
+    [locale]: { ...current[locale], [field]: value },
+  }));
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSaving(true);
     setNotice(null);
     try {
-      await requestJson('/api/vault/admin/home', 'PATCH', form);
+      await requestJson('/api/vault/admin/home', 'PATCH', { ...form, translations });
        setNotice({ type: 'success', message: t('hero.saved') });
       onSaved();
     } catch (error) {
@@ -226,12 +244,12 @@ function HeroEditor({ hero, onSaved }: { hero: HomeAdminData['hero']; onSaved: (
         </div>
         <VisibilityToggle value={form.is_active} onChange={(value) => update('is_active', value)} />
       </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <TextInput label={t('hero.headline')} value={form.title} onChange={(value) => update('title', value)} required />
-        <TextArea label={t('hero.descriptionField')} value={form.description} onChange={(value) => update('description', value)} className="md:col-span-2" required />
-        <TextInput label={t('hero.primaryLabel')} value={form.primary_label} onChange={(value) => update('primary_label', value)} required />
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <HeroTranslationFields locale="en" title={tc('editor.languageEnglish')} values={translations.en} onChange={updateTranslation} />
+        <HeroTranslationFields locale="es" title={tc('editor.languageSpanish')} values={translations.es} onChange={updateTranslation} />
+      </div>
+      <div className="mt-5 grid gap-4 border-t border-zinc-800 pt-5 md:grid-cols-2">
         <TextInput label={t('hero.primaryHref')} value={form.primary_href} onChange={(value) => update('primary_href', value)} required hint={t('hero.pathHint')} />
-        <TextInput label={t('hero.secondaryLabel')} value={form.secondary_label} onChange={(value) => update('secondary_label', value)} required />
         <TextInput label={t('hero.secondaryHref')} value={form.secondary_href} onChange={(value) => update('secondary_href', value)} required hint={t('hero.pathHint')} />
       </div>
       <div className="mt-5 flex items-center gap-4">
@@ -244,7 +262,12 @@ function HeroEditor({ hero, onSaved }: { hero: HomeAdminData['hero']; onSaved: (
 
 function NewSectionForm({ onSaved }: { onSaved: () => void }) {
   const t = useTranslations('admin.home');
-  const [form, setForm] = useState({ title: '', description: '', content_type: 'products' as HomeContentType });
+  const tc = useTranslations('admin.catalog');
+  const [form, setForm] = useState({ content_type: 'products' as HomeContentType });
+  const [translations, setTranslations] = useState<HomeEditorialTranslations>({
+    en: { eyebrow: '', title: '', description: '' },
+    es: { eyebrow: '', title: '', description: '' },
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -252,7 +275,7 @@ function NewSectionForm({ onSaved }: { onSaved: () => void }) {
     setIsSaving(true);
     setNotice(null);
     try {
-      await requestJson('/api/vault/admin/home/sections', 'POST', form);
+      await requestJson('/api/vault/admin/home/sections', 'POST', { ...form, translations });
       onSaved();
     } catch (error) {
        setNotice(requestError(error, t('errors.createSection')));
@@ -265,10 +288,12 @@ function NewSectionForm({ onSaved }: { onSaved: () => void }) {
     <form onSubmit={save} className="mt-5 rounded-2xl border border-cyan-200/25 bg-cyan-200/[0.04] p-5">
       <h3 className="font-display text-xl font-black text-white">{t('section.newTitle')}</h3>
       <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-400">{t('section.newDescription')}</p>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <TextInput label={t('section.title')} value={form.title} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <SelectInput label={t('section.content')} value={form.content_type} onChange={(value) => setForm((current) => ({ ...current, content_type: value as HomeContentType }))} options={Object.entries(SECTION_TYPE_LABELS).map(([value, label]) => ({ value, label: t(`types.${label}`) }))} />
-        <TextArea label={t('section.description')} value={form.description} onChange={(value) => setForm((current) => ({ ...current, description: value }))} hint={t('section.descriptionHint')} />
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <EditorialTranslationFields locale="en" title={tc('editor.languageEnglish')} values={translations.en} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
+        <EditorialTranslationFields locale="es" title={tc('editor.languageSpanish')} values={translations.es} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-4"><SaveButton isSaving={isSaving} label={t('section.create')} />{notice && <span role="alert" className="text-xs text-red-300">{notice}</span>}</div>
     </form>
@@ -297,18 +322,17 @@ function SectionEditor({
   onReorderComparisons: (ids: string[]) => void;
 }) {
   const t = useTranslations('admin.home');
+  const tc = useTranslations('admin.catalog');
   const [form, setForm] = useState({
-    title: section.title,
-    description: section.description,
-    eyebrow: section.eyebrow,
     is_active: section.is_active,
     visual_variant: section.visual_variant,
   });
+  const [translations, setTranslations] = useState<HomeEditorialTranslations>(() => getEditorialTranslations(section.translations, section));
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const readiness = getSectionReadiness(section);
 
-  const update = (field: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [field]: value }));
+  const update = (field: keyof typeof form, value: boolean) => setForm((current) => ({ ...current, [field]: value }));
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.is_active && !readiness.ready) {
@@ -317,8 +341,8 @@ function SectionEditor({
     }
     setIsSaving(true);
     try {
-      await requestJson(`/api/vault/admin/home/sections/${section.id}`, 'PATCH', form);
-       onNotice({ type: 'success', message: t('section.saved', { title: form.title }) });
+      await requestJson(`/api/vault/admin/home/sections/${section.id}`, 'PATCH', { ...form, translations });
+      onNotice({ type: 'success', message: t('section.saved', { title: translations.en.title }) });
       onSaved();
     } catch (error) {
        onNotice({ type: 'error', message: requestError(error, t('errors.saveSection')) });
@@ -367,9 +391,9 @@ function SectionEditor({
 
       {isOpen && <div id={`section-content-${section.id}`} className="mt-5 border-t border-zinc-800 pt-5">
         {!readiness.ready && form.is_active && <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200/25 bg-amber-200/[0.05] px-4 py-3 text-sm text-amber-100" role="status"><FileWarning aria-hidden="true" className="mt-0.5 shrink-0 text-amber-200" size={16} /><p>{section.content_type === 'comparisons' ? t('section.comparisonIncomplete') : t('section.listIncomplete')}</p></div>}
-        <form onSubmit={save} className="grid gap-4 md:grid-cols-2">
-          <TextInput label={t('section.title')} value={form.title} onChange={(value) => update('title', value)} required />
-          <TextArea label={t('section.description')} value={form.description} onChange={(value) => update('description', value)} hint={t('section.descriptionHint')} />
+        <form onSubmit={save} className="grid gap-4 lg:grid-cols-2">
+          <EditorialTranslationFields locale="en" title={tc('editor.languageEnglish')} values={translations.en} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
+          <EditorialTranslationFields locale="es" title={tc('editor.languageSpanish')} values={translations.es} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
           <div className="md:col-span-2"><SaveButton isSaving={isSaving} label={t('section.save')} /></div>
         </form>
 
@@ -423,13 +447,18 @@ function ComparisonList({ section, onSaved, onNotice, onReorder }: { section: Ho
 
 function NewComparisonForm({ sectionId, onSaved, onNotice }: { sectionId: string; onSaved: () => void; onNotice: (notice: Notice) => void }) {
   const t = useTranslations('admin.home');
-  const [form, setForm] = useState({ title: '', description: '', eyebrow: '', item_type: 'products' as HomeCatalogType });
+  const tc = useTranslations('admin.catalog');
+  const [form, setForm] = useState({ item_type: 'products' as HomeCatalogType });
+  const [translations, setTranslations] = useState<HomeEditorialTranslations>({
+    en: { eyebrow: '', title: '', description: '' },
+    es: { eyebrow: '', title: '', description: '' },
+  });
   const [isSaving, setIsSaving] = useState(false);
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSaving(true);
     try {
-      await requestJson(`/api/vault/admin/home/sections/${sectionId}/comparisons`, 'POST', form);
+      await requestJson(`/api/vault/admin/home/sections/${sectionId}/comparisons`, 'POST', { ...form, translations });
       onSaved();
     } catch (error) {
        onNotice({ type: 'error', message: requestError(error, t('errors.createComparison')) });
@@ -439,20 +468,24 @@ function NewComparisonForm({ sectionId, onSaved, onNotice }: { sectionId: string
   };
   return <form onSubmit={save} className="mt-5 grid gap-4 rounded-2xl border border-violet-200/20 bg-violet-200/[0.04] p-5 md:grid-cols-2">
     <div className="md:col-span-2"><p className="text-sm leading-relaxed text-zinc-400">{t('section.newComparisonDescription')}</p></div>
-    <TextInput label={t('section.comparisonTitle')} value={form.title} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
     <SelectInput label={t('section.comparisonType')} value={form.item_type} onChange={(value) => setForm((current) => ({ ...current, item_type: value as HomeCatalogType }))} options={Object.entries(CATALOG_TYPE_LABELS).map(([value, label]) => ({ value, label: t(`types.${label}`) }))} />
-    <TextArea label={t('section.comparisonDescription')} value={form.description} onChange={(value) => setForm((current) => ({ ...current, description: value }))} className="md:col-span-2" hint={t('section.descriptionHint')} />
+    <div className="md:col-span-2 grid gap-4 lg:grid-cols-2">
+      <EditorialTranslationFields locale="en" title={tc('editor.languageEnglish')} values={translations.en} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
+      <EditorialTranslationFields locale="es" title={tc('editor.languageSpanish')} values={translations.es} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
+    </div>
     <div className="md:col-span-2"><SaveButton isSaving={isSaving} label={t('section.createComparison')} /></div>
   </form>;
 }
 
 function ComparisonEditor({ comparison, canMoveUp, canMoveDown, onMove, onSaved, onNotice }: { comparison: HomeComparison; canMoveUp: boolean; canMoveDown: boolean; onMove: (direction: -1 | 1) => void; onSaved: () => void; onNotice: (notice: Notice) => void }) {
   const t = useTranslations('admin.home');
-  const [form, setForm] = useState({ title: comparison.title, description: comparison.description, eyebrow: comparison.eyebrow, is_active: comparison.is_active });
+  const tc = useTranslations('admin.catalog');
+  const [form, setForm] = useState({ is_active: comparison.is_active });
+  const [translations, setTranslations] = useState<HomeEditorialTranslations>(() => getEditorialTranslations(comparison.translations, comparison));
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isReady = comparison.home_comparison_items.length === 2;
-  const update = (field: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [field]: value }));
+  const update = (field: keyof typeof form, value: boolean) => setForm((current) => ({ ...current, [field]: value }));
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (form.is_active && !isReady) {
@@ -461,7 +494,7 @@ function ComparisonEditor({ comparison, canMoveUp, canMoveDown, onMove, onSaved,
     }
     setIsSaving(true);
     try {
-      await requestJson(`/api/vault/admin/home/comparisons/${comparison.id}`, 'PATCH', form);
+      await requestJson(`/api/vault/admin/home/comparisons/${comparison.id}`, 'PATCH', { ...form, translations });
       onSaved();
     } catch (error) {
        onNotice({ type: 'error', message: requestError(error, t('errors.saveComparison')) });
@@ -489,9 +522,9 @@ function ComparisonEditor({ comparison, canMoveUp, canMoveDown, onMove, onSaved,
       <div className="flex flex-wrap items-center gap-3"><StatusBadge status={!form.is_active ? 'draft' : isReady ? 'published' : 'incomplete'} /><VisibilityToggle value={form.is_active} onChange={(value) => update('is_active', value)} /><button type="button" onClick={remove} disabled={isDeleting || isSaving} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-900/60 px-3 text-red-300 transition-colors hover:bg-red-950/40 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label={t('section.deleteComparison')}>{isDeleting ? <LoaderCircle aria-hidden="true" className="animate-spin" size={14} /> : <Trash2 aria-hidden="true" size={14} />}</button></div>
     </div>
     {form.is_active && !isReady && <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200/25 bg-amber-200/[0.05] px-4 py-3 text-sm text-amber-100" role="status"><FileWarning aria-hidden="true" className="mt-0.5 shrink-0 text-amber-200" size={16} /><p>{t('section.comparisonIncomplete')}</p></div>}
-    <form onSubmit={save} className="mt-4 grid gap-4 md:grid-cols-2">
-       <TextInput label={t('section.comparisonTitle')} value={form.title} onChange={(value) => update('title', value)} required />
-       <TextArea label={t('section.comparisonDescription')} value={form.description} onChange={(value) => update('description', value)} className="md:col-span-2" hint={t('section.descriptionHint')} />
+    <form onSubmit={save} className="mt-4 grid gap-4 lg:grid-cols-2">
+      <EditorialTranslationFields locale="en" title={tc('editor.languageEnglish')} values={translations.en} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
+      <EditorialTranslationFields locale="es" title={tc('editor.languageSpanish')} values={translations.es} onChange={(locale, field, value) => setTranslations((current) => ({ ...current, [locale]: { ...current[locale], [field]: value } }))} />
        <div><SaveButton isSaving={isSaving} label={t('section.saveComparison')} /></div>
     </form>
     <ItemListEditor
@@ -590,7 +623,35 @@ function CatalogPicker({ itemType, selectedIds, onAdd }: { itemType: HomeCatalog
     {notice && <p role="alert" className="mt-3 text-xs text-red-300">{notice}</p>}
       {results.length > 0 && <div className="mt-3 grid gap-2">{results.map((item) => <button key={item.id} type="button" disabled={selectedIds.has(item.id)} onClick={() => onAdd(item)} className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-zinc-800 px-3 text-left transition-colors hover:border-zinc-600 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"><span className="min-w-0"><strong className="block truncate text-sm text-zinc-200">{catalogItemLabel(item, tc('unknownItem'))}</strong><span className="block truncate text-xs text-zinc-600">{item.category || item.type || item.slug}</span></span><Plus aria-hidden="true" size={14} className="shrink-0 text-cyan-200" /></button>)}</div>}
       {hasSearched && results.length === 0 && !notice && <p className="mt-3 text-sm text-zinc-500">{t('picker.noResults')}</p>}
-   </div>;
+  </div>;
+}
+
+function EditorialTranslationFields({ locale, title, values, onChange }: { locale: 'en' | 'es'; title: string; values: HomeEditorialTranslation; onChange: (locale: 'en' | 'es', field: keyof HomeEditorialTranslation, value: string) => void }) {
+  const t = useTranslations('admin.home');
+  return (
+    <fieldset className="rounded-xl border border-zinc-800 bg-black/35 p-4">
+      <legend className="px-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-200/80">{title}</legend>
+      <div className="mt-2 grid gap-4">
+        <TextInput label={t('section.title')} value={values.title} onChange={(value) => onChange(locale, 'title', value)} required />
+        <TextArea label={t('section.description')} value={values.description} onChange={(value) => onChange(locale, 'description', value)} hint={t('section.descriptionHint')} />
+      </div>
+    </fieldset>
+  );
+}
+
+function HeroTranslationFields({ locale, title, values, onChange }: { locale: 'en' | 'es'; title: string; values: HomeHeroTranslation; onChange: (locale: 'en' | 'es', field: keyof HomeHeroTranslation, value: string) => void }) {
+  const t = useTranslations('admin.home');
+  return (
+    <fieldset className="rounded-xl border border-zinc-800 bg-black/35 p-4">
+      <legend className="px-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-200/80">{title}</legend>
+      <div className="mt-2 grid gap-4">
+        <TextInput label={t('hero.headline')} value={values.title} onChange={(value) => onChange(locale, 'title', value)} required />
+        <TextArea label={t('hero.descriptionField')} value={values.description} onChange={(value) => onChange(locale, 'description', value)} required />
+        <TextInput label={t('hero.primaryLabel')} value={values.primary_label} onChange={(value) => onChange(locale, 'primary_label', value)} required />
+        <TextInput label={t('hero.secondaryLabel')} value={values.secondary_label} onChange={(value) => onChange(locale, 'secondary_label', value)} required />
+      </div>
+    </fieldset>
+  );
 }
 
 function TextInput({ label, value, onChange, required, hint }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; hint?: string }) {

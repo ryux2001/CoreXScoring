@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAdminDb, getAdminUser } from '@/lib/admin/catalog';
-import { homeHref, requiredHomeText } from '@/lib/admin/home';
+import { homeHref, parseHomeHeroTranslations, saveHomeHeroTranslations } from '@/lib/admin/home';
 import { readLimitedJson } from '@/lib/api-security';
 
 export const runtime = 'nodejs';
@@ -25,20 +25,23 @@ export async function PATCH(request: NextRequest) {
 
   try {
     if (typeof body.is_active !== 'boolean') throw new Error('El estado de visibilidad no es válido.');
+    const translations = parseHomeHeroTranslations(body.translations);
     const payload = {
       id: true,
-      eyebrow: requiredHomeText(body.eyebrow, 'etiqueta', 80),
-      title: requiredHomeText(body.title, 'título', 160),
-      description: requiredHomeText(body.description, 'descripción', 480),
-      primary_label: requiredHomeText(body.primary_label, 'texto de acción principal', 80),
+      eyebrow: translations.en.eyebrow,
+      title: translations.en.title,
+      description: translations.en.description,
+      primary_label: translations.en.primary_label,
       primary_href: homeHref(body.primary_href, 'ruta principal'),
-      secondary_label: requiredHomeText(body.secondary_label, 'texto de acción secundaria', 80),
+      secondary_label: translations.en.secondary_label,
       secondary_href: homeHref(body.secondary_href, 'ruta secundaria'),
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
     };
-    const { error } = await getAdminDb().from('home_hero').upsert(payload);
+    const db = getAdminDb();
+    const { error } = await db.from('home_hero').upsert(payload);
     if (error) throw error;
+    await saveHomeHeroTranslations(db, translations);
     return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof Error && !('code' in error)) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAdminDb, getAdminUser } from '@/lib/admin/catalog';
 import { readLimitedJson } from '@/lib/api-security';
-import { optionalHomeText, requiredHomeText } from '@/lib/admin/home';
+import { parseHomeEditorialTranslations, saveHomeEditorialTranslations } from '@/lib/admin/home';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +24,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   try {
     if (typeof body.is_active !== 'boolean') throw new Error('El estado de publicación no es válido.');
+    const translations = parseHomeEditorialTranslations(body.translations);
     const db = getAdminDb();
     const comparisonId = (await context.params).id;
     if (body.is_active) {
@@ -32,13 +33,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (count !== 2) throw new Error('Añade exactamente dos elementos antes de publicar la comparación.');
     }
     const { error } = await db.from('home_comparisons').update({
-      title: requiredHomeText(body.title, 'título', 120),
-      description: optionalHomeText(body.description, 'descripción', 360),
-      eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
+      title: translations.en.title,
+      description: translations.en.description,
+      eyebrow: translations.en.eyebrow,
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
     }).eq('id', comparisonId);
     if (error) throw error;
+    await saveHomeEditorialTranslations(db, 'home_comparison_translations', 'comparison_id', comparisonId, translations);
     return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof Error && !('code' in error)) return NextResponse.json({ error: error.message }, { status: 400 });

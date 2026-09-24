@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAdminDb, getAdminUser } from '@/lib/admin/catalog';
 import { readLimitedJson } from '@/lib/api-security';
-import { optionalHomeText, parseHomeCatalogType, requiredHomeText } from '@/lib/admin/home';
+import { parseHomeCatalogType, parseHomeEditorialTranslations, saveHomeEditorialTranslations } from '@/lib/admin/home';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const itemType = parseHomeCatalogType(body.item_type);
     if (!itemType) throw new Error('El tipo de comparación no es válido.');
+    const translations = parseHomeEditorialTranslations(body.translations);
     const sectionId = (await context.params).id;
     const db = getAdminDb();
     const [{ data: section, error: sectionError }, { data: lastComparison, error: orderError }] = await Promise.all([
@@ -37,14 +38,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (!section || section.content_type !== 'comparisons') throw new Error('La sección no admite comparaciones.');
     const { data, error } = await db.from('home_comparisons').insert({
       section_id: sectionId,
-      title: requiredHomeText(body.title, 'título', 120),
-      description: optionalHomeText(body.description, 'descripción', 360),
-      eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
+      title: translations.en.title,
+      description: translations.en.description,
+      eyebrow: translations.en.eyebrow,
       item_type: itemType,
        is_active: false,
       sort_order: Number(lastComparison?.sort_order ?? -1) + 1,
     }).select('id').single();
     if (error) throw error;
+    await saveHomeEditorialTranslations(db, 'home_comparison_translations', 'comparison_id', data.id, translations);
     return NextResponse.json({ id: data.id }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof Error && !('code' in error)) return NextResponse.json({ error: error.message }, { status: 400 });
