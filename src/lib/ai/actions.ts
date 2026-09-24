@@ -1,8 +1,10 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { getRequiredServerSecret } from "@/lib/server-secrets";
-import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot, PendingAction, PendingActionComponent } from "./types";
+import type { AiActionType, BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot, PendingAction, PendingActionComponent, RecommendationComponentConstraint, RecommendationState } from "./types";
 import type { AiToolContext, AiToolResult } from "./tools/types";
 import { getProductPrice } from "@/lib/catalog/product-price";
+import { getComponentNotes } from "@/lib/scoring/components";
+import { getRecommendationStateMessage, getStateComponents, getStateCriteria, markRecommendationPlanned, mergeRecommendationState } from "./recommendation-state";
 
 type Row = Record<string, unknown>;
 type ActionSlot = ComboSlot | "motherboard" | "storage" | "psu";
@@ -36,8 +38,26 @@ interface BuildComponentRequirement {
   query: string;
   customPrice?: number;
   priceMode?: "custom" | "catalog" | "msrp";
+  owned?: boolean;
+  role?: RecommendationComponentConstraint["role"];
 }
 
+interface BuildRecommendationCriteria {
+  budget: number;
+  currency: "USD" | "EUR";
+  useCase: "gaming" | "productivity" | "creation" | "balanced";
+  resolution?: "1080p" | "1440p" | "4k";
+  priority: "value" | "performance" | "balanced";
+  preferences?: string;
+  workloads?: string[];
+  fpsTarget?: number;
+  excludedComponents?: string[];
+  preferredBrands?: string[];
+  market: "new" | "used";
+}
+
+const RECOMMENDATION_BUDGET_TOLERANCE = 0.05;
+const RECOMMENDATION_CANDIDATE_LIMIT = 12;
 export type PendingActionPayload =
   | CreateComboActionPayload
   | CreateBuildActionPayload
@@ -48,8 +68,9 @@ export class AiActionExecutionError extends Error {
     readonly code: string,
     readonly databaseCode?: string,
     readonly databaseMessage?: string,
+    message = "No se pudo guardar la entidad en la bóveda.",
   ) {
-    super("No se pudo guardar la entidad en la bóveda.");
+    super(message);
   }
 }
 
@@ -96,13 +117,11 @@ function getRamCapacity(product: Row): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-function getComponentIds(value: unknown, slots: readonly BuildSlot[]): ActionComponentIds {
-  const input = asRow(value);
-  return Object.fromEntries(
-    slots
-      .map((slot) => [slot, asText(input[slot]).trim().slice(0, 120)] as const)
-      .filter(([, id]) => id.length > 0),
-  ) as ActionComponentIds;
+function isCompatibleCpuRam(cpu: Row, ram: Row): boolean {
+  const cpuCompatibility = parseJson(cpu.compatibility);
+  const expectedRamType = normalize(cpuCompatibility.ram_type);
+  const actualRamType = getRamType(ram);
+  return !(expectedRamType && actualRamType && !expectedRamType.includes(actualRamType) && !actualRamType.includes(expectedRamType));
 }
 
 function sanitizeTitle(value: unknown, fallback: string): string {
@@ -111,21 +130,6 @@ function sanitizeTitle(value: unknown, fallback: string): string {
 
 function sanitizeCategory(value: unknown): string {
   return asText(value, "Personalizada").trim().replace(/\s+/g, " ").slice(0, 60) || "Personalizada";
-}
-
-function parsePrices(value: unknown, slots: readonly ActionSlot[]): ActionPrices {
-  const input = asRow(value);
-  const prices: ActionPrices = {};
-  for (const slot of slots) {
-    const source = asRow(input[slot]);
-    const normalized: { USD?: number; EUR?: number } = {};
-    for (const currency of ["USD", "EUR"] as const) {
-      const amount = Number(source[currency]);
-      if (Number.isFinite(amount) && amount > 0 && amount <= 1_000_000) normalized[currency] = Number(amount.toFixed(2));
-    }
-    if (Object.keys(normalized).length > 0) prices[slot] = normalized;
-  }
-  return prices;
 }
 
 function normalizeMatch(value: string): string {
@@ -164,9 +168,13 @@ function getBuildRequirement(value: unknown): BuildComponentRequirement | null {
     ? input.priceMode
     : input.customPrice !== undefined ? "custom" : "catalog";
   const customPrice = Number(input.customPrice);
+  const role = input.role === "required" || input.role === "preferred" || input.role === "owned" || input.role === "excluded"
+    ? input.role as RecommendationComponentConstraint["role"]
+    : undefined;
   return {
     query,
     priceMode,
+    ...(role ? { role, owned: role === "owned" } : {}),
     ...(Number.isFinite(customPrice) && customPrice > 0 && customPrice <= 1_000_000
       ? { customPrice: Number(customPrice.toFixed(2)) }
       : {}),
@@ -227,6 +235,253 @@ async function resolveBuildComponent(
   // mejor elegir de forma determinista que devolver el control al modelo para
   // que repita la misma tool indefinidamente.
   return { row: ranked[0].row };
+}
+
+function getBuildRecommendationCriteria(input: Row): BuildRecommendationCriteria | null {
+  const budget = Number(input.budget ?? input.budgetUsd);
+  if (!Number.isFinite(budget) || budget <= 0 || budget > 1_000_000) return null;
+  const useCase = input.useCase === "gaming" || input.useCase === "productivity" || input.useCase === "creation" || input.useCase === "balanced"
+    ? input.useCase
+    : "balanced";
+  const priority = input.priority === "value" || input.priority === "performance" || input.priority === "balanced"
+    ? input.priority
+    : "balanced";
+  const resolution = input.resolution === "1080p" || input.resolution === "1440p" || input.resolution === "4k"
+    ? input.resolution
+    : undefined;
+  const preferences = asText(input.preferences).trim().slice(0, 300);
+  return {
+    budget: Number(budget.toFixed(2)),
+    currency: input.currency === "EUR" ? "EUR" : "USD",
+    useCase,
+    priority,
+    ...(resolution ? { resolution } : {}),
+    ...(preferences ? { preferences } : {}),
+    ...(Array.isArray(input.workloads) ? { workloads: input.workloads.filter((item): item is string => typeof item === "string").slice(0, 12) } : {}),
+    ...(Number.isFinite(Number(input.fpsTarget)) && Number(input.fpsTarget) > 0 ? { fpsTarget: Number(Number(input.fpsTarget).toFixed(2)) } : {}),
+    ...(Array.isArray(input.excludedComponents) ? { excludedComponents: input.excludedComponents.filter((item): item is string => typeof item === "string").slice(0, 12) } : {}),
+    ...(Array.isArray(input.preferredBrands) ? { preferredBrands: input.preferredBrands.filter((item): item is string => typeof item === "string").slice(0, 12) } : {}),
+    market: input.market === "used" ? "used" : "new",
+  };
+}
+
+function mergeStateIntoPlanInput(input: Row, state: RecommendationState | undefined): Row {
+  if (!state) return input;
+  const stateCriteria = getStateCriteria(state);
+  const stateComponents = getStateComponents(state);
+  const stateConstraints = state?.constraints;
+  const inputCriteria = asRow(input.criteria);
+  const inputComponents = asRow(input.components);
+  const criteria = {
+    ...stateCriteria,
+    ...(stateConstraints?.excludedComponents ? { excludedComponents: stateConstraints.excludedComponents } : {}),
+    ...(stateConstraints?.preferredBrands ? { preferredBrands: stateConstraints.preferredBrands } : {}),
+    ...(stateConstraints?.market ? { market: stateConstraints.market } : {}),
+    ...inputCriteria,
+  };
+  const components = {
+    ...Object.fromEntries(Object.entries(stateComponents).map(([slot, constraint]) => [slot, constraint])),
+    ...inputComponents,
+  };
+  return {
+    ...input,
+    ...criteria,
+    criteria,
+    components,
+  };
+}
+
+function getEffectiveRequirementPrice(row: Row, requirement: BuildComponentRequirement | undefined, currency: "USD" | "EUR"): number {
+  if (requirement?.owned) return 0;
+  if (requirement?.priceMode === "custom" && requirement.customPrice !== undefined) return requirement.customPrice;
+  return getProductPrice(row, currency);
+}
+
+function getRecommendationScore(row: Row, criteria: BuildRecommendationCriteria): number {
+  const price = getProductPrice(row, criteria.currency);
+  if (price <= 0) return Number.NEGATIVE_INFINITY;
+  const profile = criteria.useCase === "gaming"
+    ? "gaming"
+    : criteria.useCase === "productivity" || criteria.useCase === "creation" ? "productivity" : "balanced";
+  const notes = getComponentNotes(row, price, profile);
+  const noteValues = Object.values(notes).filter((value) => Number.isFinite(value));
+  const averageNotes = noteValues.length > 0 ? noteValues.reduce((sum, value) => sum + value, 0) / noteValues.length : 0;
+  const primary = criteria.useCase === "gaming"
+    ? Number(notes.Gaming ?? notes["Rendimiento"] ?? averageNotes)
+    : criteria.useCase === "productivity" || criteria.useCase === "creation"
+      ? Number(notes["Productividad"] ?? notes["Rendimiento"] ?? averageNotes)
+      : Number(notes["Rendimiento"] ?? averageNotes);
+  const value = Number(notes["Calidad precio"] ?? notes["Calidad Precio"] ?? averageNotes);
+  const primaryWeight = criteria.priority === "performance" ? 0.8 : criteria.priority === "value" ? 0.4 : 0.6;
+  const valueWeight = 1 - primaryWeight;
+  const brand = normalizeMatch(asText(row.brand));
+  const preferredBrand = criteria.preferredBrands?.some((item) => brand.includes(normalizeMatch(item))) ? 0.4 : 0;
+  return primary * primaryWeight + value * valueWeight + preferredBrand;
+}
+
+function getRecommendationBudgetLimit(criteria: BuildRecommendationCriteria): number {
+  return Number((criteria.budget * (1 + RECOMMENDATION_BUDGET_TOLERANCE)).toFixed(2));
+}
+
+function isNewMarketEligible(row: Row, slot: BuildSlot): boolean {
+  if (slot !== "cpu" && slot !== "gpu") return true;
+  const text = normalizeMatch(`${asText(row.brand)} ${asText(row.name)} ${asText(row.slug)}`);
+  if (slot === "gpu") {
+    if (/\b(?:nvidia|geforce)\b/.test(text)) return /\brtx\s*(?:40|50)\d{2}\b/.test(text);
+    if (/\b(?:amd|radeon)\b/.test(text)) return /\brx\s*[7-9]\d{3}\b/.test(text);
+    if (/\bintel\b/.test(text)) return /\barc\s+b\d{3}\b/.test(text);
+    return false;
+  }
+
+  if (/\b(?:amd|ryzen)\b/.test(text)) {
+    const match = text.match(/\bryzen\s+(?:[3579]\s+)?([7-9]\d{3})(?:[a-z]\w*)?\b/);
+    return match ? Number(match[1]) >= 7_000 : false;
+  }
+  if (/\b(?:intel|core)\b/.test(text)) {
+    if (/\bcore\s+ultra\b/.test(text)) return true;
+    const match = text.match(/\bi[3579]\s*(?:-|\s)?(\d{4,5})(?:[a-z]\w*)?\b/);
+    return match ? Number(match[1]) >= 12_000 : false;
+  }
+  return false;
+}
+
+function isMarketEligible(row: Row, slot: BuildSlot, market: "new" | "used"): boolean {
+  return market === "used" || isNewMarketEligible(row, slot);
+}
+
+function getRecommendationCandidates(
+  data: unknown,
+  slot: BuildSlot,
+  criteria: BuildRecommendationCriteria,
+): Row[] {
+  const scored = (Array.isArray(data) ? data.map(asRow) : [])
+    .filter((row) => getProductPrice(row, criteria.currency) > 0)
+    .filter((row) => isMarketEligible(row, slot, criteria.market))
+    .filter((row) => !isExcludedCandidate(row, criteria))
+    .map((row) => ({ row, score: getRecommendationScore(row, criteria) }))
+    .sort((left, right) => right.score - left.score || getProductPrice(left.row, criteria.currency) - getProductPrice(right.row, criteria.currency));
+  const cheapest = scored
+    .slice()
+    .sort((left, right) => getProductPrice(left.row, criteria.currency) - getProductPrice(right.row, criteria.currency))
+    .slice(0, 4);
+  const unique = new Map([...scored.slice(0, RECOMMENDATION_CANDIDATE_LIMIT), ...cheapest].map((candidate) => [asText(candidate.row.id), candidate.row]));
+  return [...unique.values()];
+}
+
+function isExcludedCandidate(row: Row, criteria: BuildRecommendationCriteria): boolean {
+  const haystack = normalizeMatch(`${asText(row.name)} ${asText(row.brand)} ${asText(row.slug)}`);
+  return criteria.excludedComponents?.some((item) => haystack.includes(normalizeMatch(item))) === true;
+}
+
+function isCompatibleMotherboard(cpu: Row, ram: Row, motherboard: Row): boolean {
+  const cpuSocket = getSocket(cpu);
+  const motherboardSocket = getSocket(motherboard);
+  if (cpuSocket && motherboardSocket && cpuSocket !== motherboardSocket) return false;
+
+  const motherboardCompatibility = parseJson(motherboard.compatibility);
+  const supportedType = normalize(motherboardCompatibility.ram_type);
+  const actualRamType = getRamType(ram);
+  if (supportedType && actualRamType && !supportedType.includes(actualRamType) && !actualRamType.includes(supportedType)) return false;
+
+  const maxCapacity = Number(motherboardCompatibility.ram_max_capacity || 0);
+  return !(maxCapacity > 0 && getRamCapacity(ram) > maxCapacity);
+}
+
+async function resolveRecommendedBuild(
+  criteria: BuildRecommendationCriteria,
+  context: AiToolContext,
+  fixedRequirements: Partial<Record<BuildSlot, BuildComponentRequirement>> = {},
+): Promise<{ rows?: Record<BuildSlot, Row>; requirements?: Record<BuildSlot, BuildComponentRequirement>; error?: string }> {
+  const select = "id,name,brand,slug,type,specs,compatibility,price_usd,price_eur,price_base_usd,price_base_eur,priority,release_year,market_segment";
+  const results = await Promise.all(BUILD_SLOTS.map(async (slot) => {
+    const { data, error } = await context.supabase
+      .from("products_with_priority")
+      .select(select)
+      .eq("type", slot)
+      .limit(100);
+    return { slot, data, error };
+  }));
+  const fixedRows = await Promise.all(Object.entries(fixedRequirements).map(async ([slot, requirement]) => ({
+    slot: slot as BuildSlot,
+    requirement,
+    result: await resolveBuildComponent(slot as BuildSlot, requirement, context),
+  })));
+  const fixedFailure = fixedRows.find((entry) => entry.result.error || !entry.result.row);
+  if (fixedFailure) return { error: fixedFailure.result.error || `No pude resolver el componente ${fixedFailure.slot}.` };
+  const fixedBySlot = new Map(fixedRows.map((entry) => [entry.slot, entry.result.row as Row]));
+  const fixedMarketFailure = fixedRows.find((entry) => entry.result.row && !isMarketEligible(entry.result.row, entry.slot, criteria.market));
+  if (fixedMarketFailure) {
+    return { error: `${asText(fixedMarketFailure.result.row?.name)} no cumple las reglas del mercado ${criteria.market === "new" ? "nuevo" : "usado"}.` };
+  }
+
+  const candidates = Object.fromEntries(results.map(({ slot, data }) => [
+    slot,
+    fixedBySlot.has(slot)
+      ? [fixedBySlot.get(slot)!]
+      : getRecommendationCandidates(data, slot, criteria),
+  ])) as Record<BuildSlot, Row[]>;
+
+  const failedSlot = results.find(({ error }) => error)?.slot;
+  if (failedSlot) return { error: `No se pudo consultar el catálogo para ${failedSlot}.` };
+  const emptySlot = BUILD_SLOTS.find((slot) => candidates[slot].length === 0);
+  if (emptySlot) return { error: `No hay candidatos con precio válido para ${emptySlot}.` };
+
+  const budgetLimit = getRecommendationBudgetLimit(criteria);
+  const cpuCandidates = candidates.cpu;
+  const gpuCandidates = candidates.gpu;
+  const ramBoardPairs = cpuCandidates.flatMap((cpu) => candidates.ram
+    .filter((ram) => isCompatibleCpuRam(cpu, ram))
+    .flatMap((ram) => candidates.motherboard
+      .filter((motherboard) => isCompatibleMotherboard(cpu, ram, motherboard))
+      .map((motherboard) => ({ cpu, ram, motherboard }))));
+  const storagePsuPairs = candidates.storage.flatMap((storage) => candidates.psu.map((psu) => ({ storage, psu })))
+    .sort((left, right) => (
+      getEffectiveRequirementPrice(left.storage, fixedRequirements.storage, criteria.currency)
+      + getEffectiveRequirementPrice(left.psu, fixedRequirements.psu, criteria.currency)
+    ) - (
+      getEffectiveRequirementPrice(right.storage, fixedRequirements.storage, criteria.currency)
+      + getEffectiveRequirementPrice(right.psu, fixedRequirements.psu, criteria.currency)
+    ));
+  let best: { rows: Record<BuildSlot, Row>; total: number; score: number } | undefined;
+  const scoreOf = (row: Row) => getRecommendationScore(row, criteria);
+
+  for (const cpu of cpuCandidates) {
+    for (const gpu of gpuCandidates) {
+      const cpuGpuCost = getEffectiveRequirementPrice(cpu, fixedRequirements.cpu, criteria.currency)
+        + getEffectiveRequirementPrice(gpu, fixedRequirements.gpu, criteria.currency);
+      if (cpuGpuCost > budgetLimit) continue;
+      for (const pair of ramBoardPairs.filter((candidate) => candidate.cpu === cpu)) {
+        const cpuGpuRamBoardCost = cpuGpuCost
+          + getEffectiveRequirementPrice(pair.ram, fixedRequirements.ram, criteria.currency)
+          + getEffectiveRequirementPrice(pair.motherboard, fixedRequirements.motherboard, criteria.currency);
+        if (cpuGpuRamBoardCost > budgetLimit) continue;
+        for (const auxiliary of storagePsuPairs) {
+          const total = cpuGpuRamBoardCost
+            + getEffectiveRequirementPrice(auxiliary.storage, fixedRequirements.storage, criteria.currency)
+            + getEffectiveRequirementPrice(auxiliary.psu, fixedRequirements.psu, criteria.currency);
+          if (total > budgetLimit) break;
+          const score = scoreOf(cpu) * 2.2
+            + scoreOf(gpu) * 2.8
+            + scoreOf(pair.ram) * 0.8
+            + scoreOf(pair.motherboard) * 0.8
+            + scoreOf(auxiliary.storage) * 0.4
+            + scoreOf(auxiliary.psu) * 0.4;
+          if (!best || score > best.score || (score === best.score && total < best.total)) {
+            best = {
+              total,
+              score,
+              rows: { cpu, gpu, ram: pair.ram, motherboard: pair.motherboard, storage: auxiliary.storage, psu: auxiliary.psu },
+            };
+          }
+        }
+      }
+    }
+  }
+
+  if (!best) {
+    return { error: `No encontré una combinación compatible dentro del presupuesto indicado, incluso con la tolerancia del ${RECOMMENDATION_BUDGET_TOLERANCE * 100}%.` };
+  }
+  return { rows: best.rows, requirements: fixedRequirements as Record<BuildSlot, BuildComponentRequirement> };
 }
 
 function getActionSecret(): string {
@@ -329,12 +584,13 @@ async function createPendingAction(
   if (!context.actionSupabase || !context.requestId) throw new Error("No se pudo crear la propuesta de acción de forma segura.");
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
   const digest = digestPayload(payload);
-  const { data, error } = await context.actionSupabase.rpc("create_ai_pending_action_server", {
+  const { data, error } = await context.actionSupabase.rpc("create_ai_pending_action_server_v2", {
     p_request_id: context.requestId,
     p_user_id: context.actor.id,
     p_action_type: type,
     p_payload: payload,
     p_payload_digest: digest,
+    p_summary: summary,
     p_expires_at: expiresAt,
   });
   const id = getRpcId(data);
@@ -403,57 +659,6 @@ export async function searchUserBuilds(args: unknown, context: AiToolContext): P
   })) } };
 }
 
-export async function proposeCreateCombo(args: unknown, context: AiToolContext): Promise<AiToolResult> {
-  const denied = requirePermanentAccount(context);
-  if (denied) return denied;
-  const input = asRow(args);
-  const componentIds = getComponentIds(input.componentIds, COMBO_SLOTS) as Pick<ActionComponentIds, ComboSlot>;
-  const fetched = await fetchProducts(context, Object.values(componentIds));
-  if (fetched.error) return { ok: false, error: fetched.error };
-  const compatibilityError = validateProductSet(fetched.rows, componentIds, COMBO_SLOTS);
-  if (compatibilityError) return { ok: false, error: compatibilityError };
-
-  const title = sanitizeTitle(input.title, "");
-  if (title.length < 3) return { ok: false, error: "El título debe ser elegido por el usuario antes de guardar." };
-  const payload: CreateComboActionPayload = {
-    title,
-    componentIds,
-    customPrices: parsePrices(input.customPrices, COMBO_SLOTS),
-  };
-  const action = await createPendingAction(context, "create_combo", payload, "Crear combo personalizado", {
-    entityTitle: payload.title,
-    entityType: "combo",
-    components: getComponentSummary(fetched.rows, componentIds, COMBO_SLOTS),
-  });
-  return { ok: true, data: { pendingAction: action, instruction: "Presenta el resumen y pide confirmación explícita; todavía no se ha guardado nada." }, pendingAction: action };
-}
-
-export async function proposeCreateBuild(args: unknown, context: AiToolContext): Promise<AiToolResult> {
-  const denied = requirePermanentAccount(context);
-  if (denied) return denied;
-  const input = asRow(args);
-  const componentIds = getComponentIds(input.componentIds, BUILD_SLOTS) as Required<ActionComponentIds>;
-  const fetched = await fetchProducts(context, Object.values(componentIds));
-  if (fetched.error) return { ok: false, error: fetched.error };
-  const compatibilityError = validateProductSet(fetched.rows, componentIds, BUILD_SLOTS);
-  if (compatibilityError) return { ok: false, error: compatibilityError };
-
-  const title = sanitizeTitle(input.title, "");
-  if (title.length < 3) return { ok: false, error: "El título debe ser elegido por el usuario antes de guardar." };
-  const payload: CreateBuildActionPayload = {
-    title,
-    category: sanitizeCategory(input.category),
-    componentIds,
-    customPrices: parsePrices(input.customPrices, BUILD_SLOTS),
-  };
-  const action = await createPendingAction(context, "create_build", payload, "Crear build personalizada", {
-    entityTitle: payload.title,
-    entityType: "build",
-    components: getComponentSummary(fetched.rows, componentIds, BUILD_SLOTS),
-  });
-  return { ok: true, data: { pendingAction: action, instruction: "Presenta el resumen y pide confirmación explícita; todavía no se ha guardado nada." }, pendingAction: action };
-}
-
 function createBuildDraft(
   input: Row,
   requirements: Record<BuildSlot, BuildComponentRequirement>,
@@ -468,15 +673,17 @@ function createBuildDraft(
       id: componentIds[slot],
       name: asText(row?.name),
       type: slot,
-      query: requirement.query,
-      priceMode: requirement.priceMode || "catalog",
-      ...(requirement.customPrice !== undefined ? { customPrice: requirement.customPrice } : {}),
+       query: requirement.query,
+       priceMode: requirement.priceMode || "catalog",
+       ...(requirement.owned ? { owned: true } : {}),
+       ...(requirement.customPrice !== undefined ? { customPrice: requirement.customPrice } : {}),
     } satisfies BuildDraftComponent];
   })) as Record<BuildSlot, BuildDraftComponent>;
 
   return {
     ...(asText(input.title).trim() ? { title: sanitizeTitle(input.title, "") } : {}),
     category: sanitizeCategory(input.category),
+    saveState: "ready",
     currency: input.currency === "EUR" ? "EUR" : "USD",
     components,
   };
@@ -492,6 +699,7 @@ function getDraftRequirements(draft: BuildDraft): Record<BuildSlot, BuildCompone
     return [slot, {
       query: component.query,
       priceMode: component.priceMode,
+      ...(component.owned ? { owned: true } : {}),
       ...(component.customPrice !== undefined ? { customPrice: component.customPrice } : {}),
     }];
   })) as Record<BuildSlot, BuildComponentRequirement>;
@@ -518,13 +726,97 @@ function getBuildPlanMessage(draft: BuildDraft): string {
     psu: "Fuente",
   };
   const title = draft.title ? `Build «${draft.title}»` : "Build propuesta";
-  return `${title}:\n${BUILD_SLOTS.map((slot) => `${labels[slot]}: ${draft.components[slot].name}`).join("\n")}\n\nPuedes pedirme cambios antes de guardarla.`;
+  return `${title}:\n${BUILD_SLOTS.map((slot) => `${labels[slot]}: ${draft.components[slot].name}`).join("\n")}\n\n¿Quieres cambiar algún componente o procedemos con esta build?`;
+}
+
+export async function updateBuildRecommendationState(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const state = mergeRecommendationState(context.recommendationState, "build", args);
+  if (state.phase === "ready") return planBuild({}, { ...context, recommendationState: state });
+  return {
+    ok: true,
+    data: {
+      status: state.phase,
+      message: getRecommendationStateMessage(state),
+      missingFields: state.missingFields,
+      instruction: state.missingFields.length > 0
+        ? "Pregunta únicamente por los criterios mínimos que faltan. No busques componentes todavía."
+        : "Usa plan_build con el estado acumulado.",
+    },
+    recommendationState: state,
+  };
+}
+
+export async function updateComboRecommendationState(args: unknown, context: AiToolContext): Promise<AiToolResult> {
+  const state = mergeRecommendationState(context.recommendationState, "combo", args);
+  if (state.phase === "ready") return planCombo({}, { ...context, recommendationState: state });
+  return {
+    ok: true,
+    data: {
+      status: state.phase,
+      message: getRecommendationStateMessage(state),
+      missingFields: state.missingFields,
+      instruction: state.missingFields.length > 0
+        ? "Pregunta únicamente por los criterios mínimos que faltan. No busques componentes todavía."
+        : "Usa plan_combo con el estado acumulado.",
+    },
+    recommendationState: state,
+  };
 }
 
 /** Resuelve y valida una build sin crear todavía una acción de escritura. */
 export async function planBuild(args: unknown, context: AiToolContext): Promise<AiToolResult> {
-  const input = asRow(args);
+  const input = mergeStateIntoPlanInput(asRow(args), context.recommendationState);
   const components = asRow(input.components);
+  const criteria = getBuildRecommendationCriteria(input);
+  const requirementsFromInput = Object.fromEntries(
+    BUILD_SLOTS.map((slot) => [slot, getBuildRequirement(components[slot])]),
+  ) as Record<BuildSlot, BuildComponentRequirement | null>;
+  const fixedRequirements = Object.fromEntries(
+    BUILD_SLOTS.filter((slot) => requirementsFromInput[slot]).map((slot) => [slot, requirementsFromInput[slot]]),
+  ) as Partial<Record<BuildSlot, BuildComponentRequirement>>;
+  const hasExplicitComponents = BUILD_SLOTS.every((slot) => requirementsFromInput[slot] !== null);
+
+  if (context.recommendationState?.phase === "collecting" && context.recommendationState.missingFields.length > 0 && !hasExplicitComponents) {
+    return {
+      ok: true,
+      data: { status: "needs_criteria", message: getRecommendationStateMessage(context.recommendationState), missingFields: context.recommendationState.missingFields },
+      recommendationState: context.recommendationState,
+    };
+  }
+
+  if (!hasExplicitComponents && criteria) {
+    const recommended = await resolveRecommendedBuild(criteria, context, fixedRequirements);
+    if (recommended.error || !recommended.rows) return { ok: false, error: recommended.error || "No pude generar una build con esos criterios." };
+
+    const componentIds = Object.fromEntries(BUILD_SLOTS.map((slot) => [slot, asText(recommended.rows![slot].id)])) as Required<ActionComponentIds>;
+    const fetched = await fetchProducts(context, Object.values(componentIds));
+    if (fetched.error) return { ok: false, error: fetched.error };
+    const compatibilityError = validateProductSet(fetched.rows, componentIds, BUILD_SLOTS);
+    if (compatibilityError) return { ok: false, error: compatibilityError };
+    const requirements = Object.fromEntries(BUILD_SLOTS.map((slot) => [slot, fixedRequirements[slot] || {
+      query: asText(recommended.rows![slot].name),
+      priceMode: "catalog",
+    }])) as Record<BuildSlot, BuildComponentRequirement>;
+    const buildDraft = createBuildDraft({ currency: criteria.currency }, requirements, fetched.rows, componentIds);
+    const total = BUILD_SLOTS.reduce((sum, slot) => sum + getEffectiveRequirementPrice(recommended.rows![slot], requirements[slot], criteria.currency), 0);
+    const recommendationState = markRecommendationPlanned(context.recommendationState);
+
+    return {
+      ok: true,
+      data: {
+        status: "planned",
+        message: `${getBuildPlanMessage(buildDraft)}\n\n${getRecommendationBudgetMessage(total, criteria)}`,
+        criteria,
+        estimatedTotal: Number(total.toFixed(2)),
+        budgetDifference: Number((criteria.budget - total).toFixed(2)),
+        resolvedComponents: getComponentSummary(fetched.rows, componentIds, BUILD_SLOTS),
+        instruction: "Presenta la build y sus criterios en texto; espera cambios o una orden explícita de guardado.",
+      },
+      buildDraft,
+      ...(recommendationState ? { recommendationState } : {}),
+    };
+  }
+
   const requirements = Object.fromEntries(
     BUILD_SLOTS.map((slot) => [slot, getBuildRequirement(components[slot])]),
   ) as Record<BuildRequirementSlot, BuildComponentRequirement | null>;
@@ -576,6 +868,7 @@ export async function planBuild(args: unknown, context: AiToolContext): Promise<
   if (compatibilityError) return { ok: false, error: compatibilityError };
   const requirementsBySlot = Object.fromEntries(resolved.map((entry) => [entry.slot, entry.requirement])) as Record<BuildSlot, BuildComponentRequirement>;
   const buildDraft = createBuildDraft(input, requirementsBySlot, fetched.rows, componentIds);
+  const recommendationState = markRecommendationPlanned(context.recommendationState);
 
   return {
     ok: true,
@@ -586,6 +879,7 @@ export async function planBuild(args: unknown, context: AiToolContext): Promise<
       instruction: "Presenta la build en texto y espera cambios o una orden explícita de guardado.",
     },
     buildDraft,
+    ...(recommendationState ? { recommendationState } : {}),
   };
 }
 
@@ -648,7 +942,7 @@ export async function saveBuildDraft(args: unknown, context: AiToolContext): Pro
     return {
       ok: true,
       data: { status: "needs_title", message: "¿Qué título quieres ponerle a esta build?" },
-      buildDraft: { ...draft, awaitingTitle: true },
+       buildDraft: { ...draft, awaitingTitle: true, awaitingSaveConfirmation: false, saveState: "awaiting_title" },
     };
   }
 
@@ -658,7 +952,15 @@ export async function saveBuildDraft(args: unknown, context: AiToolContext): Pro
   const compatibilityError = validateProductSet(fetched.rows, componentIds, BUILD_SLOTS);
   if (compatibilityError) return { ok: false, error: compatibilityError };
 
-  const titledDraft: BuildDraft = { ...draft, title, awaitingTitle: false };
+  if (input.prepareOnly === true) {
+    return {
+      ok: true,
+      data: { status: "awaiting_save_confirmation", message: `¿Guardamos la build «${title}»?` },
+      buildDraft: { ...draft, title, awaitingTitle: false, awaitingSaveConfirmation: true, saveState: "awaiting_save_confirmation" },
+    };
+  }
+
+  const titledDraft: BuildDraft = { ...draft, title, awaitingTitle: false, awaitingSaveConfirmation: false, saveState: "ready" };
   const payload: CreateBuildActionPayload = {
     title,
     category: sanitizeCategory(input.category || draft.category),
@@ -694,6 +996,7 @@ function createComboDraft(
       type: slot,
       query: requirement.query,
       priceMode: requirement.priceMode || "catalog",
+      ...(requirement.owned ? { owned: true } : {}),
       ...(requirement.customPrice !== undefined ? { customPrice: requirement.customPrice } : {}),
     } satisfies ComboDraftComponent];
   })) as Record<ComboSlot, ComboDraftComponent>;
@@ -701,6 +1004,7 @@ function createComboDraft(
   return {
     ...(asText(input.title).trim() ? { title: sanitizeTitle(input.title, "") } : {}),
     category: sanitizeCategory(input.category),
+    saveState: "ready",
     currency: input.currency === "EUR" ? "EUR" : "USD",
     components,
   };
@@ -716,6 +1020,7 @@ function getComboDraftRequirements(draft: ComboDraft): Record<ComboSlot, BuildCo
     return [slot, {
       query: component.query,
       priceMode: component.priceMode,
+      ...(component.owned ? { owned: true } : {}),
       ...(component.customPrice !== undefined ? { customPrice: component.customPrice } : {}),
     }];
   })) as Record<ComboSlot, BuildComponentRequirement>;
@@ -735,16 +1040,114 @@ function getComboDraftCustomPrices(draft: ComboDraft): ActionPrices {
 function getComboPlanMessage(draft: ComboDraft): string {
   const labels: Record<ComboSlot, string> = { cpu: "CPU", gpu: "GPU", ram: "RAM" };
   const title = draft.title ? `Combo «${draft.title}»` : "Combo propuesto";
-  return `${title}:\n${COMBO_SLOTS.map((slot) => `${labels[slot]}: ${draft.components[slot].name}`).join("\n")}\n\nPuedes pedirme cambios antes de guardarlo.`;
+  return `${title}:\n${COMBO_SLOTS.map((slot) => `${labels[slot]}: ${draft.components[slot].name}`).join("\n")}\n\n¿Quieres cambiar algún componente o procedemos con este combo?`;
+}
+
+function getRecommendationBudgetMessage(total: number, criteria: BuildRecommendationCriteria): string {
+  const difference = Number((criteria.budget - total).toFixed(2));
+  const currency = criteria.currency;
+  if (difference >= 0) return `Total estimado: ${total.toFixed(2)} ${currency}. Quedan ${difference.toFixed(2)} ${currency} del presupuesto.`;
+  return `Total estimado: ${total.toFixed(2)} ${currency}. Supera el presupuesto en ${Math.abs(difference).toFixed(2)} ${currency}, dentro de la tolerancia máxima del 5%.`;
+}
+
+async function resolveRecommendedCombo(
+  criteria: BuildRecommendationCriteria,
+  context: AiToolContext,
+  fixedRequirements: Partial<Record<ComboSlot, BuildComponentRequirement>> = {},
+): Promise<{ rows?: Record<ComboSlot, Row>; error?: string }> {
+  const select = "id,name,brand,slug,type,specs,compatibility,price_usd,price_eur,price_base_usd,price_base_eur,priority,release_year,market_segment";
+  const results = await Promise.all(COMBO_SLOTS.map(async (slot) => {
+    const { data, error } = await context.supabase.from("products_with_priority").select(select).eq("type", slot).limit(100);
+    return { slot, data, error };
+  }));
+  const fixedRows = await Promise.all(Object.entries(fixedRequirements).map(async ([slot, requirement]) => ({
+    slot: slot as ComboSlot,
+    result: await resolveBuildComponent(slot as ComboSlot, requirement, context),
+  })));
+  const fixedFailure = fixedRows.find((entry) => entry.result.error || !entry.result.row);
+  if (fixedFailure) return { error: fixedFailure.result.error || `No pude resolver el componente ${fixedFailure.slot}.` };
+  const fixedBySlot = new Map(fixedRows.map((entry) => [entry.slot, entry.result.row as Row]));
+  const fixedMarketFailure = fixedRows.find((entry) => entry.result.row && !isMarketEligible(entry.result.row, entry.slot, criteria.market));
+  if (fixedMarketFailure) {
+    return { error: `${asText(fixedMarketFailure.result.row?.name)} no cumple las reglas del mercado ${criteria.market === "new" ? "nuevo" : "usado"}.` };
+  }
+  const candidates = Object.fromEntries(results.map(({ slot, data }) => [
+    slot,
+    fixedBySlot.has(slot)
+      ? [fixedBySlot.get(slot)!]
+      : getRecommendationCandidates(data, slot, criteria),
+  ])) as Record<ComboSlot, Row[]>;
+  const failedSlot = results.find(({ error }) => error)?.slot;
+  if (failedSlot) return { error: `No se pudo consultar el catálogo para ${failedSlot}.` };
+  const emptySlot = COMBO_SLOTS.find((slot) => candidates[slot].length === 0);
+  if (emptySlot) return { error: `No hay candidatos con precio válido para ${emptySlot}.` };
+
+  const budgetLimit = getRecommendationBudgetLimit(criteria);
+  let best: { rows: Record<ComboSlot, Row>; total: number; score: number } | undefined;
+  for (const cpu of candidates.cpu) {
+    for (const gpu of candidates.gpu) {
+      for (const ram of candidates.ram) {
+        if (!isCompatibleCpuRam(cpu, ram)) continue;
+        const total = getEffectiveRequirementPrice(cpu, fixedRequirements.cpu, criteria.currency)
+          + getEffectiveRequirementPrice(gpu, fixedRequirements.gpu, criteria.currency)
+          + getEffectiveRequirementPrice(ram, fixedRequirements.ram, criteria.currency);
+        if (total > budgetLimit) continue;
+        const score = getRecommendationScore(cpu, criteria) * 2.2
+          + getRecommendationScore(gpu, criteria) * 2.8
+          + getRecommendationScore(ram, criteria) * 0.8;
+        if (!best || score > best.score || (score === best.score && total < best.total)) {
+          best = { rows: { cpu, gpu, ram }, total, score };
+        }
+      }
+    }
+  }
+  if (!best) return { error: `No encontré un combo compatible dentro del presupuesto indicado, incluso con la tolerancia del ${RECOMMENDATION_BUDGET_TOLERANCE * 100}%.` };
+  return { rows: best.rows };
+}
+
+function getComboRecommendationCriteria(input: Row): BuildRecommendationCriteria | null {
+  return getBuildRecommendationCriteria(input);
 }
 
 export async function planCombo(args: unknown, context: AiToolContext): Promise<AiToolResult> {
-  const input = asRow(args);
+  const input = mergeStateIntoPlanInput(asRow(args), context.recommendationState);
   const components = asRow(input.components);
   const requirements = Object.fromEntries(
     COMBO_SLOTS.map((slot) => [slot, getBuildRequirement(components[slot])]),
   ) as Record<ComboSlot, BuildComponentRequirement | null>;
   const missing = COMBO_SLOTS.filter((slot) => !requirements[slot]);
+  const criteria = getComboRecommendationCriteria(input);
+  const fixedRequirements = Object.fromEntries(
+    COMBO_SLOTS.filter((slot) => requirements[slot]).map((slot) => [slot, requirements[slot]]),
+  ) as Partial<Record<ComboSlot, BuildComponentRequirement>>;
+  const hasExplicitComponents = COMBO_SLOTS.every((slot) => requirements[slot] !== null);
+
+  if (context.recommendationState?.phase === "collecting" && context.recommendationState.missingFields.length > 0 && !hasExplicitComponents) {
+    return {
+      ok: true,
+      data: { status: "needs_criteria", message: getRecommendationStateMessage(context.recommendationState), missingFields: context.recommendationState.missingFields },
+      recommendationState: context.recommendationState,
+    };
+  }
+
+  if (missing.length > 0 && criteria) {
+    const recommended = await resolveRecommendedCombo(criteria, context, fixedRequirements);
+    if (recommended.error || !recommended.rows) return { ok: false, error: recommended.error || "No pude generar un combo con esos criterios." };
+    const componentIds = Object.fromEntries(COMBO_SLOTS.map((slot) => [slot, asText(recommended.rows![slot].id)])) as Pick<ActionComponentIds, ComboSlot>;
+    const fetched = await fetchProducts(context, Object.values(componentIds));
+    if (fetched.error) return { ok: false, error: fetched.error };
+    const compatibilityError = validateProductSet(fetched.rows, componentIds as Required<ActionComponentIds>, COMBO_SLOTS);
+    if (compatibilityError) return { ok: false, error: compatibilityError };
+    const requirementsBySlot = Object.fromEntries(COMBO_SLOTS.map((slot) => [slot, fixedRequirements[slot] || { query: asText(recommended.rows![slot].name), priceMode: "catalog" }])) as Record<ComboSlot, BuildComponentRequirement>;
+    const comboDraft = createComboDraft({ currency: criteria.currency }, requirementsBySlot, fetched.rows, componentIds);
+    const total = COMBO_SLOTS.reduce((sum, slot) => sum + getEffectiveRequirementPrice(recommended.rows![slot], requirementsBySlot[slot], criteria.currency), 0);
+    return {
+      ok: true,
+      data: { status: "planned", message: `${getComboPlanMessage(comboDraft)}\n\n${getRecommendationBudgetMessage(total, criteria)}`, criteria, estimatedTotal: Number(total.toFixed(2)), budgetDifference: Number((criteria.budget - total).toFixed(2)), instruction: "Presenta el combo y espera cambios o una orden explícita de guardado." },
+      comboDraft,
+      ...(context.recommendationState ? { recommendationState: markRecommendationPlanned(context.recommendationState) } : {}),
+    };
+  }
   if (missing.length > 0) return { ok: false, error: `Faltan requisitos para: ${missing.join(", ")}.` };
 
   const resolved = await Promise.all(COMBO_SLOTS.map(async (slot) => ({
@@ -771,6 +1174,7 @@ export async function planCombo(args: unknown, context: AiToolContext): Promise<
       instruction: "Presenta el combo en texto y espera cambios o una orden explícita de guardado.",
     },
     comboDraft,
+    ...(context.recommendationState ? { recommendationState: markRecommendationPlanned(context.recommendationState) } : {}),
   };
 }
 
@@ -808,13 +1212,20 @@ export async function saveComboDraft(args: unknown, context: AiToolContext): Pro
   const draft = context.comboDraft;
   if (!draft) return { ok: false, error: "No hay un combo planificado para guardar." };
   const title = sanitizeTitle(asRow(args).title, "");
-  if (title.length < 3) return { ok: true, data: { status: "needs_title", message: "¿Qué título quieres ponerle a este combo?" }, comboDraft: { ...draft, awaitingTitle: true } };
+   if (title.length < 3) return { ok: true, data: { status: "needs_title", message: "¿Qué título quieres ponerle a este combo?" }, comboDraft: { ...draft, awaitingTitle: true, awaitingSaveConfirmation: false, saveState: "awaiting_title" } };
   const componentIds = getComboDraftComponentIds(draft);
   const fetched = await fetchProducts(context, Object.values(componentIds));
   if (fetched.error) return { ok: false, error: fetched.error };
   const compatibilityError = validateProductSet(fetched.rows, componentIds as Required<ActionComponentIds>, COMBO_SLOTS);
   if (compatibilityError) return { ok: false, error: compatibilityError };
-  const titledDraft: ComboDraft = { ...draft, title, awaitingTitle: false };
+  if (asRow(args).prepareOnly === true) {
+    return {
+      ok: true,
+      data: { status: "awaiting_save_confirmation", message: `¿Guardamos el combo «${title}»?` },
+      comboDraft: { ...draft, title, awaitingTitle: false, awaitingSaveConfirmation: true, saveState: "awaiting_save_confirmation" },
+    };
+  }
+  const titledDraft: ComboDraft = { ...draft, title, awaitingTitle: false, awaitingSaveConfirmation: false, saveState: "ready" };
   const payload: CreateComboActionPayload = {
     title,
     componentIds,
@@ -864,12 +1275,27 @@ function slugify(value: string, fallback: string): string {
   return slug || fallback;
 }
 
+function getActionPayload(value: unknown): Row | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Row;
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Row : null;
+  } catch {
+    return null;
+  }
+}
+
 function getRpcAction(value: unknown): { actionType: AiActionType; payload: PendingActionPayload } | null {
-  const row = Array.isArray(value) ? asRow(value[0]) : asRow(value);
+  const result = Array.isArray(value) ? value[0] : value;
+  const candidate = asRow(result);
+  const row = candidate.action_type === undefined && candidate.payload === undefined && candidate.data !== undefined
+    ? asRow(candidate.data)
+    : candidate;
   const actionType = asText(row.action_type) as AiActionType;
-  const payload = row.payload;
-  return ACTION_TYPES.has(actionType) && payload && typeof payload === "object" && !Array.isArray(payload)
-    ? { actionType, payload: payload as PendingActionPayload }
+  const payload = getActionPayload(row.payload);
+  return ACTION_TYPES.has(actionType) && payload
+    ? { actionType, payload: payload as unknown as PendingActionPayload }
     : null;
 }
 
@@ -878,8 +1304,18 @@ function getPricePayload(prices: ActionPrices, slot: ActionSlot, currency: "USD"
   return typeof price === "number" && Number.isFinite(price) && price > 0 && price <= 1_000_000 ? price : null;
 }
 
-async function insertCreatedEntity(context: AiToolContext, type: "combo" | "build", payload: CreateComboActionPayload | CreateBuildActionPayload) {
+async function insertCreatedEntity(context: AiToolContext, type: "combo" | "build", payload: CreateComboActionPayload | CreateBuildActionPayload, actionId: string) {
   const slots = type === "combo" ? COMBO_SLOTS : BUILD_SLOTS;
+  const table = type === "combo" ? "created_combos" : "created_builds";
+  const { data: existing, error: existingError } = await context.supabase
+    .from(table)
+    .select("id,title")
+    .eq("user_id", context.actor.id)
+    .eq("ai_pending_action_id", actionId)
+    .maybeSingle();
+  if (existingError) throw new Error("No se pudo comprobar el estado del guardado.");
+  if (existing && typeof existing.title === "string") return existing.title;
+
   const fetched = await fetchProducts(context, Object.values(payload.componentIds));
   if (fetched.error) throw new Error(fetched.error);
   const compatibilityError = validateProductSet(fetched.rows, payload.componentIds, slots);
@@ -887,13 +1323,14 @@ async function insertCreatedEntity(context: AiToolContext, type: "combo" | "buil
 
   const base = {
     user_id: context.actor.id,
+    ai_pending_action_id: actionId,
     title: sanitizeTitle(payload.title, type === "combo" ? "Combo" : "Build"),
     slug: `${slugify(payload.title, type)}-${crypto.randomUUID().slice(0, 8)}`,
     ...Object.fromEntries(slots.map((slot) => [`${slot}_id`, (payload.componentIds as ActionComponentIds)[slot]])),
   } as Record<string, unknown>;
   if (type === "build") {
     base.category = sanitizeCategory((payload as CreateBuildActionPayload).category);
-    base.is_active = true;
+    base.is_active = false;
   }
   for (const slot of slots) {
     for (const currency of ["USD", "EUR"] as const) {
@@ -901,7 +1338,7 @@ async function insertCreatedEntity(context: AiToolContext, type: "combo" | "buil
     }
   }
 
-  const { error } = await context.supabase.from(type === "combo" ? "created_combos" : "created_builds").insert(base);
+  const { error } = await context.supabase.from(table).insert(base);
   if (error) {
     throw new AiActionExecutionError(
       "vault_insert_failed",
@@ -910,6 +1347,17 @@ async function insertCreatedEntity(context: AiToolContext, type: "combo" | "buil
     );
   }
   return base.title;
+}
+
+async function finalizePendingAction(context: AiToolContext, actionId: string): Promise<void> {
+  const { error } = await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });
+  if (error) {
+    throw new AiActionExecutionError(
+      "pending_action_finalize_failed",
+      error.code,
+      error.message.slice(0, 500),
+    );
+  }
 }
 
 export async function confirmPendingAction(
@@ -927,23 +1375,29 @@ export async function confirmPendingAction(
     throw new Error("No se pudo validar la propuesta de acción.");
   }
   const action = getRpcAction(data);
-  if (!action) throw new Error("La propuesta de acción no es válida.");
+  if (!action) {
+    await context.supabase.rpc("fail_ai_pending_action", { p_action_id: actionId });
+    throw new AiActionExecutionError(
+      "pending_action_payload_invalid",
+      undefined,
+      undefined,
+      "La propuesta de acción no es válida.",
+    );
+  }
 
   try {
-    const calculatedDigest = digestPayload(action.payload);
-    const suppliedDigest = digest.toLowerCase();
-    const digestMatches = suppliedDigest.length === calculatedDigest.length
-      && timingSafeEqual(Buffer.from(suppliedDigest, "ascii"), Buffer.from(calculatedDigest, "ascii"));
-    if (!digestMatches) throw new Error("La propuesta de acción no es válida.");
+    // The claim RPC already authenticates the exact stored digest, action owner,
+    // expiry and status. Re-hashing the JSONB response here is unsafe because
+    // PostgreSQL may return object keys in a different order than the original.
 
     if (action.actionType === "create_combo") {
-      const title = await insertCreatedEntity(context, "combo", action.payload as CreateComboActionPayload);
-      await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });
+      const title = await insertCreatedEntity(context, "combo", action.payload as CreateComboActionPayload, actionId);
+      await finalizePendingAction(context, actionId);
       return { message: `El combo «${title}» se guardó en tu bóveda.` };
     }
     if (action.actionType === "create_build") {
-      const title = await insertCreatedEntity(context, "build", action.payload as CreateBuildActionPayload);
-      await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });
+      const title = await insertCreatedEntity(context, "build", action.payload as CreateBuildActionPayload, actionId);
+      await finalizePendingAction(context, actionId);
       return { message: `La build «${title}» se guardó en tu bóveda.` };
     }
 
@@ -970,7 +1424,7 @@ export async function confirmPendingAction(
       updateError.message.slice(0, 500),
     );
   }
-    await context.supabase.rpc("finalize_ai_pending_action", { p_action_id: actionId });
+    await finalizePendingAction(context, actionId);
     return { message: `El precio personalizado de ${payload.slot} se actualizó a ${payload.price} ${payload.currency}.` };
   } catch (executionError) {
     await context.supabase.rpc("fail_ai_pending_action", { p_action_id: actionId });

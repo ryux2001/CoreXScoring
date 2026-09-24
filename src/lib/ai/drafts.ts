@@ -1,6 +1,6 @@
 import { redactSensitiveText } from "./privacy";
 import type { AiSupabaseClient } from "./tools/types";
-import type { BuildDraft, BuildDraftComponent, BuildSlot, ComboDraft, ComboDraftComponent, ComboSlot } from "./types";
+import { getDraftSaveState, type BuildDraft, type BuildDraftComponent, type BuildSlot, type ComboDraft, type ComboDraftComponent, type ComboSlot } from "./types";
 
 type Row = Record<string, unknown>;
 
@@ -44,6 +44,7 @@ function resolveComponent(
     query: asText(source.query, 120),
     priceMode: priceMode === "custom" && customPrice === undefined ? "catalog" : priceMode,
     ...(customPrice !== undefined ? { customPrice } : {}),
+    ...(source.owned === true ? { owned: true } : {}),
   } as BuildDraftComponent | ComboDraftComponent;
 }
 
@@ -85,6 +86,8 @@ export async function resolveServerDrafts(
       resolved.buildDraft = {
         ...(resolveTitle(buildDraft.title) ? { title: resolveTitle(buildDraft.title) } : {}),
         ...(buildDraft.awaitingTitle === true ? { awaitingTitle: true } : {}),
+        ...(buildDraft.awaitingSaveConfirmation === true ? { awaitingSaveConfirmation: true } : {}),
+        saveState: getDraftSaveState(buildDraft),
         ...(resolveCategory(buildDraft.category) ? { category: resolveCategory(buildDraft.category) } : {}),
         currency: buildDraft.currency === "EUR" ? "EUR" : "USD",
         components: components as Record<BuildSlot, BuildDraftComponent>,
@@ -101,6 +104,8 @@ export async function resolveServerDrafts(
       resolved.comboDraft = {
         ...(resolveTitle(comboDraft.title) ? { title: resolveTitle(comboDraft.title) } : {}),
         ...(comboDraft.awaitingTitle === true ? { awaitingTitle: true } : {}),
+        ...(comboDraft.awaitingSaveConfirmation === true ? { awaitingSaveConfirmation: true } : {}),
+        saveState: getDraftSaveState(comboDraft),
         ...(resolveCategory(comboDraft.category) ? { category: resolveCategory(comboDraft.category) } : {}),
         currency: comboDraft.currency === "EUR" ? "EUR" : "USD",
         components: components as Record<ComboSlot, ComboDraftComponent>,

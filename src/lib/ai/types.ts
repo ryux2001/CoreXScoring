@@ -14,6 +14,11 @@ export type PageRoute = "home" | "catalog" | "comparator" | "combo" | "build" | 
 export type PageEntityType = "product" | "combo" | "build" | "saved_combo" | "saved_build";
 export type BuildSlot = "cpu" | "gpu" | "ram" | "motherboard" | "storage" | "psu";
 export type ComboSlot = "cpu" | "gpu" | "ram";
+export type RecommendationUseCase = "gaming" | "productivity" | "creation" | "balanced";
+export type RecommendationPriority = "value" | "performance" | "balanced";
+export type RecommendationMarket = "new" | "used";
+export type RecommendationComponentRole = "required" | "preferred" | "owned" | "excluded";
+export type DraftSaveState = "ready" | "awaiting_title" | "awaiting_save_confirmation";
 export type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
 
 export interface CatalogPriceEvaluationRequest {
@@ -109,10 +114,58 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface RecommendationCriteria {
+  budget?: number;
+  currency?: "USD" | "EUR";
+  useCase?: RecommendationUseCase;
+  workloads?: string[];
+  resolution?: "1080p" | "1440p" | "4k";
+  fpsTarget?: number;
+  priority?: RecommendationPriority;
+  preferences?: string;
+}
+
+export interface RecommendationComponentConstraint {
+  query: string;
+  role: RecommendationComponentRole;
+  customPrice?: number;
+  currency?: "USD" | "EUR";
+}
+
+export interface RecommendationConstraints<Slot extends string> {
+  components: Partial<Record<Slot, RecommendationComponentConstraint>>;
+  excludedComponents?: string[];
+  preferredBrands?: string[];
+  market?: RecommendationMarket;
+}
+
+export interface BuildRecommendationState {
+  version: 2;
+  mode: "build";
+  active: true;
+  phase: "collecting" | "ready" | "planned";
+  criteria: RecommendationCriteria;
+  constraints: RecommendationConstraints<BuildSlot>;
+  missingFields: string[];
+}
+
+export interface ComboRecommendationState {
+  version: 2;
+  mode: "combo";
+  active: true;
+  phase: "collecting" | "ready" | "planned";
+  criteria: RecommendationCriteria;
+  constraints: RecommendationConstraints<ComboSlot>;
+  missingFields: string[];
+}
+
+export type RecommendationState = BuildRecommendationState | ComboRecommendationState;
+
 export interface PersistedConversationState {
-  version: 1;
+  version: 1 | 2;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  recommendationState?: RecommendationState;
 }
 
 export interface ConversationSummary {
@@ -175,11 +228,14 @@ export interface BuildDraftComponent {
   query: string;
   priceMode: "custom" | "catalog" | "msrp";
   customPrice?: number;
+  owned?: boolean;
 }
 
 export interface BuildDraft {
   title?: string;
   awaitingTitle?: boolean;
+  awaitingSaveConfirmation?: boolean;
+  saveState?: DraftSaveState;
   category?: string;
   currency: "USD" | "EUR";
   components: Record<BuildSlot, BuildDraftComponent>;
@@ -192,11 +248,14 @@ export interface ComboDraftComponent {
   query: string;
   priceMode: "custom" | "catalog" | "msrp";
   customPrice?: number;
+  owned?: boolean;
 }
 
 export interface ComboDraft {
   title?: string;
   awaitingTitle?: boolean;
+  awaitingSaveConfirmation?: boolean;
+  saveState?: DraftSaveState;
   category?: string;
   currency: "USD" | "EUR";
   components: Record<ComboSlot, ComboDraftComponent>;
@@ -207,8 +266,17 @@ export interface AiActionRequest {
   digest: string;
 }
 
+export function getDraftSaveState(draft: Pick<BuildDraft | ComboDraft, "saveState" | "awaitingTitle" | "awaitingSaveConfirmation">): DraftSaveState {
+  if (draft.saveState === "awaiting_save_confirmation" || draft.saveState === "awaiting_title" || draft.saveState === "ready") return draft.saveState;
+  if (draft.awaitingSaveConfirmation === true) return "awaiting_save_confirmation";
+  if (draft.awaitingTitle === true) return "awaiting_title";
+  return "ready";
+}
+
 export interface ChatRequest {
   messages: ChatMessage[];
+  /** Reenvía explícitamente el último turno fallido; permite deduplicar un turno guardado. */
+  retry?: boolean;
   /** Solicita continuar la última respuesta sin crear un nuevo mensaje de usuario. */
   continuation?: boolean;
   conversationMode?: AiConversationMode;
@@ -218,6 +286,7 @@ export interface ChatRequest {
   context?: PageContext;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  recommendationState?: RecommendationState;
   catalogPriceEvaluation?: CatalogPriceEvaluationRequest;
   frontendPriceContext?: AiFrontendPriceContext;
   turnstileToken?: string;
@@ -234,6 +303,8 @@ export interface ChatResponse {
   pendingAction?: PendingAction;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  /** Estado estructurado de una recomendación; null indica que se debe limpiar. */
+  recommendationState?: RecommendationState | null;
   catalogPriceEvaluation?: CatalogPriceEvaluation;
   catalogPriceUpdate?: CatalogPriceEvaluation;
   comparisonAction?: ComparisonUiAction;
@@ -258,6 +329,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (conversationMode !== undefined && !["temporary", "saved"].includes(conversationMode)) return false;
   const continuation = (value as ChatRequest).continuation;
   if (continuation !== undefined && typeof continuation !== "boolean") return false;
+  const retry = (value as ChatRequest).retry;
+  if (retry !== undefined && typeof retry !== "boolean") return false;
   const conversationId = (value as ChatRequest).conversationId;
   if (conversationId !== undefined && (typeof conversationId !== "string" || conversationId.length > 80)) return false;
   const cacheSessionId = (value as ChatRequest).cacheSessionId;
@@ -267,6 +340,8 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (buildDraft !== undefined && !isBuildDraft(buildDraft)) return false;
   const comboDraft = (value as ChatRequest).comboDraft;
   if (comboDraft !== undefined && !isComboDraft(comboDraft)) return false;
+  const recommendationState = (value as ChatRequest).recommendationState;
+  if (recommendationState !== undefined && !isRecommendationState(recommendationState)) return false;
   const catalogPriceEvaluation = (value as ChatRequest).catalogPriceEvaluation;
   if (catalogPriceEvaluation !== undefined && !isCatalogPriceEvaluationRequest(catalogPriceEvaluation)) return false;
   const frontendPriceContext = (value as ChatRequest).frontendPriceContext;
@@ -290,6 +365,44 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     && message.content.trim().length > 0
     && message.content.length <= MAX_CHAT_MESSAGE_LENGTH
   ));
+}
+
+function isRecommendationState(value: unknown): value is RecommendationState {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const state = value as RecommendationState;
+  if (state.version !== 2 || state.active !== true || (state.mode !== "build" && state.mode !== "combo")
+    || !["collecting", "ready", "planned"].includes(state.phase)
+    || !state.criteria || typeof state.criteria !== "object"
+    || !state.constraints || typeof state.constraints !== "object"
+    || !state.constraints.components || typeof state.constraints.components !== "object"
+    || !Array.isArray(state.missingFields) || state.missingFields.length > 12
+  ) return false;
+
+  const slots = state.mode === "build"
+    ? ["cpu", "gpu", "ram", "motherboard", "storage", "psu"]
+    : ["cpu", "gpu", "ram"];
+  const criteria = state.criteria;
+  if (criteria.budget !== undefined && (typeof criteria.budget !== "number" || !Number.isFinite(criteria.budget) || criteria.budget <= 0 || criteria.budget > 1_000_000)) return false;
+  if (criteria.currency !== undefined && criteria.currency !== "USD" && criteria.currency !== "EUR") return false;
+  if (criteria.useCase !== undefined && !["gaming", "productivity", "creation", "balanced"].includes(criteria.useCase)) return false;
+  if (criteria.priority !== undefined && !["value", "performance", "balanced"].includes(criteria.priority)) return false;
+  if (criteria.resolution !== undefined && !["1080p", "1440p", "4k"].includes(criteria.resolution)) return false;
+  if (criteria.fpsTarget !== undefined && (typeof criteria.fpsTarget !== "number" || !Number.isFinite(criteria.fpsTarget) || criteria.fpsTarget <= 0 || criteria.fpsTarget > 1_000)) return false;
+  if (criteria.preferences !== undefined && (typeof criteria.preferences !== "string" || criteria.preferences.length > 500)) return false;
+  if (criteria.workloads !== undefined && (!Array.isArray(criteria.workloads) || criteria.workloads.length > 12 || criteria.workloads.some((item) => typeof item !== "string" || item.length > 100))) return false;
+
+  if (state.constraints.market !== undefined && !["new", "used"].includes(state.constraints.market)) return false;
+  if (state.constraints.preferredBrands !== undefined && (!Array.isArray(state.constraints.preferredBrands) || state.constraints.preferredBrands.length > 12 || state.constraints.preferredBrands.some((item) => typeof item !== "string" || item.length > 60))) return false;
+  if (state.constraints.excludedComponents !== undefined && (!Array.isArray(state.constraints.excludedComponents) || state.constraints.excludedComponents.length > 12 || state.constraints.excludedComponents.some((item) => typeof item !== "string" || item.length > 120))) return false;
+
+  return Object.entries(state.constraints.components).every(([slot, constraint]) => {
+    if (!slots.includes(slot) || !constraint || typeof constraint !== "object") return false;
+    const item = constraint as RecommendationComponentConstraint;
+    return typeof item.query === "string" && item.query.length > 0 && item.query.length <= 120
+      && ["required", "preferred", "owned", "excluded"].includes(item.role)
+      && (item.currency === undefined || item.currency === "USD" || item.currency === "EUR")
+      && (item.customPrice === undefined || (typeof item.customPrice === "number" && Number.isFinite(item.customPrice) && item.customPrice > 0 && item.customPrice <= 1_000_000));
+  });
 }
 
 function isFrontendPriceContext(value: unknown): value is AiFrontendPriceContext {
@@ -359,9 +472,12 @@ function isBuildDraft(value: unknown): value is BuildDraft {
   const draft = value as BuildDraft;
   if ((draft.title !== undefined && (typeof draft.title !== "string" || draft.title.length > 80))
     || (draft.awaitingTitle !== undefined && typeof draft.awaitingTitle !== "boolean")
+    || (draft.awaitingSaveConfirmation !== undefined && typeof draft.awaitingSaveConfirmation !== "boolean")
+    || (draft.saveState !== undefined && !["ready", "awaiting_title", "awaiting_save_confirmation"].includes(draft.saveState))
     || (draft.category !== undefined && (typeof draft.category !== "string" || draft.category.length > 60))
-    || !["USD", "EUR"].includes(draft.currency)
-    || !draft.components || typeof draft.components !== "object" || Array.isArray(draft.components)) return false;
+     || !["USD", "EUR"].includes(draft.currency)
+     || !draft.components || typeof draft.components !== "object" || Array.isArray(draft.components)) return false;
+  if (getDraftSaveState(draft) === "awaiting_save_confirmation" && (!draft.title || draft.awaitingTitle === true)) return false;
 
   const slots: BuildSlot[] = ["cpu", "gpu", "ram", "motherboard", "storage", "psu"];
   return slots.every((slot) => {
@@ -372,6 +488,7 @@ function isBuildDraft(value: unknown): value is BuildDraft {
       && component.type === slot
       && typeof component.query === "string" && component.query.length <= 120
       && ["custom", "catalog", "msrp"].includes(component.priceMode)
+      && (component.owned === undefined || typeof component.owned === "boolean")
       && (component.customPrice === undefined || (typeof component.customPrice === "number" && Number.isFinite(component.customPrice) && component.customPrice > 0 && component.customPrice <= 1_000_000));
   });
 }
@@ -381,9 +498,12 @@ function isComboDraft(value: unknown): value is ComboDraft {
   const draft = value as ComboDraft;
   if ((draft.title !== undefined && (typeof draft.title !== "string" || draft.title.length > 80))
     || (draft.awaitingTitle !== undefined && typeof draft.awaitingTitle !== "boolean")
+    || (draft.awaitingSaveConfirmation !== undefined && typeof draft.awaitingSaveConfirmation !== "boolean")
+    || (draft.saveState !== undefined && !["ready", "awaiting_title", "awaiting_save_confirmation"].includes(draft.saveState))
     || (draft.category !== undefined && (typeof draft.category !== "string" || draft.category.length > 60))
-    || !["USD", "EUR"].includes(draft.currency)
-    || !draft.components || typeof draft.components !== "object" || Array.isArray(draft.components)) return false;
+     || !["USD", "EUR"].includes(draft.currency)
+     || !draft.components || typeof draft.components !== "object" || Array.isArray(draft.components)) return false;
+  if (getDraftSaveState(draft) === "awaiting_save_confirmation" && (!draft.title || draft.awaitingTitle === true)) return false;
 
   const slots: ComboSlot[] = ["cpu", "gpu", "ram"];
   return slots.every((slot) => {
@@ -394,6 +514,7 @@ function isComboDraft(value: unknown): value is ComboDraft {
       && component.type === slot
       && typeof component.query === "string" && component.query.length <= 120
       && ["custom", "catalog", "msrp"].includes(component.priceMode)
+      && (component.owned === undefined || typeof component.owned === "boolean")
       && (component.customPrice === undefined || (typeof component.customPrice === "number" && Number.isFinite(component.customPrice) && component.customPrice > 0 && component.customPrice <= 1_000_000));
   });
 }

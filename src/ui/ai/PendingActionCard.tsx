@@ -1,12 +1,14 @@
 "use client";
 
 import { Check, Clock3, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { PendingAction } from "@/lib/ai/types";
 
 interface PendingActionCardProps {
   action: PendingAction;
   isConfirming: boolean;
+  error?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -33,8 +35,9 @@ function getActionDescription(action: PendingAction, t: ReturnType<typeof useTra
   });
 }
 
-export default function PendingActionCard({ action, isConfirming, onConfirm, onCancel }: PendingActionCardProps) {
+export default function PendingActionCard({ action, isConfirming, error, onConfirm, onCancel }: PendingActionCardProps) {
   const t = useTranslations("ai");
+  const [now, setNow] = useState(() => Date.now());
   const slotLabels: Record<string, string> = {
     cpu: t("pendingAction.slots.cpu"),
     gpu: t("pendingAction.slots.gpu"),
@@ -43,9 +46,18 @@ export default function PendingActionCard({ action, isConfirming, onConfirm, onC
     storage: t("pendingAction.slots.storage"),
     psu: t("pendingAction.slots.psu"),
   };
+  const expiresAt = Date.parse(action.expiresAt);
+  const remainingSeconds = Number.isFinite(expiresAt) ? Math.max(0, Math.ceil((expiresAt - now) / 1_000)) : 0;
+  const isExpired = remainingSeconds === 0;
+
+  useEffect(() => {
+    if (isExpired) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [isExpired]);
 
   return (
-    <div className="mx-4 rounded-2xl border border-amber-200/25 bg-amber-200/[0.06] p-3.5" role="region" aria-label={t("pendingAction.regionLabel")}>
+    <div className="mx-4 rounded-2xl border border-amber-200/25 bg-amber-200/[0.06] p-3.5" role="region" aria-label={t("pendingAction.regionLabel")} aria-busy={isConfirming}>
       <div className="flex items-start gap-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-200/20 bg-amber-200/10 text-amber-100">
           <Clock3 aria-hidden="true" size={15} />
@@ -62,12 +74,19 @@ export default function PendingActionCard({ action, isConfirming, onConfirm, onC
               ))}
             </ul>
           )}
-          <p className="mt-2 text-[10px] leading-relaxed text-amber-100/55">{t("pendingAction.expirationNotice")}</p>
+          <p className="mt-2 text-[10px] leading-relaxed text-amber-100/55" role={isExpired ? "alert" : "status"}>
+            {isExpired ? t("pendingAction.expired") : t("pendingAction.expiresIn", { seconds: remainingSeconds })}
+          </p>
+          {error && (
+            <p className="mt-2 rounded-lg border border-red-300/25 bg-red-400/10 px-2.5 py-2 text-xs leading-relaxed text-red-100" role="alert">
+              {error}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={onConfirm}
-              disabled={isConfirming}
+              disabled={isConfirming || isExpired}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-amber-100 px-3 text-[11px] font-bold text-black transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100 disabled:cursor-wait disabled:opacity-50"
             >
               <Check aria-hidden="true" size={14} />
@@ -76,7 +95,7 @@ export default function PendingActionCard({ action, isConfirming, onConfirm, onC
             <button
               type="button"
               onClick={onCancel}
-              disabled={isConfirming}
+              disabled={isConfirming || isExpired}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-100/20 px-3 text-[11px] font-bold text-amber-100/80 transition-colors hover:border-amber-100/40 hover:text-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100 disabled:opacity-50"
             >
               <X aria-hidden="true" size={14} />

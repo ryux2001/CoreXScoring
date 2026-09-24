@@ -25,12 +25,13 @@ function record(name, ok, error) {
 }
 
 async function createAction(client, suffix) {
-  const response = await client.rpc("create_ai_pending_action_server", {
+  const response = await client.rpc("create_ai_pending_action_server_v2", {
     p_request_id: crypto.randomUUID(),
     p_user_id: userId,
     p_action_type: "create_combo",
     p_payload: { ...payload, suffix },
     p_payload_digest: digest,
+    p_summary: { entityTitle: "Remote action test", entityType: "combo" },
     p_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   });
   return response;
@@ -45,6 +46,8 @@ try {
 
   const cancelled = await createAction(admin, "cancel");
   const cancelledId = cancelled.data;
+  const listed = await userClient.rpc("get_ai_pending_actions");
+  record("pending-actions-are-recoverable", !listed.error && listed.data?.some((action) => action.id === cancelledId && action.summary?.entityType === "combo"), listed.error);
   const cancel = await userClient.rpc("cancel_ai_pending_action", { p_action_id: cancelledId });
   const cancelledClaim = await userClient.rpc("claim_ai_pending_action", { p_action_id: cancelledId, p_payload_digest: digest });
   record("cancelled-action-cannot-be-claimed", !cancel.error && Boolean(cancelledClaim.error) && cancelledClaim.error.code === "P0002", cancel.error || cancelledClaim.error);

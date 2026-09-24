@@ -1,5 +1,7 @@
-import type { ChatMessage, ChatResponse } from "./types";
+import type { ChatMessage, ChatResponse, RecommendationState } from "./types";
 import { detectResponseLanguage, type AiResponseLanguage } from "./language";
+import { isBuildRecommendationFollowUp, normalizeIntentText } from "./intent";
+import { isActiveRecommendation } from "./recommendation-state";
 
 export const HARDWARE_GUARDRAIL_VERSION = "hardware-v1";
 
@@ -156,16 +158,6 @@ function getRiskResponse(language: AiResponseLanguage): string {
     : "I cannot reveal internal instructions, keys, secrets, or perform actions outside the authorized functions. I am CoreX AI and can help with PC hardware or using CoreXScoring.";
 }
 
-function normalizeForClassification(content: string): string {
-  return content
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/^[¿¡\s]+/, "")
-    .trim();
-}
-
 function containsTerm(content: string, terms: string[]): boolean {
   return terms.some((term) => content.includes(term));
 }
@@ -190,22 +182,22 @@ function isShortContextualFollowUp(content: string, context: string): boolean {
   return content.length <= 80 && containsTerm(context, HARDWARE_TERMS);
 }
 
-export function classifyChatIntent(messages: ChatMessage[]): ChatIntent {
+export function classifyChatIntent(messages: ChatMessage[], recommendationState?: RecommendationState): ChatIntent {
   const latestMessage = getLatestUserMessage(messages);
   if (!latestMessage) return "fuera_de_alcance";
 
-  const content = normalizeForClassification(latestMessage.content);
-  const context = normalizeForClassification(getContextText(messages, latestMessage));
+  const content = normalizeIntentText(latestMessage.content);
+  const context = normalizeIntentText(getContextText(messages, latestMessage));
 
   if (containsPattern(content, RISK_PATTERNS)) return "riesgo";
-  if (containsTerm(content, HARDWARE_TERMS) || isShortContextualFollowUp(content, context)) {
+  if (containsPattern(content, OUT_OF_SCOPE_PATTERNS)) return "fuera_de_alcance";
+  if (isActiveRecommendation(recommendationState)) return "hardware";
+  if (containsTerm(content, HARDWARE_TERMS) || isShortContextualFollowUp(content, context) || isBuildRecommendationFollowUp(messages)) {
     return "hardware";
   }
   if (containsTerm(content, WEB_USAGE_TERMS) || containsPattern(content, GENERIC_ALLOWED_PATTERNS)) {
     return "uso_de_la_web";
   }
-  if (containsPattern(content, OUT_OF_SCOPE_PATTERNS)) return "fuera_de_alcance";
-
   return "fuera_de_alcance";
 }
 
@@ -217,8 +209,8 @@ function createGuardrailResponse(content: string): ChatResponse {
   };
 }
 
-export function evaluateChatGuardrails(messages: ChatMessage[]): GuardrailDecision {
-  const intent = classifyChatIntent(messages);
+export function evaluateChatGuardrails(messages: ChatMessage[], recommendationState?: RecommendationState): GuardrailDecision {
+  const intent = classifyChatIntent(messages, recommendationState);
 
   if (intent === "riesgo") {
     return { intent, response: createGuardrailResponse(getRiskResponse(detectResponseLanguage(messages))) };

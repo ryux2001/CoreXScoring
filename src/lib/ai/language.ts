@@ -59,7 +59,7 @@ export function localizedAiText(
     priceFailure: { en: 'I could not update the price evaluation: {error}', es: 'No pude actualizar la evaluación de precio: {error}' },
     buildFailure: { en: 'I could not prepare the build: {error}', es: 'No pude preparar la build: {error}' },
     priceUpdated: { en: 'I updated the evaluated price for this component.', es: 'He actualizado el precio evaluado de este componente.' },
-    draftUpdated: { en: 'I updated the draft. You can ask me for more changes or tell me you want to save it.', es: 'He actualizado el borrador. Puedes pedirme más cambios o indicar que quieres guardarlo.' },
+    draftUpdated: { en: 'I updated the draft. You can ask me for more changes or tell me you want to proceed with it.', es: 'He actualizado el borrador. Puedes pedirme más cambios o indicar que quieres proceder con él.' },
   };
 
   return messages[key][language].replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? `{${name}}`);

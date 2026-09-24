@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { AiGatewayError, getPotentialExternalProviders, getServerToolCapabilities, isManagedProviderEnabled, runChat, type AiGatewayUserCredential } from "@/lib/ai/gateway";
-import { AiActionExecutionError, confirmPendingAction } from "@/lib/ai/actions";
 import { resolveDirectVaultLookup } from "@/lib/ai/vault-direct";
 import { getAiChatCredential } from "@/lib/ai/chat-settings";
 import { appendAiConversationAssistantMessage, appendAiConversationTurn, getAiConversation, getConversationPromptMessages } from "@/lib/ai/conversations";
@@ -22,7 +21,7 @@ import {
   reserveOpenRouterBudget,
   settleOpenRouterBudget,
 } from "@/lib/ai/limits";
-import { isChatRequest, normalizeMessages, normalizePageContext, type AiFrontendPriceContext, type BuildDraft, type ChatMessage, type ChatProvider, type ChatResponse, type ComboDraft } from "@/lib/ai/types";
+import { isChatRequest, normalizeMessages, normalizePageContext, type AiFrontendPriceContext, type BuildDraft, type ChatMessage, type ChatProvider, type ChatResponse, type ComboDraft, type RecommendationState } from "@/lib/ai/types";
 import { resolvePageContext } from "@/lib/ai/page-context";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
@@ -34,6 +33,7 @@ import { getMissingExternalProviderConsents } from "@/lib/ai/provider-consent";
 import { isAiDisabled } from "@/lib/ai/kill-switch";
 import { shouldRequireAnonymousTurnstile, TurnstileUnavailableError, verifyTurnstileToken } from "@/lib/ai/turnstile";
 import { resolveServerDrafts } from "@/lib/ai/drafts";
+import { isActiveRecommendation, normalizeRecommendationState } from "@/lib/ai/recommendation-state";
 
 export const runtime = "nodejs";
 
@@ -98,6 +98,7 @@ async function persistSavedResponse({
   latestUserMessage,
   buildDraft,
   comboDraft,
+  recommendationState,
 }: {
   response: ChatResponse;
   userId: string;
@@ -105,6 +106,7 @@ async function persistSavedResponse({
   latestUserMessage: { role: "user"; content: string };
   buildDraft?: ChatResponse["buildDraft"];
   comboDraft?: ChatResponse["comboDraft"];
+  recommendationState?: RecommendationState | null;
 }): Promise<ChatResponse> {
   const savedId = await appendAiConversationTurn({
     userId,
@@ -113,6 +115,7 @@ async function persistSavedResponse({
     assistantMessage: response.message,
     buildDraft,
     comboDraft,
+    recommendationState,
     title: conversationId ? undefined : latestUserMessage.content,
   });
   return { ...response, conversationId: savedId };
@@ -188,121 +191,6 @@ export async function POST(request: NextRequest) {
     throw error;
   }
   const quotaAdmin = createSupabaseAdminClient();
-
-  if (body.action) {
-    if (user.is_anonymous) {
-      return NextResponse.json({ error: "Las acciones de la bóveda requieren una cuenta registrada." }, { status: 403 });
-    }
-
-    const actionStartedAt = Date.now();
-    const actionIpHash = getClientIpHash(request);
-    try {
-      const actionQuota = await consumeAiQuota({
-        supabase: quotaAdmin,
-        userId: user.id,
-        ipHash: actionIpHash,
-        isAnonymous: false,
-        estimatedTokens: 0,
-        requestId,
-      });
-
-      if (!actionQuota.allowed) {
-        const retryAfterSeconds = Math.max(1, Math.round(actionQuota.retryAfterSeconds || 60));
-        await recordAiRequest(supabase, {
-          userId: user.id,
-          isAnonymous: false,
-          ipHash: actionIpHash,
-          provider: "guardrail",
-          model: "action-confirmation",
-          durationMs: Date.now() - actionStartedAt,
-          inputTokens: 0,
-          outputTokens: 0,
-          toolCalls: 0,
-          status: "rate_limited",
-          errorCode: actionQuota.reason,
-        });
-        return NextResponse.json({ error: "Se alcanzó tu cuota temporal de CoreX AI. Inténtalo más tarde." }, {
-          status: 429,
-          headers: { "Cache-Control": "no-store", "Retry-After": String(retryAfterSeconds) },
-        });
-      }
-      if (!actionQuota.reservationId) throw new AiQuotaUnavailableError();
-      await settleAiQuota({
-        supabase: quotaAdmin,
-        reservationId: actionQuota.reservationId,
-        actualTokens: 0,
-      });
-    } catch (error) {
-      if (error instanceof AiQuotaUnavailableError) {
-        return NextResponse.json({ error: "Las cuotas de CoreX AI no están disponibles. Inténtalo de nuevo más tarde." }, { status: 503 });
-      }
-      return NextResponse.json({ error: "No se pudo validar la cuota de la acción." }, { status: 503 });
-    }
-
-    try {
-      const result = await confirmPendingAction(
-        {
-          supabase,
-          actor: { id: user.id, isAnonymous: false },
-          pageContext: normalizePageContext(body.context),
-        },
-        body.action.id,
-        body.action.digest,
-      );
-
-      await recordAiRequest(supabase, {
-        userId: user.id,
-        isAnonymous: false,
-        ipHash: actionIpHash,
-        provider: "guardrail",
-        model: "action-confirmation",
-        durationMs: Date.now() - actionStartedAt,
-        inputTokens: 0,
-        outputTokens: 0,
-        toolCalls: 0,
-        status: "guardrail",
-      });
-
-      return NextResponse.json({
-        message: { role: "assistant", content: result.message },
-        provider: "guardrail",
-        model: "action-confirmation",
-      }, { headers: { "Cache-Control": "no-store" } });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo confirmar la acción.";
-      const status = message.includes("caducó") || message.includes("utilizada") || message.includes("pertenece") ? 409 : 400;
-      const actionError = error instanceof AiActionExecutionError ? error : null;
-      console.error("CoreX AI action confirmation failed", {
-        requestId,
-        code: actionError?.code || "pending_action_failed",
-        databaseCode: actionError?.databaseCode,
-        databaseMessage: actionError?.databaseMessage,
-        exceptionName: error instanceof Error ? error.name : "unknown_error",
-      });
-      await recordAiRequest(supabase, {
-        userId: user.id,
-        isAnonymous: false,
-        ipHash: actionIpHash,
-        provider: "guardrail",
-        model: "action-confirmation",
-        durationMs: Date.now() - actionStartedAt,
-        inputTokens: 0,
-        outputTokens: 0,
-        toolCalls: 0,
-        status: "error",
-        errorCode: status === 409 ? "pending_action_conflict" : actionError?.code || "pending_action_failed",
-      });
-      return withRequestId(NextResponse.json(
-        {
-          error: message,
-          code: status === 409 ? "pending_action_conflict" : actionError?.code || "pending_action_failed",
-          requestId,
-          retryable: false,
-        },
-        { status, headers: { "Cache-Control": "no-store" } },
-      ), requestId);
-    }
-  }
 
   const normalizedMessages = normalizeMessages(body.messages);
   const isContinuation = body.continuation === true;
@@ -414,9 +302,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "La conversación no existe o no pertenece a tu cuenta." }, { status: 404 });
     }
     const storedMessages = savedConversation ? getConversationPromptMessages(savedConversation) : [];
-    const lastStoredMessage = storedMessages[storedMessages.length - 1];
-    const isAlreadyStored = lastStoredMessage?.role === latestUserMessage.role
-      && lastStoredMessage.content === latestUserMessage.content;
+    const lastStoredUserMessage = [...storedMessages].reverse().find((message) => message.role === "user");
+    const isAlreadyStored = body.retry === true
+      && lastStoredUserMessage?.content === latestUserMessage.content;
     const effectiveMessages = (conversationMode === "saved"
       ? isContinuation
         ? storedMessages.length > 0 ? storedMessages : normalizedMessages
@@ -429,6 +317,10 @@ export async function POST(request: NextRequest) {
     );
     const effectiveBuildDraft = serverDrafts.buildDraft;
     const effectiveComboDraft = serverDrafts.comboDraft;
+    const savedRecommendationState = savedConversation?.state.recommendationState;
+    const effectiveRecommendationState = savedRecommendationState && isActiveRecommendation(savedRecommendationState)
+      ? savedRecommendationState
+      : normalizeRecommendationState(body.recommendationState);
 
     const normalizedPageContext = normalizePageContext(body.context);
     const resolvedPageContext = await resolvePageContext(supabase, normalizedPageContext, user.id, isAnonymous);
@@ -474,12 +366,14 @@ export async function POST(request: NextRequest) {
       ipHash,
       buildDraft: effectiveBuildDraft,
       comboDraft: effectiveComboDraft,
+      recommendationState: effectiveRecommendationState,
       catalogPriceEvaluation,
       priceContext: frontendPriceContext || pagePriceContext,
       allowedTools: isContinuation ? [] : getServerToolCapabilities(effectiveMessages, {
         actor: { id: user.id, isAnonymous },
         buildDraft: effectiveBuildDraft,
         comboDraft: effectiveComboDraft,
+        recommendationState: effectiveRecommendationState,
         pageContext: resolvedPageContext,
       }),
     };
@@ -500,13 +394,23 @@ export async function POST(request: NextRequest) {
       });
       if (budgetReservationId) await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 0, 0);
       const savedResponse = conversationMode === "saved" && !isContinuation && latestUserMessage
-        ? await persistSavedResponse({
+        ? isAlreadyStored && body.conversationId
+          ? (await appendAiConversationAssistantMessage({
+            userId: user.id,
+            conversationId: body.conversationId,
+            assistantMessage: directVaultResponse.message,
+            buildDraft: directVaultResponse.buildDraft || effectiveBuildDraft,
+            comboDraft: directVaultResponse.comboDraft || effectiveComboDraft,
+            recommendationState: directVaultResponse.recommendationState ?? effectiveRecommendationState,
+          }), { ...directVaultResponse, conversationId: body.conversationId })
+          : await persistSavedResponse({
           response: directVaultResponse,
           userId: user.id,
           conversationId: body.conversationId,
           latestUserMessage,
           buildDraft: directVaultResponse.buildDraft || effectiveBuildDraft,
           comboDraft: directVaultResponse.comboDraft || effectiveComboDraft,
+          recommendationState: directVaultResponse.recommendationState ?? effectiveRecommendationState,
         })
         : directVaultResponse;
       await recordAiRequest(supabase, {
@@ -599,15 +503,26 @@ export async function POST(request: NextRequest) {
         assistantMessage: completion.message,
         buildDraft: completion.buildDraft || effectiveBuildDraft,
         comboDraft: completion.comboDraft || effectiveComboDraft,
+        recommendationState: completion.recommendationState ?? effectiveRecommendationState,
       });
     } else if (conversationMode === "saved" && !isContinuation) {
-      savedCompletion = await persistSavedResponse({
+      savedCompletion = isAlreadyStored && body.conversationId
+        ? (await appendAiConversationAssistantMessage({
+          userId: user.id,
+          conversationId: body.conversationId,
+          assistantMessage: completion.message,
+          buildDraft: completion.buildDraft || effectiveBuildDraft,
+          comboDraft: completion.comboDraft || effectiveComboDraft,
+          recommendationState: completion.recommendationState ?? effectiveRecommendationState,
+        }), { ...completion, conversationId: body.conversationId })
+        : await persistSavedResponse({
         response: completion,
         userId: user.id,
         conversationId: body.conversationId,
         latestUserMessage,
         buildDraft: completion.buildDraft || effectiveBuildDraft,
         comboDraft: completion.comboDraft || effectiveComboDraft,
+        recommendationState: completion.recommendationState ?? effectiveRecommendationState,
       });
     }
 

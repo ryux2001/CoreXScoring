@@ -8,7 +8,8 @@ vi.mock("@/lib/supabaseAdmin", () => ({
   }),
 }));
 
-import { appendAiConversationAssistantMessage } from "@/lib/ai/conversations";
+import { appendAiConversationAssistantMessage, appendAiConversationTurn } from "@/lib/ai/conversations";
+import { mergeRecommendationState } from "@/lib/ai/recommendation-state";
 
 describe("AI conversation persistence", () => {
   afterEach(() => {
@@ -31,5 +32,21 @@ describe("AI conversation persistence", () => {
       p_assistant_content: "La explicación continúa aquí.",
       p_state: { version: 1 },
     });
+  });
+
+  it("persists structured recommendation state as version 2", async () => {
+    state.rpc.mockResolvedValue({ data: "conversation-1", error: null });
+    const recommendationState = mergeRecommendationState(undefined, "build", { criteria: { useCase: "gaming" } });
+
+    await appendAiConversationTurn({
+      userId: "user-1",
+      userMessage: { role: "user", content: "Juegos AAA" },
+      assistantMessage: { role: "assistant", content: "¿Cuál es tu presupuesto?" },
+      recommendationState,
+    });
+
+    expect(state.rpc).toHaveBeenCalledWith("append_ai_conversation_turn", expect.objectContaining({
+      p_state: expect.objectContaining({ version: 2, recommendationState }),
+    }));
   });
 });

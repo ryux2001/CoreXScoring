@@ -19,8 +19,6 @@ import {
   setCurrentCatalogPrice,
 } from "./read";
 import {
-  proposeCreateBuild,
-  proposeCreateCombo,
   proposeSetCustomPrice,
   planBuild,
   planCombo,
@@ -30,6 +28,8 @@ import {
   searchUserCombos,
   updateBuildPlan,
   updateComboPlan,
+  updateBuildRecommendationState,
+  updateComboRecommendationState,
 } from "../actions";
 import type { AiToolContext, AiToolResult } from "./types";
 
@@ -55,12 +55,12 @@ const AI_TOOL_HANDLERS: Record<string, AiToolHandler> = {
   set_current_catalog_price: setCurrentCatalogPrice,
   search_user_combos: searchUserCombos,
   search_user_builds: searchUserBuilds,
-  propose_create_combo: proposeCreateCombo,
-  propose_create_build: proposeCreateBuild,
   plan_build: planBuild,
+  update_build_recommendation_state: updateBuildRecommendationState,
   update_build_plan: updateBuildPlan,
   save_build_draft: saveBuildDraft,
   plan_combo: planCombo,
+  update_combo_recommendation_state: updateComboRecommendationState,
   update_combo_plan: updateComboPlan,
   save_combo_draft: saveComboDraft,
   propose_set_custom_price: proposeSetCustomPrice,

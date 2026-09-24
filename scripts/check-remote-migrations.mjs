@@ -7,6 +7,7 @@ const requiredMigrations = [
   { version: "20260913130000", name: "ai_abuse_controls" },
   { version: "20260913140000", name: "add_cerebras_byok" },
   { version: "20260913150000", name: "bind_pending_actions_to_requests" },
+  { version: "20260921100000", name: "ai_phase1_pending_actions" },
 ];
 
 function migrationOccurrences(output, migration) {

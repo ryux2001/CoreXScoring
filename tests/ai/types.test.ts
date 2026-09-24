@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { isChatRequest, MAX_CHAT_MESSAGE_LENGTH, normalizePageContext } from "@/lib/ai/types";
+import { mergeRecommendationState } from "@/lib/ai/recommendation-state";
 
 describe("AI request contracts", () => {
   it("accepts a bounded chat request", () => {
     expect(isChatRequest({ messages: [{ role: "user", content: "Compara una CPU y una GPU" }] })).toBe(true);
     expect(isChatRequest({ messages: [{ role: "user", content: "Explica esto" }, { role: "assistant", content: "Respuesta incompleta" }], continuation: true })).toBe(true);
+    expect(isChatRequest({ messages: [{ role: "user", content: "Reintenta esto" }], retry: true })).toBe(true);
   });
 
   it("rejects oversized history and messages", () => {
@@ -48,5 +50,11 @@ describe("AI request contracts", () => {
       comparison: { itemIds: ["cpu-1", "cpu-1", "cpu-2", "cpu-3", "cpu-4"] },
     });
     expect(normalized?.comparison?.itemIds).toEqual(["cpu-1", "cpu-2", "cpu-3"]);
+  });
+
+  it("accepts a validated structured recommendation state", () => {
+    const recommendationState = mergeRecommendationState(undefined, "combo", { criteria: { budget: 500, useCase: "gaming" } });
+    expect(isChatRequest({ messages: [{ role: "user", content: "Juegos AAA" }], recommendationState })).toBe(true);
+    expect(isChatRequest({ messages: [{ role: "user", content: "Juegos AAA" }], recommendationState: { version: 2 } })).toBe(false);
   });
 });

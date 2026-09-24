@@ -392,82 +392,20 @@ const SEARCH_USER_BUILDS_TOOL: AiToolDefinition = {
   },
 };
 
-/** Tools de propuesta: generan una tarjeta pendiente, pero no escriben en Supabase. */
-const PROPOSE_CREATE_COMBO_TOOL: AiToolDefinition = {
-  type: "function",
-  function: {
-    name: "propose_create_combo",
-    description: "Prepara una propuesta para guardar un combo en la bóveda del usuario. Requiere cuenta permanente, valida componentes reales y espera confirmación explícita; nunca guarda por sí sola.",
-    parameters: {
-      type: "object",
-      properties: {
-        title: { type: "string", description: "Nombre del combo, máximo 80 caracteres." },
-        componentIds: {
-          type: "object",
-          properties: {
-            cpu: { type: "string" },
-            gpu: { type: "string" },
-            ram: { type: "string" },
-          },
-          required: ["cpu", "gpu", "ram"],
-          additionalProperties: false,
-        },
-        customPrices: {
-          type: "object",
-          description: "Precios opcionales por slot, por ejemplo {cpu:{USD:300}}. Solo se guardan tras confirmar.",
-          additionalProperties: true,
-        },
-      },
-      required: ["title", "componentIds"],
-      additionalProperties: false,
-    },
-  },
-};
-
-const PROPOSE_CREATE_BUILD_TOOL: AiToolDefinition = {
-  type: "function",
-  function: {
-    name: "propose_create_build",
-    description: "Prepara una propuesta para guardar una build completa en la bóveda del usuario. Requiere cuenta permanente, valida los seis componentes y espera confirmación explícita; nunca guarda por sí sola.",
-    parameters: {
-      type: "object",
-      properties: {
-        title: { type: "string", description: "Nombre de la build, máximo 80 caracteres." },
-        category: { type: "string", description: "Categoría opcional de la build." },
-        componentIds: {
-          type: "object",
-          properties: {
-            cpu: { type: "string" },
-            gpu: { type: "string" },
-            ram: { type: "string" },
-            motherboard: { type: "string" },
-            storage: { type: "string" },
-            psu: { type: "string" },
-          },
-          required: ["cpu", "gpu", "ram", "motherboard", "storage", "psu"],
-          additionalProperties: false,
-        },
-        customPrices: {
-          type: "object",
-          description: "Precios opcionales por slot, por ejemplo {cpu:{USD:500}}. Solo se guardan tras confirmar.",
-          additionalProperties: true,
-        },
-      },
-      required: ["title", "componentIds"],
-      additionalProperties: false,
-    },
-  },
-};
-
 const PLAN_BUILD_TOOL: AiToolDefinition = {
   type: "function",
   function: {
     name: "plan_build",
-    description: "Resuelve CPU, GPU, RAM, placa base, almacenamiento y PSU en una sola operación, valida compatibilidad y devuelve una recomendación en texto. No crea una propuesta ni guarda nada; el usuario puede pedir cambios antes de decidir si quiere guardarla.",
+    description: "Resuelve CPU, GPU, RAM, placa base, almacenamiento y PSU en una sola operación, valida compatibilidad y devuelve una recomendación en texto usando el estado estructurado acumulado. No crea una propuesta ni guarda nada.",
     parameters: {
       type: "object",
       properties: {
         currency: { type: "string", enum: ["USD", "EUR"], description: "Moneda de los precios personalizados." },
+        budget: { type: "number", minimum: 1, maximum: 1_000_000, description: "Presupuesto total aproximado de la build en la moneda indicada." },
+        useCase: { type: "string", enum: ["gaming", "productivity", "creation", "balanced"], description: "Uso principal de la build." },
+        resolution: { type: "string", enum: ["1080p", "1440p", "4k"], description: "Resolución objetivo si la build es para gaming." },
+        priority: { type: "string", enum: ["value", "performance", "balanced"], description: "Prioridad entre calidad/precio, rendimiento máximo o equilibrio." },
+        preferences: { type: "string", maximum: 300, description: "Preferencias o restricciones expresadas por el usuario." },
         components: {
           type: "object",
           properties: Object.fromEntries([
@@ -487,11 +425,9 @@ const PLAN_BUILD_TOOL: AiToolDefinition = {
             required: ["query"],
             additionalProperties: false,
           }])),
-          required: ["cpu", "gpu", "ram", "motherboard", "storage", "psu"],
           additionalProperties: false,
         },
       },
-      required: ["components"],
       additionalProperties: false,
     },
   },
@@ -538,7 +474,7 @@ const SAVE_BUILD_DRAFT_TOOL: AiToolDefinition = {
   type: "function",
   function: {
     name: "save_build_draft",
-    description: "Prepara la confirmación para guardar el borrador actual en la bóveda. Solo úsala cuando el usuario pida explícitamente guardarlo. El título debe venir del usuario; si falta, pregunta por él y no inventes ninguno.",
+    description: "El servidor ejecuta esta operación después de que el usuario confirme guardar el borrador. No inventes títulos ni afirmes que se guardó algo sin recibir una acción pendiente del servidor.",
     parameters: {
       type: "object",
       properties: {
@@ -570,7 +506,7 @@ const PLAN_COMBO_TOOL: AiToolDefinition = {
   type: "function",
   function: {
     name: "plan_combo",
-    description: "Resuelve CPU, GPU y RAM, valida compatibilidad y devuelve una recomendación de combo en texto. No crea una propuesta ni guarda nada.",
+    description: "Resuelve CPU, GPU y RAM, valida compatibilidad y devuelve una recomendación de combo en texto usando el estado estructurado acumulado. No crea una propuesta ni guarda nada.",
     parameters: {
       type: "object",
       properties: {
@@ -578,11 +514,14 @@ const PLAN_COMBO_TOOL: AiToolDefinition = {
         components: {
           type: "object",
           properties: COMBO_COMPONENTS,
-          required: ["cpu", "gpu", "ram"],
           additionalProperties: false,
         },
+        budget: { type: "number", minimum: 1, maximum: 1000000 },
+        useCase: { type: "string", enum: ["gaming", "productivity", "creation", "balanced"] },
+        resolution: { type: "string", enum: ["1080p", "1440p", "4k"] },
+        priority: { type: "string", enum: ["value", "performance", "balanced"] },
+        preferences: { type: "string", maxLength: 500 },
       },
-      required: ["components"],
       additionalProperties: false,
     },
   },
@@ -618,6 +557,84 @@ const SAVE_COMBO_DRAFT_TOOL: AiToolDefinition = {
     },
   },
 };
+
+const RECOMMENDATION_COMPONENT_SCHEMA = (description: string): Record<string, unknown> => ({
+  type: "object",
+  description,
+  properties: {
+    query: { type: "string", maxLength: 120 },
+    role: { type: "string", enum: ["required", "preferred", "owned", "excluded"] },
+    customPrice: { type: "number", minimum: 0.01, maximum: 1_000_000 },
+    currency: { type: "string", enum: ["USD", "EUR"] },
+  },
+  required: ["query"],
+  additionalProperties: false,
+});
+
+function createRecommendationStateTool(
+  name: string,
+  description: string,
+  slots: Record<string, string>,
+): AiToolDefinition {
+  return {
+    type: "function",
+    function: {
+      name,
+      description,
+      parameters: {
+        type: "object",
+        properties: {
+          criteria: {
+            type: "object",
+            properties: {
+              budget: { type: "number", minimum: 1, maximum: 1_000_000 },
+              currency: { type: "string", enum: ["USD", "EUR"] },
+              useCase: { type: "string", enum: ["gaming", "productivity", "creation", "balanced"] },
+              workloads: { type: "array", maxItems: 12, items: { type: "string", maxLength: 100 } },
+              resolution: { type: "string", enum: ["1080p", "1440p", "4k"] },
+              fpsTarget: { type: "number", minimum: 1, maximum: 1_000 },
+              priority: { type: "string", enum: ["value", "performance", "balanced"] },
+              preferences: { type: "string", maxLength: 500 },
+            },
+            additionalProperties: false,
+          },
+          components: {
+            type: "object",
+            properties: Object.fromEntries(Object.entries(slots).map(([slot, label]) => [slot, RECOMMENDATION_COMPONENT_SCHEMA(label)])),
+            additionalProperties: false,
+          },
+          excludedComponents: { type: "array", maxItems: 12, items: { type: "string", maxLength: 120 } },
+          preferredBrands: { type: "array", maxItems: 12, items: { type: "string", maxLength: 60 } },
+          market: { type: "string", enum: ["new", "used"], description: "Mercado de la recomendación. Si se omite, se usa new." },
+        },
+        additionalProperties: false,
+      },
+    },
+  };
+}
+
+const UPDATE_BUILD_RECOMMENDATION_STATE_TOOL = createRecommendationStateTool(
+  "update_build_recommendation_state",
+  "Fusiona criterios parciales de una recomendación de build y calcula los datos mínimos que faltan. No busca productos ni escribe datos.",
+  {
+    cpu: "Procesador",
+    gpu: "Tarjeta gráfica",
+    ram: "Memoria RAM",
+    motherboard: "Placa base",
+    storage: "Almacenamiento",
+    psu: "Fuente de alimentación",
+  },
+);
+
+const UPDATE_COMBO_RECOMMENDATION_STATE_TOOL = createRecommendationStateTool(
+  "update_combo_recommendation_state",
+  "Fusiona criterios parciales de una recomendación de combo de CPU, GPU y RAM y calcula los datos mínimos que faltan. No busca productos ni escribe datos.",
+  {
+    cpu: "Procesador",
+    gpu: "Tarjeta gráfica",
+    ram: "Memoria RAM",
+  },
+);
 
 const PROPOSE_SET_CUSTOM_PRICE_TOOL: AiToolDefinition = {
   type: "function",
@@ -659,12 +676,12 @@ export const AI_TOOL_DEFINITIONS: AiToolDefinition[] = [
   SET_CURRENT_CATALOG_PRICE_TOOL,
   SEARCH_USER_COMBOS_TOOL,
   SEARCH_USER_BUILDS_TOOL,
-  PROPOSE_CREATE_COMBO_TOOL,
-  PROPOSE_CREATE_BUILD_TOOL,
   PLAN_BUILD_TOOL,
+  UPDATE_BUILD_RECOMMENDATION_STATE_TOOL,
   UPDATE_BUILD_PLAN_TOOL,
   SAVE_BUILD_DRAFT_TOOL,
   PLAN_COMBO_TOOL,
+  UPDATE_COMBO_RECOMMENDATION_STATE_TOOL,
   UPDATE_COMBO_PLAN_TOOL,
   SAVE_COMBO_DRAFT_TOOL,
   PROPOSE_SET_CUSTOM_PRICE_TOOL,

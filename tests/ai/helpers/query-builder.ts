@@ -9,14 +9,17 @@ export interface QueryResult<T> {
  * Query builder mínimo para las tools: conserva los filtros llamados y se
  * resuelve como una respuesta Supabase cuando se espera con `await`.
  */
-export function createQueryBuilder<T>(result: QueryResult<T>, onIn?: (values: unknown[]) => QueryResult<T>) {
+export function createQueryBuilder<T>(result: QueryResult<T>, onIn?: (values: unknown[]) => QueryResult<T>, onEq?: (column: string, value: unknown) => QueryResult<T>) {
   let activeResult = result;
   const builder = {
     select: vi.fn(() => builder),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
     or: vi.fn(() => builder),
-    eq: vi.fn(() => builder),
+    eq: vi.fn((column: string, value: unknown) => {
+      if (onEq) activeResult = onEq(column, value);
+      return builder;
+    }),
     ilike: vi.fn(() => builder),
     gte: vi.fn(() => builder),
     lte: vi.fn(() => builder),

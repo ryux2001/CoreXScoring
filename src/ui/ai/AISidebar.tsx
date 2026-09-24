@@ -18,7 +18,8 @@ import {
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction } from "@/lib/ai/types";
+import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction, RecommendationState } from "@/lib/ai/types";
+import { completeChatTurn, getChatRequestMessages } from "@/lib/ai/chat-turns";
 import { ensureAiSession, resetExpiredAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
 import ChatHistoryPanel from "./ChatHistoryPanel";
@@ -34,6 +35,13 @@ type MobileMode = "collapsed" | "compact" | "expanded";
 type ChatError = { message: string; retryable: boolean; retryAfterSeconds?: number };
 type ChatErrorPayload = { error?: string; code?: string; retryable?: boolean; requestId?: string; retryAfterSeconds?: number; providers?: string[] };
 type ExternalConsentRequest = { providers: string[] };
+
+async function fetchPendingActions(): Promise<PendingAction[]> {
+  const response = await fetch("/api/ai/action/pending", { cache: "no-store" });
+  if (!response.ok) return [];
+  const payload = await response.json() as { actions?: PendingAction[] };
+  return Array.isArray(payload.actions) ? payload.actions : [];
+}
 
 const MOBILE_TOAST_MAX_LENGTH = 120;
 const INPUT_MIN_HEIGHT = 36;
@@ -191,6 +199,8 @@ function ThinkingWave({ label }: { label: string }) {
 interface ChatPanelProps {
   id: string;
   messages: ChatMessage[];
+  pendingUserMessage: ChatMessage | null;
+  failedUserMessage: ChatMessage | null;
   draft: string;
   error: ChatError | null;
   isSending: boolean;
@@ -205,10 +215,11 @@ interface ChatPanelProps {
   onStop: () => void;
   onRetry: () => void;
   onContinue: () => void;
-  pendingAction: PendingAction | null;
+  pendingActions: PendingAction[];
   isConfirmingAction: boolean;
-  onConfirmAction: () => void;
-  onCancelAction: () => void;
+  actionError: { actionId: string; message: string } | null;
+  onConfirmAction: (action: PendingAction) => void;
+  onCancelAction: (action: PendingAction) => void;
   onMinimize?: () => void;
   onHideDesktop?: () => void;
   onExpand?: () => void;
@@ -230,6 +241,8 @@ interface ChatPanelProps {
 function ChatPanel({
   id,
   messages,
+  pendingUserMessage,
+  failedUserMessage,
   draft,
   error,
   isSending,
@@ -244,8 +257,9 @@ function ChatPanel({
   onStop,
   onRetry,
   onContinue,
-  pendingAction,
+  pendingActions,
   isConfirmingAction,
+  actionError,
   onConfirmAction,
   onCancelAction,
   onMinimize,
@@ -454,6 +468,22 @@ function ChatPanel({
           </div>
         ))}
 
+        {pendingUserMessage && (
+          <div className="flex justify-end">
+            <div className="font-technical max-w-[90%] rounded-2xl border border-cyan-500/40 bg-cyan-950/25 px-4 py-3.5 text-sm leading-5 text-cyan-100 opacity-80">
+              {pendingUserMessage.content}
+            </div>
+          </div>
+        )}
+
+        {failedUserMessage && (
+          <div className="flex justify-end">
+            <div className="font-technical max-w-[90%] rounded-2xl border border-red-400/35 bg-red-950/20 px-4 py-3.5 text-sm leading-5 text-red-100 opacity-80">
+              {failedUserMessage.content}
+            </div>
+          </div>
+        )}
+
         {isSending && (
           <div className="flex justify-start" aria-label={t("chat.thinkingLabel")}>
             <div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-cyan-300/10 bg-zinc-900/75 px-4 py-3 text-xs text-zinc-400 shadow-[0_10px_28px_rgba(0,0,0,0.12)]">
@@ -485,7 +515,7 @@ function ChatPanel({
 
         {challenge}
 
-        {canContinue && !isSending && !pendingAction && (
+        {canContinue && !isSending && pendingActions.length === 0 && (
           <button
             type="button"
             onClick={onContinue}
@@ -497,14 +527,16 @@ function ChatPanel({
 
       </div>
 
-      {pendingAction && (
+      {pendingActions.map((action) => (
         <PendingActionCard
-          action={pendingAction}
+          key={action.id}
+          action={action}
           isConfirming={isConfirmingAction}
-          onConfirm={onConfirmAction}
-          onCancel={onCancelAction}
+          error={actionError?.actionId === action.id ? actionError.message : undefined}
+          onConfirm={() => onConfirmAction(action)}
+          onCancel={() => onCancelAction(action)}
         />
-      )}
+      ))}
 
       <form
         className="border-t border-white/10 bg-zinc-950/45 p-3.5"
@@ -571,6 +603,8 @@ export default function AISidebar() {
   const comparisonItems = useCompareStore((state) => state.items);
   const evaluatedPrices = useCompareStore((state) => state.evaluatedPrices);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [pendingUserMessage, setPendingUserMessage] = useState<ChatMessage | null>(null);
+  const [failedUserMessage, setFailedUserMessage] = useState<ChatMessage | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<ChatError | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -582,9 +616,10 @@ export default function AISidebar() {
   const [isMobileToastVisible, setIsMobileToastVisible] = useState(false);
   const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [buildDraft, setBuildDraft] = useState<BuildDraft | null>(null);
   const [comboDraft, setComboDraft] = useState<ComboDraft | null>(null);
+  const [recommendationState, setRecommendationState] = useState<RecommendationState | null>(null);
   const [conversationMode, setConversationMode] = useState<AiConversationMode>("temporary");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [cacheSessionId, setCacheSessionId] = useState(() => crypto.randomUUID());
@@ -601,6 +636,7 @@ export default function AISidebar() {
   const visibleEditorPriceContext = useAiVisiblePriceStore((state) => state.context);
   const applyCatalogPriceUpdate = useCatalogPriceEvaluationStore((state) => state.applyServerEvaluation);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+  const [actionError, setActionError] = useState<{ actionId: string; message: string } | null>(null);
   const [externalConsent, setExternalConsent] = useState<ExternalConsentRequest | null>(null);
   const [isGrantingConsent, setIsGrantingConsent] = useState(false);
   const [desktopPanelWidth, setDesktopPanelWidth] = useState(DESKTOP_CHAT_INITIAL_WIDTH);
@@ -710,11 +746,15 @@ export default function AISidebar() {
     setCacheSessionId(crypto.randomUUID());
     setConversationTitle(undefined);
     setMessages([]);
+    setPendingUserMessage(null);
+    setFailedUserMessage(null);
     setDraft("");
     setError(null);
-    setPendingAction(null);
+    setPendingActions([]);
+    void fetchPendingActions().then(setPendingActions);
     setBuildDraft(null);
     setComboDraft(null);
+    setRecommendationState(null);
     setCanContinue(false);
   };
 
@@ -739,6 +779,16 @@ export default function AISidebar() {
     void loadConversations();
   };
 
+  useEffect(() => {
+    let active = true;
+    void fetchPendingActions().then((actions) => {
+      if (active) setPendingActions(actions);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selectConversation = async (selectedId: string) => {
     setIsHistoryLoading(true);
     setHistoryError(null);
@@ -752,9 +802,12 @@ export default function AISidebar() {
       setCacheSessionId(crypto.randomUUID());
       setConversationTitle(selected.title);
       setMessages(selected.messages.map(({ role, content }) => ({ role, content })));
+      setPendingUserMessage(null);
+      setFailedUserMessage(null);
       setBuildDraft(selected.state.buildDraft || null);
       setComboDraft(selected.state.comboDraft || null);
-      setPendingAction(null);
+      setRecommendationState(selected.state.recommendationState || null);
+      void fetchPendingActions().then(setPendingActions);
       setCanContinue(false);
       setSessionKind("authenticated");
       setIsHistoryOpen(false);
@@ -846,18 +899,19 @@ export default function AISidebar() {
   };
 
   const sendMessage = async (rawMessage = draft, isRetry = false, suppliedTurnstileToken?: string, isContinuation = false) => {
-    const content = rawMessage.trim();
+    const content = (isRetry && failedUserMessage ? failedUserMessage.content : rawMessage).trim();
     if ((!content && !isContinuation) || isSending) return;
 
     pendingContinuationRef.current = isContinuation;
     const userMessage: ChatMessage = { role: "user", content };
-    const nextMessages = isContinuation || isRetry ? messages : [...messages, userMessage];
+    const nextMessages = getChatRequestMessages(messages, userMessage, isContinuation);
     if (!isContinuation) lastMessageRef.current = content;
     if (!isRetry && !isContinuation) {
-      setMessages(nextMessages);
       setDraft("");
       setCanContinue(false);
     }
+    setFailedUserMessage(null);
+    setPendingUserMessage(isContinuation ? null : userMessage);
     setError(null);
     setIsSending(true);
 
@@ -880,7 +934,8 @@ export default function AISidebar() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages.slice(-12),
+          messages: nextMessages,
+          ...(isRetry ? { retry: true } : {}),
           ...(isContinuation ? { continuation: true } : {}),
           conversationMode,
           ...(conversationId ? { conversationId } : {}),
@@ -890,6 +945,7 @@ export default function AISidebar() {
           ...(tokenForRequest ? { turnstileToken: tokenForRequest } : {}),
           ...(buildDraft ? { buildDraft } : {}),
           ...(comboDraft ? { comboDraft } : {}),
+          ...(recommendationState ? { recommendationState } : {}),
           ...(catalogPriceEvaluation ? {
             catalogPriceEvaluation: {
               productId: catalogPriceEvaluation.productId,
@@ -934,6 +990,8 @@ export default function AISidebar() {
           retryable: errorPayload.retryable !== false,
           retryAfterSeconds,
         });
+        setPendingUserMessage(null);
+        if (!isContinuation) setFailedUserMessage(userMessage);
         return;
       }
 
@@ -946,7 +1004,9 @@ export default function AISidebar() {
             content: t("errors.comparisonUpdateAssistant", { error: comparisonActionError }),
           }
         : payload.message;
-      setMessages((currentMessages) => [...currentMessages, responseMessage]);
+      setMessages((currentMessages) => completeChatTurn(currentMessages, userMessage, responseMessage, isContinuation));
+      setPendingUserMessage(null);
+      setFailedUserMessage(null);
       setProvider(payload.provider);
       setModel(payload.model);
       setIsTurnstileRequired(false);
@@ -956,10 +1016,12 @@ export default function AISidebar() {
         if (!conversationTitle) setConversationTitle(content.slice(0, 80));
         void loadConversations();
       }
-      // Cada respuesta exitosa reemplaza el estado de confirmación anterior.
-      // Si una recomendación no trae pendingAction, no debe quedar visible una
-      // tarjeta antigua de otro build/combo.
-      setPendingAction(payload.pendingAction ?? null);
+      if (payload.pendingAction) {
+        setPendingActions((current) => [
+          payload.pendingAction!,
+          ...current.filter((action) => action.id !== payload.pendingAction!.id),
+        ]);
+      }
       if (payload.catalogPriceUpdate) {
         applyCatalogPriceUpdate(payload.catalogPriceUpdate);
       }
@@ -971,12 +1033,18 @@ export default function AISidebar() {
         setComboDraft(payload.comboDraft);
         setBuildDraft(null);
       }
+      if (Object.prototype.hasOwnProperty.call(payload, "recommendationState")) {
+        setRecommendationState(payload.recommendationState || null);
+      }
       if (comparisonActionError) {
         setError({ message: comparisonActionError, retryable: false });
       }
-      setCanContinue(payload.truncated === true && !payload.pendingAction && !payload.comparisonAction);
+      setCanContinue(payload.truncated === true && !payload.pendingAction && !payload.comparisonAction && pendingActions.length === 0);
     } catch (requestError) {
-      if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+      if (requestError instanceof DOMException && requestError.name === "AbortError") {
+        setPendingUserMessage(null);
+        return;
+      }
       console.error("CoreX AI chat network error", {
         name: requestError instanceof Error ? requestError.name : "unknown_error",
         message: requestError instanceof Error ? requestError.message : t("errors.connectAssistant"),
@@ -985,6 +1053,8 @@ export default function AISidebar() {
         message: requestError instanceof Error ? requestError.message : t("errors.connectAssistant"),
         retryable: true,
       });
+      setPendingUserMessage(null);
+      if (!isContinuation) setFailedUserMessage(userMessage);
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -994,49 +1064,42 @@ export default function AISidebar() {
     }
   };
 
-  const confirmAction = async () => {
-    if (!pendingAction || isSending || isConfirmingAction) return;
+  const confirmAction = async (action: PendingAction) => {
+    if (isSending || isConfirmingAction) return;
     setError(null);
+    setActionError(null);
     setIsConfirmingAction(true);
     setIsSending(true);
 
     try {
-      const response = await fetch("/api/ai/chat", {
+      const response = await fetch("/api/ai/action/pending", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: messages.slice(-12),
-          action: { id: pendingAction.id, digest: pendingAction.digest },
-        }),
+        body: JSON.stringify({ actionId: action.id, digest: action.digest }),
       });
-      const payload = await response.json() as ChatResponse | ChatErrorPayload;
-      if (!response.ok || !("message" in payload)) {
-        const errorPayload = payload as ChatErrorPayload;
+      const payload = await response.json() as { confirmed?: boolean; message?: string; error?: string; code?: string; requestId?: string };
+      if (!response.ok || payload.confirmed !== true || typeof payload.message !== "string") {
         console.error("CoreX AI action confirmation failed", {
-          requestId: errorPayload.requestId || response.headers.get("X-CoreX-AI-Request-Id"),
+          requestId: payload.requestId || response.headers.get("X-CoreX-AI-Request-Id"),
           status: response.status,
-          code: errorPayload.code || "unknown_error",
+          code: payload.code || "unknown_error",
         });
-        setError({
-          message: errorPayload.error || t("errors.confirmAction"),
-          retryable: false,
-        });
+        setActionError({ actionId: action.id, message: payload.error || t("errors.confirmAction") });
         return;
       }
-      setMessages((currentMessages) => [...currentMessages, payload.message]);
-      setProvider(payload.provider);
-      setModel(payload.model);
-      setPendingAction(null);
-      setBuildDraft(null);
-      setComboDraft(null);
+      setMessages((currentMessages) => [...currentMessages, { role: "assistant", content: payload.message! }]);
+      setPendingActions((current) => current.filter((pending) => pending.id !== action.id));
+      if (action.type === "create_build") setBuildDraft(null);
+      if (action.type === "create_combo") setComboDraft(null);
+      void fetchPendingActions().then(setPendingActions);
     } catch (requestError) {
       console.error("CoreX AI action confirmation network error", {
         name: requestError instanceof Error ? requestError.name : "unknown_error",
         message: requestError instanceof Error ? requestError.message : t("errors.confirmAction"),
       });
-      setError({
+      setActionError({
+        actionId: action.id,
         message: requestError instanceof Error ? requestError.message : t("errors.confirmAction"),
-        retryable: false,
       });
     } finally {
       setIsConfirmingAction(false);
@@ -1045,17 +1108,16 @@ export default function AISidebar() {
     }
   };
 
-  const cancelAction = async () => {
+  const cancelAction = async (action: PendingAction) => {
     if (isConfirmingAction) return;
-    if (!pendingAction) return;
     try {
       const response = await fetch("/api/ai/action/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionId: pendingAction.id }),
+        body: JSON.stringify({ actionId: action.id }),
       });
       if (!response.ok) throw new Error(t("errors.proposalCannotBeCancelled"));
-      setPendingAction(null);
+      setPendingActions((current) => current.filter((pending) => pending.id !== action.id));
       setMessages((currentMessages) => [...currentMessages, {
         role: "assistant",
         content: t("pendingAction.cancelledMessage"),
@@ -1068,6 +1130,7 @@ export default function AISidebar() {
   const stopResponse = () => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
+    setPendingUserMessage(null);
     setIsSending(false);
   };
 
@@ -1173,6 +1236,8 @@ export default function AISidebar() {
 
   const sharedPanelProps = {
     messages,
+    pendingUserMessage,
+    failedUserMessage,
     draft,
     error,
     isSending,
@@ -1185,11 +1250,12 @@ export default function AISidebar() {
     onSend: () => void sendMessage(),
     onQuickPrompt: (prompt: string) => void sendMessage(prompt),
     onStop: stopResponse,
-    onRetry: () => void sendMessage(lastMessageRef.current, true),
+    onRetry: () => void sendMessage(failedUserMessage?.content || lastMessageRef.current, true),
     onContinue: continueResponse,
-    pendingAction,
+    pendingActions,
     isConfirmingAction,
-    onConfirmAction: () => void confirmAction(),
+    actionError,
+    onConfirmAction: (action: PendingAction) => void confirmAction(action),
     onCancelAction: cancelAction,
     onOpenHistory: openHistory,
     conversationMode,

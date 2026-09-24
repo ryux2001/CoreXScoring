@@ -7,7 +7,9 @@ import type {
   ConversationRecord,
   ConversationSummary,
   PersistedConversationState,
+  RecommendationState,
 } from "./types";
+import { normalizeRecommendationState } from "./recommendation-state";
 
 const MAX_TITLE_LENGTH = 80;
 
@@ -40,6 +42,11 @@ function asState(value: unknown): PersistedConversationState {
   const state: PersistedConversationState = { version: 1 };
   if (row.buildDraft && typeof row.buildDraft === "object") state.buildDraft = row.buildDraft as BuildDraft;
   if (row.comboDraft && typeof row.comboDraft === "object") state.comboDraft = row.comboDraft as ComboDraft;
+  const recommendationState = normalizeRecommendationState(row.recommendationState);
+  if (recommendationState) {
+    state.version = 2;
+    state.recommendationState = recommendationState;
+  }
   return state;
 }
 
@@ -66,11 +73,14 @@ function toMessage(row: MessageRow): ConversationMessage {
 function compactState(value: {
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  recommendationState?: RecommendationState | null;
 }): PersistedConversationState {
+  const recommendationState = value.recommendationState === null ? undefined : normalizeRecommendationState(value.recommendationState);
   return {
-    version: 1,
+    version: recommendationState ? 2 : 1,
     ...(value.buildDraft ? { buildDraft: value.buildDraft } : {}),
     ...(value.comboDraft ? { comboDraft: value.comboDraft } : {}),
+    ...(recommendationState ? { recommendationState } : {}),
   };
 }
 
@@ -130,6 +140,7 @@ export async function appendAiConversationTurn({
   assistantMessage,
   buildDraft,
   comboDraft,
+  recommendationState,
   title,
 }: {
   userId: string;
@@ -138,6 +149,7 @@ export async function appendAiConversationTurn({
   assistantMessage: ChatMessage;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  recommendationState?: RecommendationState | null;
   title?: string;
 }): Promise<string> {
   const { data, error } = await createSupabaseAdminClient().rpc("append_ai_conversation_turn", {
@@ -146,7 +158,7 @@ export async function appendAiConversationTurn({
     p_user_content: userMessage.content,
     p_assistant_content: assistantMessage.content,
     p_metadata: {},
-    p_state: compactState({ buildDraft, comboDraft }),
+    p_state: compactState({ buildDraft, comboDraft, recommendationState }),
     p_title: title ? normalizeTitle(title) : null,
   });
   if (error) {
@@ -165,18 +177,20 @@ export async function appendAiConversationAssistantMessage({
   assistantMessage,
   buildDraft,
   comboDraft,
+  recommendationState,
 }: {
   userId: string;
   conversationId: string;
   assistantMessage: ChatMessage;
   buildDraft?: BuildDraft;
   comboDraft?: ComboDraft;
+  recommendationState?: RecommendationState | null;
 }): Promise<void> {
   const { error } = await createSupabaseAdminClient().rpc("append_ai_conversation_assistant_message", {
     p_user_id: userId,
     p_conversation_id: conversationId,
     p_assistant_content: assistantMessage.content,
-    p_state: compactState({ buildDraft, comboDraft }),
+    p_state: compactState({ buildDraft, comboDraft, recommendationState }),
   });
   if (error) throw new Error("No se pudo guardar la continuación de la conversación.");
 }

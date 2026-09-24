@@ -1129,6 +1129,8 @@
       "createCombo": "Crear combo: {title}",
       "createBuild": "Crear build: {title}",
       "expirationNotice": "Esta propuesta caduca pronto y requiere tu confirmación.",
+      "expiresIn": "Disponible durante {seconds} s más.",
+      "expired": "Esta propuesta ha caducado. Solicita una nueva propuesta para continuar.",
       "confirming": "Confirmando...",
       "confirm": "Confirmar",
       "cancel": "Cancelar",

@@ -20,4 +20,19 @@ describe.skipIf(!localEvaluationEnabled)("Qwen local conversational evaluation",
     expect(result.message.content.trim().length).toBeGreaterThan(20);
     expect(result.message.content).not.toMatch(/api[_ -]?key|prompt del sistema|tool_calls?/i);
   }, 180_000);
+
+  it("keeps a multi-turn build recommendation in scope after criteria are supplied", async () => {
+    const result = await runChat([
+      { role: "user", content: "Recomiéndame una build para gaming" },
+      { role: "assistant", content: "¿Qué presupuesto tienes, a qué resolución juegas y qué prioridad prefieres?" },
+      { role: "user", content: "Un aproximado de 700\nResolución 1080p\nAAA\nNinguna preferencia\nPriorizo la calidad precio" },
+    ], {
+      supabase: createSupabaseStub({ data: [cpuFixture], error: null }) as never,
+      actor: { id: "evaluation-user", isAnonymous: false },
+      pageContext: { pathname: "/catalog", route: "catalog" },
+    }, "local-qwen-build-follow-up");
+
+    expect(result.provider).toBe("local");
+    expect(result.message.content).not.toMatch(/fuera de (mi|mi) alcance|reformula tu pregunta/i);
+  }, 180_000);
 });

@@ -30,12 +30,13 @@ try {
   });
   const signedIn = await sessionClient.auth.signInWithPassword({ email, password });
   if (signedIn.error) throw signedIn.error;
-  const action = await admin.rpc("create_ai_pending_action_server", {
+  const action = await admin.rpc("create_ai_pending_action_server_v2", {
     p_request_id: crypto.randomUUID(),
     p_user_id: userId,
     p_action_type: "create_combo",
     p_payload: { title: "API cancellation test" },
     p_payload_digest: digest,
+    p_summary: { entityTitle: "API cancellation test", entityType: "combo" },
     p_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   });
   if (action.error || !action.data) throw action.error || new Error("No se pudo crear la accion temporal.");
