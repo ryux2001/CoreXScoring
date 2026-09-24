@@ -1,6 +1,6 @@
 import type { ChatMessage, ChatResponse, RecommendationState } from "./types";
 import { detectResponseLanguage, type AiResponseLanguage } from "./language";
-import { isBuildRecommendationFollowUp, normalizeIntentText } from "./intent";
+import { isBuildRecommendationFollowUp, isComboRecommendationFollowUp, normalizeIntentText } from "./intent";
 import { isActiveRecommendation } from "./recommendation-state";
 
 export const HARDWARE_GUARDRAIL_VERSION = "hardware-v1";
@@ -192,7 +192,7 @@ export function classifyChatIntent(messages: ChatMessage[], recommendationState?
   if (containsPattern(content, RISK_PATTERNS)) return "riesgo";
   if (containsPattern(content, OUT_OF_SCOPE_PATTERNS)) return "fuera_de_alcance";
   if (isActiveRecommendation(recommendationState)) return "hardware";
-  if (containsTerm(content, HARDWARE_TERMS) || isShortContextualFollowUp(content, context) || isBuildRecommendationFollowUp(messages)) {
+  if (containsTerm(content, HARDWARE_TERMS) || isShortContextualFollowUp(content, context) || isBuildRecommendationFollowUp(messages) || isComboRecommendationFollowUp(messages)) {
     return "hardware";
   }
   if (containsTerm(content, WEB_USAGE_TERMS) || containsPattern(content, GENERIC_ALLOWED_PATTERNS)) {

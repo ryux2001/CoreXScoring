@@ -66,6 +66,16 @@ describe("AI gateway conversational protocol", () => {
     expect(getServerToolCapabilities(messages, { actor: { id: "user-1", isAnonymous: false } })).toContain("update_build_recommendation_state");
   });
 
+  it("keeps only the combo recommendation updater available when the user answers its criteria", () => {
+    const messages = [
+      { role: "user" as const, content: "Recomiéndame un combo para gaming" },
+      { role: "assistant" as const, content: "Dime tu presupuesto y resolución objetivo." },
+      { role: "user" as const, content: "800 USD, 1080p, calidad precio, mercado nuevo" },
+    ];
+
+    expect(getServerToolCapabilities(messages, { actor: { id: "user-1", isAnonymous: false } })).toContain("update_combo_recommendation_state");
+  });
+
   it("keeps a complete criteria answer on the recommendation tool path", () => {
     const messages = [
       { role: "user" as const, content: "Recomiéndame una build" },
@@ -103,6 +113,74 @@ describe("AI gateway conversational protocol", () => {
 
     expect(result.message.content).toContain("No pude preparar");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers a combo recommendation when the local model emits analyze_build", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "Qwen3.5-9B-UD-Q4_K_XL",
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: "wrong-tool",
+            type: "function",
+            function: { name: "analyze_build", arguments: "{}" },
+          }],
+        },
+      }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "Recomiéndame un combo para gaming" },
+      { role: "assistant", content: "Presupuesto total, uso principal, resolución y prioridad." },
+      { role: "user", content: "800 USD Gaming 1080p Valor Mercado nuevo" },
+    ], toolContext(), "gateway-combo-recommendation-recovery");
+
+    expect(result.message.content).toMatch(/prepare|preparar/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    const request = JSON.parse(String(init.body));
+    expect(request.tools.map((tool: { function: { name: string } }) => tool.function.name)).toEqual(["update_combo_recommendation_state"]);
+    expect(request.tool_choice).toEqual({ type: "function", function: { name: "update_combo_recommendation_state" } });
+  });
+
+  it("keeps a multi-turn combo recommendation structured when state was not created earlier", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "Qwen3.5-9B-UD-Q4_K_XL",
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: "wrong-tool",
+            type: "function",
+            function: { name: "search_components", arguments: "{}" },
+          }],
+        },
+      }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([
+      { role: "user", content: "Recomiendame un combo" },
+      { role: "assistant", content: "Presupuesto y uso principal?" },
+      { role: "user", content: "800$" },
+      { role: "assistant", content: "¿Qué resolución y mercado prefieres?" },
+      { role: "user", content: "Mercado nuevo, gaming 1440p, sin fps objetivos especificos" },
+    ], toolContext(), "gateway-combo-multi-turn-recovery");
+
+    expect(result.message.content).toMatch(/prepare|preparar/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    const request = JSON.parse(String(init.body));
+    expect(request.tools.map((tool: { function: { name: string } }) => tool.function.name)).toEqual(["update_combo_recommendation_state"]);
+    expect(request.tool_choice).toEqual({ type: "function", function: { name: "update_combo_recommendation_state" } });
   });
 
   it("makes the build recommendation state updater available before the user answers clarifying questions", () => {

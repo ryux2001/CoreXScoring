@@ -217,6 +217,26 @@ describe("build and combo conversational flows", () => {
     if (result.ok) expect(result.comboDraft?.components.ram.id).toBe("ram-1");
   });
 
+  it("assigns the combo budget only across CPU, GPU and RAM", async () => {
+    const catalog: CatalogProduct[] = [
+      { id: "combo-cpu", name: "AMD Ryzen 7 7800X3D", brand: "AMD", slug: "ryzen-7-7800x3d", type: "cpu", price_base_usd: 200, price_base_eur: 190, specs: {}, compatibility: { socket: "AM5", ram_type: "DDR5" } },
+      { id: "combo-gpu", name: "NVIDIA GeForce RTX 4060", brand: "NVIDIA", slug: "rtx-4060", type: "gpu", price_base_usd: 500, price_base_eur: 475, specs: {}, compatibility: {} },
+      { id: "combo-ram", name: "Kingston 32GB DDR5", brand: "Kingston", slug: "kingston-32gb-ddr5", type: "ram", price_base_usd: 100, price_base_eur: 95, specs: { capacity: 32, memory_type: "DDR5" }, compatibility: {} },
+    ];
+    const result = await planCombo({ budget: 800, currency: "USD", useCase: "gaming", resolution: "1080p", priority: "value" }, createCatalogContext(catalog) as never);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toMatchObject({ estimatedTotal: 800, budgetDifference: 0 });
+      expect(result.comboDraft?.components).toEqual(expect.objectContaining({
+        cpu: expect.objectContaining({ id: "combo-cpu" }),
+        gpu: expect.objectContaining({ id: "combo-gpu" }),
+        ram: expect.objectContaining({ id: "combo-ram" }),
+      }));
+      expect((result.data as { message?: string }).message).not.toMatch(/placa|ssd|fuente/i);
+    }
+  });
+
   it("updates only the requested build slot", async () => {
     const context = createCatalogContext();
     const planned = await planBuild({ components: buildRequirements }, context as never);

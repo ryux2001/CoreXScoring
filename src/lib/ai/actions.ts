@@ -58,6 +58,7 @@ interface BuildRecommendationCriteria {
 
 const RECOMMENDATION_BUDGET_TOLERANCE = 0.05;
 const RECOMMENDATION_CANDIDATE_LIMIT = 12;
+const COMBO_SCORE_RELATIVE_TOLERANCE = 0.05;
 export type PendingActionPayload =
   | CreateComboActionPayload
   | CreateBuildActionPayload
@@ -1095,7 +1096,16 @@ async function resolveRecommendedCombo(
         const score = getRecommendationScore(cpu, criteria) * 2.2
           + getRecommendationScore(gpu, criteria) * 2.8
           + getRecommendationScore(ram, criteria) * 0.8;
-        if (!best || score > best.score || (score === best.score && total < best.total)) {
+        if (!best) {
+          best = { rows: { cpu, gpu, ram }, total, score };
+          continue;
+        }
+        const scoreTolerance = Math.max(0.25, Math.abs(best.score) * COMBO_SCORE_RELATIVE_TOLERANCE);
+        const scoreIsMeaningfullyBetter = score > best.score + scoreTolerance;
+        const scoreIsClose = Math.abs(score - best.score) <= scoreTolerance;
+        const budgetDistance = Math.abs(criteria.budget - total);
+        const bestBudgetDistance = Math.abs(criteria.budget - best.total);
+        if (scoreIsMeaningfullyBetter || (scoreIsClose && (budgetDistance < bestBudgetDistance || (budgetDistance === bestBudgetDistance && total < best.total)))) {
           best = { rows: { cpu, gpu, ram }, total, score };
         }
       }

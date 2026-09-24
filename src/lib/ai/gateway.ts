@@ -11,6 +11,9 @@ import { redactSensitiveText, type AiExternalProvider } from "./privacy";
 import { isAiProviderDisabled } from "./kill-switch";
 import { detectResponseLanguage, localizedAiText, responseLanguageInstruction } from "./language";
 import {
+  isComboRecommendationFollowUp,
+  isComboRecommendationRequest,
+  isCompleteComboRecommendationRequest,
   isBuildRecommendationFollowUp,
   isCompleteBuildRecommendationRequest,
   isBuildRecommendationRequest,
@@ -507,6 +510,7 @@ export function getServerToolCapabilities(
   const mentionsBuild = /\b(?:build|pc|ordenador|equipo)\b/.test(text);
   const mentionsCombo = /\b(?:combo|combinacion)\b/.test(text);
   const activeBuildRecommendation = isBuildRecommendationFollowUp(messages);
+  const activeComboRecommendation = isComboRecommendationFollowUp(messages);
   const activeRecommendation = isActiveRecommendation(context.recommendationState) ? context.recommendationState : undefined;
 
   if (context.actor.isAnonymous) {
@@ -540,7 +544,11 @@ export function getServerToolCapabilities(
     capabilities.add("update_build_recommendation_state");
   }
   if (activeBuildRecommendation) capabilities.add("update_build_recommendation_state");
-  if (mentionsCombo && (hasCreate || hasRecommendationVerb)) {
+  if (isComboRecommendationRequest(latestUserMessage) || isCompleteComboRecommendationRequest(latestUserMessage)) {
+    capabilities.add("update_combo_recommendation_state");
+  }
+  if (activeComboRecommendation) capabilities.add("update_combo_recommendation_state");
+  if (mentionsCombo && (hasCreate || hasRecommendationVerb || /\b(?:quiero|necesito)\b/.test(text))) {
     capabilities.add("update_combo_recommendation_state");
   }
   return [...capabilities];
@@ -567,8 +575,11 @@ function getToolDefinitionsForMessages(
   const hasChangeIntent = /\b(?:cambiar|cambia|modifica|modificar|sustituye|sustituir|reemplaza|reemplazar|change|modify|replace|swap)\b/.test(text);
   const asksGameFps = hasGameFpsIntent(latestUserMessage);
   const activeBuildRecommendation = isBuildRecommendationFollowUp(messages);
+  const activeComboRecommendation = isComboRecommendationFollowUp(messages);
   const buildRecommendationRequest = isBuildRecommendationRequest(latestUserMessage);
   const completeBuildRecommendationRequest = isCompleteBuildRecommendationRequest(latestUserMessage);
+  const comboRecommendationRequest = isComboRecommendationRequest(latestUserMessage);
+  const completeComboRecommendationRequest = isCompleteComboRecommendationRequest(latestUserMessage);
   const activeRecommendation = isActiveRecommendation(recommendationState) ? recommendationState : undefined;
 
   if (activeRecommendation?.mode === "build") {
@@ -664,6 +675,10 @@ function getToolDefinitionsForMessages(
     return AI_TOOL_DEFINITIONS.filter((tool) => tool.function.name === "update_combo_recommendation_state");
   }
 
+  if (activeComboRecommendation || completeComboRecommendationRequest || comboRecommendationRequest) {
+    return AI_TOOL_DEFINITIONS.filter((tool) => tool.function.name === "update_combo_recommendation_state");
+  }
+
   return AI_TOOL_DEFINITIONS.filter((tool) => !WRITE_TOOL_NAMES.has(tool.function.name)
     && (!PRIVATE_TOOL_NAMES.has(tool.function.name) || allowedTools?.includes(tool.function.name) === true));
 }
@@ -696,9 +711,30 @@ function getToolDataMessage(data: unknown): string | undefined {
   return typeof message === "string" && message.trim() ? message.trim() : undefined;
 }
 
+function getRecommendationRecoveryText(
+  messages: ChatMessage[],
+  requestPredicate: (value: string) => boolean,
+): string {
+  const latestUserIndex = [...messages].map((message) => message.role).lastIndexOf("user");
+  if (latestUserIndex < 0) return "";
+  let requestIndex = -1;
+  for (let index = latestUserIndex - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === "user" && requestPredicate(message.content)) {
+      requestIndex = index;
+      break;
+    }
+  }
+  const startIndex = requestIndex >= 0 ? requestIndex : 0;
+  return messages
+    .slice(startIndex, latestUserIndex + 1)
+    .filter((message) => message.role === "user")
+    .map((message) => message.content)
+    .join(" ");
+}
+
 function getBuildRecommendationRecoveryArgs(messages: ChatMessage[]): { criteria: Record<string, unknown> } {
-  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "";
-  const text = normalizeIntentText(latestUserMessage);
+  const text = normalizeIntentText(getRecommendationRecoveryText(messages, isBuildRecommendationRequest));
   const criteria: Record<string, unknown> = {};
   const budget = text.match(/\b\d{2,5}(?:[.,]\d{1,2})?\b/);
   if (budget) criteria.budget = Number(budget[0].replace(",", "."));
@@ -720,12 +756,33 @@ function getBuildRecommendationRecoveryArgs(messages: ChatMessage[]): { criteria
   return { criteria };
 }
 
-function isBuildRecommendationRecoveryTurn(messages: ChatMessage[], recommendationState?: RecommendationState): boolean {
+function getComboRecommendationRecoveryArgs(messages: ChatMessage[]): { criteria: Record<string, unknown> } {
+  const text = normalizeIntentText(getRecommendationRecoveryText(messages, isComboRecommendationRequest));
+  const criteria: Record<string, unknown> = {};
+  const budget = text.match(/\b\d{2,5}(?:[.,]\d{1,2})?\b/);
+  if (budget) criteria.budget = Number(budget[0].replace(",", "."));
+  if (/\b(?:gaming|juegos?|videojuegos?)\b/.test(text)) criteria.useCase = "gaming";
+  else if (/\b(?:productividad|trabajo|ofimatica)\b/.test(text)) criteria.useCase = "productivity";
+  else if (/\b(?:creacion|contenido|render|edicion)\b/.test(text)) criteria.useCase = "creation";
+  else if (/\b(?:equilibrad[oa]|balancead[oa])\b/.test(text)) criteria.useCase = "balanced";
+  const resolution = text.match(/\b(?:1080p|1440p|4k)\b/);
+  if (resolution) criteria.resolution = resolution[0];
+  if (/\b(?:valor|calidad\s*\/\s*precio|calidad\s+precio)\b/.test(text)) criteria.priority = "value";
+  else if (/\b(?:rendimiento|performance)\b/.test(text)) criteria.priority = "performance";
+  else if (/\b(?:equilibrad[oa]|balancead[oa])\b/.test(text)) criteria.priority = "balanced";
+  if (/\b(?:eur|euros?|€)\b/.test(text)) criteria.currency = "EUR";
+  else if (/\b(?:usd|dolares?|dólares?)\b/.test(text)) criteria.currency = "USD";
+  if (/\b(?:usado|usada|segunda\s+mano|used)\b/.test(text)) criteria.market = "used";
+  else if (/\b(?:nuevo|nueva|new)\b/.test(text)) criteria.market = "new";
+  return { criteria };
+}
+
+function getRecommendationRecoveryMode(messages: ChatMessage[], recommendationState?: RecommendationState): "build" | "combo" | undefined {
+  if (recommendationState && isActiveRecommendation(recommendationState)) return recommendationState.mode;
   const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "";
-  return (recommendationState?.mode === "build" && isActiveRecommendation(recommendationState))
-    || isBuildRecommendationRequest(latestUserMessage)
-    || isCompleteBuildRecommendationRequest(latestUserMessage)
-    || isBuildRecommendationFollowUp(messages);
+  if (isBuildRecommendationRequest(latestUserMessage) || isCompleteBuildRecommendationRequest(latestUserMessage) || isBuildRecommendationFollowUp(messages)) return "build";
+  if (isComboRecommendationRequest(latestUserMessage) || isCompleteComboRecommendationRequest(latestUserMessage) || isComboRecommendationFollowUp(messages)) return "combo";
+  return undefined;
 }
 
 function formatCatalogPriceContext(evaluation: CatalogPriceEvaluationRequest | undefined): string {
@@ -781,13 +838,17 @@ async function runProviderConversation({
   let pendingAction: PendingAction | undefined;
   const executedToolCalls = new Set<string>();
   let recommendationState = toolContext.recommendationState;
-  const recommendationRecoveryTurn = isBuildRecommendationRecoveryTurn(messages, recommendationState);
+  const recommendationRecoveryMode = getRecommendationRecoveryMode(messages, recommendationState);
+  const recommendationRecoveryTurn = recommendationRecoveryMode !== undefined;
+  const expectedRecommendationTool = recommendationRecoveryMode === "combo"
+    ? "update_combo_recommendation_state"
+    : "update_build_recommendation_state";
   const allowedTools = toolContext.allowedTools ? new Set(toolContext.allowedTools) : null;
-  if (recommendationRecoveryTurn) allowedTools?.add("update_build_recommendation_state");
+  if (recommendationRecoveryTurn) allowedTools?.add(expectedRecommendationTool);
   let toolDefinitions = getToolDefinitionsForMessages(messages, toolContext.buildDraft, toolContext.comboDraft, toolContext.pageContext, toolContext.actor.isAnonymous, toolContext.allowedTools, recommendationState)
     .filter((tool) => !allowedTools || allowedTools.has(tool.function.name));
   if (recommendationRecoveryTurn) {
-    const recommendationTool = AI_TOOL_DEFINITIONS.find((tool) => tool.function.name === "update_build_recommendation_state");
+    const recommendationTool = AI_TOOL_DEFINITIONS.find((tool) => tool.function.name === expectedRecommendationTool);
     if (recommendationTool) toolDefinitions = [recommendationTool];
   }
   let executionContext: AiToolContext = allowedTools ? { ...toolContext, allowedTools: [...allowedTools] } : toolContext;
@@ -871,7 +932,6 @@ async function runProviderConversation({
 
       const parsedArguments = parseToolArguments(toolCall.function?.arguments);
       const fingerprint = `${name}:${JSON.stringify(parsedArguments)}`;
-      const expectedRecommendationTool = "update_build_recommendation_state";
       const isToolAllowed = toolDefinitions.some((tool) => tool.function.name === name);
       let result;
       if (recommendationRecoveryTurn && name !== expectedRecommendationTool) {
@@ -885,7 +945,13 @@ async function runProviderConversation({
         });
         result = recommendationRecoveryUsed
           ? { ok: false as const, error: "La recomendación ya fue recuperada en este turno." }
-          : await executeAiTool(expectedRecommendationTool, getBuildRecommendationRecoveryArgs(messages), executionContext);
+          : await executeAiTool(
+            expectedRecommendationTool,
+            recommendationRecoveryMode === "combo"
+              ? getComboRecommendationRecoveryArgs(messages)
+              : getBuildRecommendationRecoveryArgs(messages),
+            executionContext,
+          );
         recommendationRecoveryUsed = true;
       } else if (!isToolAllowed) {
         console.warn("CoreX AI rejected unavailable tool", {
