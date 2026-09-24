@@ -4,7 +4,7 @@ import { Link } from '@/i18n/navigation';
 import { ArrowLeft, ChevronDown, Eye, EyeOff, LoaderCircle, Save, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from '@/i18n/navigation';
-import type { AdminCatalogProduct, AdminCatalogRow, CatalogKind, CatalogSlot } from '@/lib/admin/catalog';
+import type { AdminCatalogProduct, AdminCatalogRow, AdminCatalogTranslations, CatalogKind, CatalogSlot } from '@/lib/admin/catalog';
 import { useTranslations } from 'next-intl';
 
 type FormState = Record<string, string | boolean>;
@@ -15,8 +15,6 @@ function getSlots(kind: CatalogKind): CatalogSlot[] {
 
 function getInitialForm(kind: CatalogKind, row?: AdminCatalogRow): FormState {
   const form: FormState = {
-    title: row?.title ?? '',
-    category: row?.category ?? '',
     is_active: row?.is_active ?? true,
   };
 
@@ -31,6 +29,14 @@ function getInitialForm(kind: CatalogKind, row?: AdminCatalogRow): FormState {
   return form;
 }
 
+function getInitialTranslations(row?: AdminCatalogRow): AdminCatalogTranslations {
+  const fallback = { title: row?.title ?? '', category: row?.category ?? '' };
+  return {
+    en: row?.translations?.en ?? fallback,
+    es: row?.translations?.es ?? fallback,
+  };
+}
+
 function getInitialProducts(kind: CatalogKind, row?: AdminCatalogRow): Record<string, AdminCatalogProduct | null> {
   return Object.fromEntries(getSlots(kind).map((slot) => [slot, row?.[slot] ?? null])) as Record<string, AdminCatalogProduct | null>;
 }
@@ -41,6 +47,7 @@ export default function AdminCatalogEditor({ kind, initialRow }: { kind: Catalog
   const router = useRouter();
   const slots = getSlots(kind);
   const [form, setForm] = useState<FormState>(() => getInitialForm(kind, initialRow));
+  const [translations, setTranslations] = useState<AdminCatalogTranslations>(() => getInitialTranslations(initialRow));
   const [products, setProducts] = useState<Record<string, AdminCatalogProduct | null>>(() => getInitialProducts(kind, initialRow));
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,6 +59,13 @@ export default function AdminCatalogEditor({ kind, initialRow }: { kind: Catalog
 
   const updateField = (field: string, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateTranslation = (locale: 'en' | 'es', field: keyof AdminCatalogTranslations['en'], value: string) => {
+    setTranslations((current) => ({
+      ...current,
+      [locale]: { ...current[locale], [field]: value },
+    }));
   };
 
   const selectProduct = (slot: CatalogSlot, product: AdminCatalogProduct | null) => {
@@ -70,10 +84,16 @@ export default function AdminCatalogEditor({ kind, initialRow }: { kind: Catalog
         {
           method: isEditing ? 'PATCH' : 'POST',
           headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({
+            ...form,
+            title: translations.en.title,
+            category: translations.en.category,
+            translations,
+          }),
         },
       );
-       if (!response.ok) throw new Error('REQUEST_FAILED');
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || 'REQUEST_FAILED');
 
       setNotice({ type: 'success', message: t('editor.saveChanges') });
       router.push(`/vault/admin/catalog/${kind}`);
@@ -126,10 +146,10 @@ export default function AdminCatalogEditor({ kind, initialRow }: { kind: Catalog
         <form onSubmit={save} className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-5">
             <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5 sm:p-7">
-               <SectionHeading eyebrow={t('editor.mainInfo')} title={t('editor.itemData', { kind: title })} />
-              <div className="grid gap-5 sm:grid-cols-2">
-                 <TextField label={t('editor.title')} value={String(form.title ?? '')} onChange={(value) => updateField('title', value)} required />
-                 <TextField label={t('editor.category')} value={String(form.category ?? '')} onChange={(value) => updateField('category', value)} required />
+              <SectionHeading eyebrow={t('editor.mainInfo')} title={t('editor.localizedInfo')} description={t('editor.localizedDescription')} />
+              <div className="grid gap-5 lg:grid-cols-2">
+                <TranslationFields locale="en" title={t('editor.languageEnglish')} values={translations.en} onChange={updateTranslation} />
+                <TranslationFields locale="es" title={t('editor.languageSpanish')} values={translations.es} onChange={updateTranslation} />
               </div>
             </section>
 
@@ -187,6 +207,19 @@ function SectionHeading({ eyebrow, title, description }: { eyebrow: string; titl
 
 function TextField({ label, value, onChange, required }: { label: string; value: string; onChange: (value: string) => void; required?: boolean }) {
   return <label className="block"><span className="mb-2 block text-xs font-bold text-zinc-300">{label}{required && <span aria-hidden="true" className="ml-1 text-cyan-200">*</span>}</span><input required={required} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-xl border border-zinc-800 bg-black px-3 text-sm text-white outline-none transition-colors focus:border-cyan-200/70 focus:ring-1 focus:ring-cyan-200/30" /></label>;
+}
+
+function TranslationFields({ locale, title, values, onChange }: { locale: 'en' | 'es'; title: string; values: AdminCatalogTranslations['en']; onChange: (locale: 'en' | 'es', field: keyof AdminCatalogTranslations['en'], value: string) => void }) {
+  const t = useTranslations('admin.catalog');
+  return (
+    <fieldset className="rounded-xl border border-zinc-800 bg-black/35 p-4">
+      <legend className="px-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-200/80">{title}</legend>
+      <div className="mt-2 grid gap-4">
+        <TextField label={t('editor.title')} value={values.title} onChange={(value) => onChange(locale, 'title', value)} required />
+        <TextField label={t('editor.category')} value={values.category} onChange={(value) => onChange(locale, 'category', value)} required />
+      </div>
+    </fieldset>
+  );
 }
 
 function PriceField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {

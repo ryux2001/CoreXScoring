@@ -24,13 +24,20 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   try {
     if (typeof body.is_active !== 'boolean') throw new Error('El estado de publicación no es válido.');
-    const { error } = await getAdminDb().from('home_comparisons').update({
+    const db = getAdminDb();
+    const comparisonId = (await context.params).id;
+    if (body.is_active) {
+      const { count, error: itemsError } = await db.from('home_comparison_items').select('id', { count: 'exact', head: true }).eq('comparison_id', comparisonId);
+      if (itemsError) throw itemsError;
+      if (count !== 2) throw new Error('Añade exactamente dos elementos antes de publicar la comparación.');
+    }
+    const { error } = await db.from('home_comparisons').update({
       title: requiredHomeText(body.title, 'título', 120),
       description: optionalHomeText(body.description, 'descripción', 360),
       eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
       is_active: body.is_active,
       updated_at: new Date().toISOString(),
-    }).eq('id', (await context.params).id);
+    }).eq('id', comparisonId);
     if (error) throw error;
     return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

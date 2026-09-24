@@ -6,6 +6,8 @@ import {
   getAdminDb,
   getAdminUser,
   parseCatalogKind,
+  parseCatalogTranslations,
+  saveCatalogTranslations,
   type CatalogMutationPayload,
 } from '@/lib/admin/catalog';
 import { readLimitedJson } from '@/lib/api-security';
@@ -45,7 +47,12 @@ export async function PATCH(
 
   try {
     const db = getAdminDb();
-    const payload = await buildCatalogMutation(db, kind, body, id);
+    const translations = parseCatalogTranslations(body);
+    const payload = await buildCatalogMutation(db, kind, {
+      ...body,
+      title: translations.en.title,
+      category: translations.en.category,
+    }, id);
     const { data, error } = await db
       .from(kind)
       .update(payload)
@@ -55,6 +62,7 @@ export async function PATCH(
 
     if (error) throw error;
     if (!data) return NextResponse.json({ error: 'No se encontró el registro.' }, { status: 404 });
+    await saveCatalogTranslations(db, kind, id, translations);
     await ensureCatalogCategoryOrder(db, kind, String(payload.category));
 
     return NextResponse.json({ id: data.id }, { headers: { 'Cache-Control': 'no-store' } });

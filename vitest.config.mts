@@ -8,7 +8,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["tests/ai/**/*.test.ts"],
+    include: ["tests/ai/**/*.test.ts", "tests/admin/**/*.test.ts"],
     environment: "node",
     globals: false,
     isolate: true,

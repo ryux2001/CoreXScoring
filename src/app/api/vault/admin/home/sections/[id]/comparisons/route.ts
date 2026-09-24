@@ -41,7 +41,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       description: optionalHomeText(body.description, 'descripción', 360),
       eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
       item_type: itemType,
-      is_active: true,
+       is_active: false,
       sort_order: Number(lastComparison?.sort_order ?? -1) + 1,
     }).select('id').single();
     if (error) throw error;

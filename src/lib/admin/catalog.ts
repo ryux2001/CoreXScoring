@@ -41,7 +41,18 @@ export interface AdminCatalogRow {
   motherboard?: AdminCatalogProduct | null;
   storage?: AdminCatalogProduct | null;
   psu?: AdminCatalogProduct | null;
+  translations?: AdminCatalogTranslations;
   [key: string]: unknown;
+}
+
+export interface AdminCatalogTranslation {
+  title: string;
+  category: string;
+}
+
+export interface AdminCatalogTranslations {
+  en: AdminCatalogTranslation;
+  es: AdminCatalogTranslation;
 }
 
 export interface CatalogCategoryOrder {
@@ -56,6 +67,14 @@ const PRODUCT_SELECT = 'id,slug,name,brand,type,price_usd,price_eur,price_base_u
 
 function getTable(kind: CatalogKind): 'builds' | 'combos' {
   return kind;
+}
+
+function getTranslationTable(kind: CatalogKind): 'build_translations' | 'combo_translations' {
+  return kind === 'builds' ? 'build_translations' : 'combo_translations';
+}
+
+function getTranslationIdColumn(kind: CatalogKind): 'build_id' | 'combo_id' {
+  return kind === 'builds' ? 'build_id' : 'combo_id';
 }
 
 function getSlots(kind: CatalogKind): CatalogSlot[] {
@@ -147,7 +166,11 @@ export async function loadCatalogRow(
     .maybeSingle();
 
   if (error) throw error;
-  return (data ?? null) as unknown as AdminCatalogRow | null;
+  if (!data) return null;
+
+  const row = data as unknown as AdminCatalogRow;
+  const translations = await loadCatalogTranslations(db, kind, row.id, row);
+  return { ...row, translations };
 }
 
 export async function loadCatalogCounts(db: SupabaseClient): Promise<Record<CatalogKind, number>> {
@@ -265,7 +288,75 @@ export interface CatalogMutationPayload {
   motherboard_id?: unknown;
   storage_id?: unknown;
   psu_id?: unknown;
+  translations?: unknown;
   [key: string]: unknown;
+}
+
+export function parseCatalogTranslations(input: CatalogMutationPayload): AdminCatalogTranslations {
+  if (!input.translations || typeof input.translations !== 'object' || Array.isArray(input.translations)) {
+    throw new Error('Añade el título y la categoría en inglés y español.');
+  }
+
+  const translations = input.translations as Record<string, unknown>;
+  const parseLocale = (locale: 'en' | 'es'): AdminCatalogTranslation => {
+    const value = translations[locale];
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error(`Faltan los textos en ${locale === 'en' ? 'inglés' : 'español'}.`);
+    }
+    const translation = value as Record<string, unknown>;
+    return {
+      title: requiredString(translation.title, `título en ${locale === 'en' ? 'inglés' : 'español'}`, 160),
+      category: requiredString(translation.category, `categoría en ${locale === 'en' ? 'inglés' : 'español'}`, 80),
+    };
+  };
+
+  return { en: parseLocale('en'), es: parseLocale('es') };
+}
+
+export async function loadCatalogTranslations(
+  db: SupabaseClient,
+  kind: CatalogKind,
+  id: string,
+  fallback: Pick<AdminCatalogRow, 'title' | 'category'>,
+): Promise<AdminCatalogTranslations> {
+  const idColumn = getTranslationIdColumn(kind);
+  const { data, error } = await db
+    .from(getTranslationTable(kind))
+    .select(`locale,title,category,${idColumn}`)
+    .eq(idColumn, id)
+    .in('locale', ['en', 'es']);
+  if (error) throw error;
+
+  const byLocale = new Map((data ?? []).map((item) => [item.locale, item]));
+  const getTranslation = (locale: 'en' | 'es'): AdminCatalogTranslation => {
+    const translation = byLocale.get(locale);
+    return {
+      title: typeof translation?.title === 'string' && translation.title ? translation.title : fallback.title,
+      category: typeof translation?.category === 'string' && translation.category ? translation.category : fallback.category,
+    };
+  };
+
+  return { en: getTranslation('en'), es: getTranslation('es') };
+}
+
+export async function saveCatalogTranslations(
+  db: SupabaseClient,
+  kind: CatalogKind,
+  id: string,
+  translations: AdminCatalogTranslations,
+): Promise<void> {
+  const idColumn = getTranslationIdColumn(kind);
+  const rows = (['en', 'es'] as const).map((locale) => ({
+    [idColumn]: id,
+    locale,
+    title: translations[locale].title,
+    category: translations[locale].category,
+    updated_at: new Date().toISOString(),
+  }));
+  const { error } = await db
+    .from(getTranslationTable(kind))
+    .upsert(rows, { onConflict: `${idColumn},locale` });
+  if (error) throw error;
 }
 
 export async function buildCatalogMutation(

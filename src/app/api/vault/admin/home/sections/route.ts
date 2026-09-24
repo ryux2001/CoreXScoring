@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
       content_type: contentType,
       visual_variant: 'default',
-      is_active: true,
+       is_active: false,
       sort_order: Number(lastSection?.sort_order ?? -1) + 1,
     }).select('id').single();
     if (error) throw error;

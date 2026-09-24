@@ -6,6 +6,8 @@ import {
   getAdminDb,
   getAdminUser,
   parseCatalogKind,
+  parseCatalogTranslations,
+  saveCatalogTranslations,
   type CatalogMutationPayload,
 } from '@/lib/admin/catalog';
 import { readLimitedJson } from '@/lib/api-security';
@@ -40,10 +42,16 @@ export async function POST(
 
   try {
     const db = getAdminDb();
-    const payload = await buildCatalogMutation(db, kind, body);
+    const translations = parseCatalogTranslations(body);
+    const payload = await buildCatalogMutation(db, kind, {
+      ...body,
+      title: translations.en.title,
+      category: translations.en.category,
+    });
     const { data, error } = await db.from(kind).insert(payload).select('id').single();
 
     if (error) throw error;
+    await saveCatalogTranslations(db, kind, data.id, translations);
     await ensureCatalogCategoryOrder(db, kind, String(payload.category));
 
     return NextResponse.json({ id: data.id }, { status: 201, headers: { 'Cache-Control': 'no-store' } });

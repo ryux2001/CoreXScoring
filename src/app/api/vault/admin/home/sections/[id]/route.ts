@@ -33,14 +33,33 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (visualVariant !== 'default' && visualVariant !== 'spotlight' && visualVariant !== 'compact') {
       throw new Error('La variante visual no es válida.');
     }
-    const { error } = await getAdminDb().from('home_sections').update({
+    const db = getAdminDb();
+    const sectionId = await getSectionId(context);
+    const { data: currentSection, error: currentSectionError } = await db.from('home_sections').select('content_type').eq('id', sectionId).maybeSingle();
+    if (currentSectionError) throw currentSectionError;
+    if (!currentSection) throw new Error('La sección no existe.');
+
+    if (body.is_active) {
+      if (currentSection.content_type === 'comparisons') {
+        const { data: comparisons, error: comparisonsError } = await db.from('home_comparisons').select('is_active,home_comparison_items(id)').eq('section_id', sectionId);
+        if (comparisonsError) throw comparisonsError;
+        const canPublish = (comparisons || []).some((comparison) => comparison.is_active && Array.isArray(comparison.home_comparison_items) && comparison.home_comparison_items.length === 2);
+        if (!canPublish) throw new Error('Añade una comparación activa con exactamente dos elementos antes de publicar la sección.');
+      } else {
+        const { count, error: itemsError } = await db.from('home_section_items').select('id', { count: 'exact', head: true }).eq('section_id', sectionId);
+        if (itemsError) throw itemsError;
+        if (!count) throw new Error('Añade al menos un elemento antes de publicar la sección.');
+      }
+    }
+
+    const { error } = await db.from('home_sections').update({
       title: requiredHomeText(body.title, 'título', 120),
       description: optionalHomeText(body.description, 'descripción', 360),
       eyebrow: optionalHomeText(body.eyebrow, 'etiqueta', 80),
       is_active: body.is_active,
       visual_variant: visualVariant,
       updated_at: new Date().toISOString(),
-    }).eq('id', await getSectionId(context));
+    }).eq('id', sectionId);
     if (error) throw error;
     return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
