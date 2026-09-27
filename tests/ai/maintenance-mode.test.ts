@@ -36,6 +36,7 @@ describe('site maintenance mode', () => {
   it('keeps the administrative API surface explicit', () => {
     expect(isAllowedMaintenanceAdminApi('GET', '/api/vault/admin/catalog/products')).toBe(true);
     expect(isAllowedMaintenanceAdminApi('PATCH', '/api/vault/admin/catalog/builds/order')).toBe(true);
+    expect(isAllowedMaintenanceAdminApi('PUT', '/api/vault/admin/catalog/prices')).toBe(true);
     expect(isAllowedMaintenanceAdminApi('GET', '/api/vault/admin/unknown')).toBe(false);
     expect(isAllowedMaintenanceAdminApi('GET', '/api/vault/admin/catalog/builds/order')).toBe(false);
   });

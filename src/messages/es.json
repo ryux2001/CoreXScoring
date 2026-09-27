@@ -106,8 +106,8 @@
         "comparison": "Comparador de tarjetas gráficas de CoreX Scoring",
         "catalog": "Catálogo de componentes de PC de CoreX Scoring",
         "evaluation": "Evaluación de precio y rendimiento de un componente"
-      }
-    },
+          }
+      },
     "carousel": {
       "previous": "Ver elementos anteriores de {label}",
       "next": "Ver más elementos de {label}",
@@ -1000,10 +1000,47 @@
           "title": "Builds",
           "description": "Configuraciones completas con CPU, GPU, RAM, placa base, almacenamiento y fuente."
         },
-        "combos": {
-          "title": "Combos",
-          "description": "Combinaciones predeterminadas de CPU, GPU y RAM listas para comparar."
-        }
+          "combos": {
+            "title": "Combos",
+            "description": "Combinaciones predeterminadas de CPU, GPU y RAM listas para comparar."
+          }
+      },
+      "prices": {
+        "title": "Precios de productos",
+        "description": "Actualiza MSRP, precios encontrados en la web y la fuente de cada moneda.",
+        "total": "Productos",
+        "pending": "Pendientes",
+        "search": "Buscar productos",
+        "searchPlaceholder": "Buscar por nombre, marca o slug",
+        "type": "Tipo",
+        "status": "Estado",
+        "allTypes": "Todos los tipos",
+        "allStatuses": "Todos los estados",
+        "complete": "USD y EUR completos",
+        "missing": "Falta precio actual",
+        "filter": "Filtrar",
+        "product": "Producto",
+        "action": "Acción",
+        "msrp": "MSRP",
+        "webPrice": "Precio web",
+        "source": "Fuente URL",
+        "checked": "Comprobado",
+        "fallbackHint": "Vacío = se usa el MSRP de esta moneda en el catálogo.",
+        "openProduct": "Abrir producto",
+        "effective": "Precio efectivo USD",
+        "ready": "Precios actuales listos",
+        "fallback": "Usa MSRP como fallback",
+        "needsSource": "Falta fuente o fecha",
+        "unsaved": "Cambios sin guardar",
+        "saved": "Guardado",
+        "save": "Guardar",
+        "saveSelected": "Guardar {count} seleccionados",
+        "saving": "Guardando",
+        "savedOne": "Precio guardado correctamente.",
+        "savedMany": "Se guardaron {count} productos correctamente.",
+        "saveError": "No se pudieron guardar los precios.",
+        "empty": "No hay productos que coincidan con estos filtros.",
+        "pagination": "Anterior|Siguiente"
       },
       "errors": {
         "saveCategoryOrder": "No se pudo guardar el orden de categorías.",

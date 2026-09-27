@@ -1,6 +1,7 @@
 const maintenanceAdminPagePatterns = [
   /^\/vault\/admin\/(?:monitoring|ai|catalog|catalog\/home)$/,
   /^\/vault\/admin\/catalog\/(?:builds|combos)(?:\/new|\/[^/]+)?$/,
+  /^\/vault\/admin\/catalog\/prices$/,
 ];
 
 const maintenanceAdminApiRules: Array<{ method: string; pattern: RegExp }> = [
@@ -22,6 +23,7 @@ const maintenanceAdminApiRules: Array<{ method: string; pattern: RegExp }> = [
   { method: 'PATCH', pattern: /^\/api\/vault\/admin\/catalog\/(?:builds|combos)\/order$/ },
   { method: 'PATCH', pattern: /^\/api\/vault\/admin\/catalog\/(?:builds|combos)\/[^/]+$/ },
   { method: 'DELETE', pattern: /^\/api\/vault\/admin\/catalog\/(?:builds|combos)\/[^/]+$/ },
+  { method: 'PUT', pattern: /^\/api\/vault\/admin\/catalog\/prices$/ },
 ];
 
 export function isMaintenanceAdminPage(pathname: string): boolean {

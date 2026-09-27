@@ -324,7 +324,7 @@
       }
     }
   },
-  "catalog": {
+     "catalog": {
     "productCount": "{count, plural, =1 {# product} other {# products}}",
     "price": "Price",
     "filters": "Filters",
@@ -824,7 +824,8 @@
     "placeholder": { "title": "Panel ready for the next phase", "description": "Access is already available to administrators. The tools in this panel are not active yet." },
     "monitoring": { "eyebrow": "Administration / Monitoring", "title": "Monitoring", "description": "Monitor platform usage, errors, and activity.", "features": { "users": "User activity", "errors": "Error monitoring", "activity": "Platform activity", "performance": "Performance metrics" } },
     "catalog": {
-      "backToCatalog": "Back to catalog",
+       "backToCatalog": "Back to catalog",
+       "prices": { "title": "Product prices", "description": "Update MSRP, web prices and the source for each currency.", "total": "Products", "pending": "Pending", "search": "Search products", "searchPlaceholder": "Search by name, brand or slug", "type": "Type", "status": "Status", "allTypes": "All types", "allStatuses": "All statuses", "complete": "USD and EUR complete", "missing": "Missing current price", "filter": "Filter", "product": "Product", "action": "Action", "msrp": "MSRP", "webPrice": "Web price", "source": "Source URL", "checked": "Checked", "fallbackHint": "Empty means this currency's MSRP is used in the public catalog.", "openProduct": "Open product", "effective": "Effective USD price", "ready": "Current prices ready", "fallback": "Uses MSRP fallback", "needsSource": "Source or date missing", "unsaved": "Unsaved changes", "saved": "Saved", "save": "Save", "saveSelected": "Save {count} selected", "saving": "Saving", "savedOne": "Price saved successfully.", "savedMany": "{count} products saved successfully.", "saveError": "Could not save prices.", "empty": "No products match these filters.", "pagination": "Previous|Next" },
       "showingCount": "Showing {filtered} of {total}",
       "uncategorized": "Uncategorized",
       "searchPlaceholder": "Search by title, category, or component",

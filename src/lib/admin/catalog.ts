@@ -21,6 +21,37 @@ export interface AdminCatalogProduct {
   price_base_eur?: number | null;
 }
 
+export interface AdminProductPriceRow {
+  id: string;
+  slug: string;
+  name: string;
+  brand: string;
+  type: string;
+  price_usd: number | null;
+  price_eur: number | null;
+  price_base_usd: number | null;
+  price_base_eur: number | null;
+  price_source_url_usd: string | null;
+  price_source_url_eur: string | null;
+  price_checked_at_usd: string | null;
+  price_checked_at_eur: string | null;
+  prices_updated_at: string | null;
+}
+
+export type AdminProductPriceStatus = 'all' | 'current' | 'missing';
+
+export interface AdminProductPriceUpdate {
+  id: string;
+  price_usd: number | null;
+  price_eur: number | null;
+  price_base_usd: number | null;
+  price_base_eur: number | null;
+  price_source_url_usd: string | null;
+  price_source_url_eur: string | null;
+  price_checked_at_usd: string | null;
+  price_checked_at_eur: string | null;
+}
+
 export interface AdminCatalogRow {
   id: string;
   title: string;
@@ -64,6 +95,7 @@ export const BUILD_SLOTS: CatalogSlot[] = ['cpu', 'gpu', 'ram', 'motherboard', '
 export const COMBO_SLOTS: CatalogSlot[] = ['cpu', 'gpu', 'ram'];
 
 const PRODUCT_SELECT = 'id,slug,name,brand,type,price_usd,price_eur,price_base_usd,price_base_eur';
+const PRODUCT_PRICE_SELECT = 'id,slug,name,brand,type,price_usd,price_eur,price_base_usd,price_base_eur,price_source_url_usd,price_source_url_eur,price_checked_at_usd,price_checked_at_eur,prices_updated_at';
 
 function getTable(kind: CatalogKind): 'builds' | 'combos' {
   return kind;
@@ -173,16 +205,18 @@ export async function loadCatalogRow(
   return { ...row, translations };
 }
 
-export async function loadCatalogCounts(db: SupabaseClient): Promise<Record<CatalogKind, number>> {
-  const [builds, combos] = await Promise.all([
+export async function loadCatalogCounts(db: SupabaseClient): Promise<Record<CatalogKind, number> & { products: number }> {
+  const [builds, combos, products] = await Promise.all([
     db.from('builds').select('id', { count: 'exact', head: true }),
     db.from('combos').select('id', { count: 'exact', head: true }),
+    db.from('products').select('id', { count: 'exact', head: true }),
   ]);
 
   if (builds.error) throw builds.error;
   if (combos.error) throw combos.error;
+  if (products.error) throw products.error;
 
-  return { builds: builds.count ?? 0, combos: combos.count ?? 0 };
+  return { builds: builds.count ?? 0, combos: combos.count ?? 0, products: products.count ?? 0 };
 }
 
 export async function searchProducts(
@@ -202,6 +236,120 @@ export async function searchProducts(
   const { data, error } = await request;
   if (error) throw error;
   return (data ?? []) as unknown as AdminCatalogProduct[];
+}
+
+function safeSearch(value: string): string {
+  return value.trim().slice(0, 80).replace(/[%,()]/g, ' ');
+}
+
+export async function loadProductPriceRows(
+  db: SupabaseClient,
+  options: {
+    query?: string;
+    type?: string;
+    status?: AdminProductPriceStatus;
+    page?: number;
+    pageSize?: number;
+  } = {},
+): Promise<{ rows: AdminProductPriceRow[]; count: number; page: number; pageSize: number }> {
+  const pageSize = Math.min(Math.max(options.pageSize ?? 24, 1), 100);
+  const page = Math.max(options.page ?? 1, 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  let request = db
+    .from('products')
+    .select(PRODUCT_PRICE_SELECT, { count: 'exact' })
+    .order('name', { ascending: true })
+    .range(from, to);
+
+  const query = safeSearch(options.query ?? '');
+  if (query) request = request.or(`name.ilike.%${query}%,brand.ilike.%${query}%,slug.ilike.%${query}%`);
+  if (options.type && options.type !== 'all') request = request.eq('type', options.type);
+  if (options.status === 'current') request = request.not('price_usd', 'is', null).or('price_eur.not.is.null');
+  if (options.status === 'missing') request = request.or('price_usd.is.null,price_eur.is.null');
+
+  const { data, error, count } = await request;
+  if (error) throw error;
+
+  return {
+    rows: (data ?? []) as unknown as AdminProductPriceRow[],
+    count: count ?? 0,
+    page,
+    pageSize,
+  };
+}
+
+export async function loadProductTypes(db: SupabaseClient): Promise<string[]> {
+  const { data, error } = await db.from('products').select('type').order('type', { ascending: true });
+  if (error) throw error;
+  return [...new Set((data ?? []).map((row) => row.type).filter((type): type is string => Boolean(type)))];
+}
+
+const PRICE_KEYS = [
+  'price_usd',
+  'price_eur',
+  'price_base_usd',
+  'price_base_eur',
+  'price_source_url_usd',
+  'price_source_url_eur',
+  'price_checked_at_usd',
+  'price_checked_at_eur',
+] as const;
+
+function parseAdminPrice(value: unknown, field: string): number | null {
+  if (value === null || value === '') return null;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 10_000_000) {
+    throw new Error(`El campo ${field} debe ser un número entre 0 y 10.000.000.`);
+  }
+  return Math.round(value * 100) / 100;
+}
+
+function parseAdminUrl(value: unknown, field: string): string | null {
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || value.length > 2048) throw new Error(`La fuente ${field} no es válida.`);
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('protocol');
+  } catch {
+    throw new Error(`La fuente ${field} debe ser una URL http o https.`);
+  }
+  return value.trim();
+}
+
+function parseAdminDate(value: unknown, field: string): string | null {
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`La fecha ${field} no es válida.`);
+  return value;
+}
+
+export function parseAdminProductPriceUpdates(input: unknown): AdminProductPriceUpdate[] {
+  if (!Array.isArray(input) || input.length < 1 || input.length > 100) {
+    throw new Error('Selecciona entre 1 y 100 productos para guardar.');
+  }
+
+  const ids = new Set<string>();
+  return input.map((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Cada actualización debe ser válida.');
+    const value = item as Record<string, unknown>;
+    if (typeof value.id !== 'string' || !value.id.trim() || value.id.length > 200) throw new Error('El producto seleccionado no es válido.');
+    const id = value.id.trim();
+    if (ids.has(id)) throw new Error('No se puede repetir un producto en el mismo lote.');
+    ids.add(id);
+    for (const key of PRICE_KEYS) {
+      if (!(key in value)) throw new Error(`Falta el campo ${key}.`);
+    }
+    return {
+      id,
+      price_usd: parseAdminPrice(value.price_usd, 'USD'),
+      price_eur: parseAdminPrice(value.price_eur, 'EUR'),
+      price_base_usd: parseAdminPrice(value.price_base_usd, 'MSRP USD'),
+      price_base_eur: parseAdminPrice(value.price_base_eur, 'MSRP EUR'),
+      price_source_url_usd: parseAdminUrl(value.price_source_url_usd, 'USD'),
+      price_source_url_eur: parseAdminUrl(value.price_source_url_eur, 'EUR'),
+      price_checked_at_usd: parseAdminDate(value.price_checked_at_usd, 'USD'),
+      price_checked_at_eur: parseAdminDate(value.price_checked_at_eur, 'EUR'),
+    };
+  });
 }
 
 function slugify(value: string): string {

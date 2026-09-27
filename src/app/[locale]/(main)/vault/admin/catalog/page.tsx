@@ -1,5 +1,5 @@
 import { Link } from '@/i18n/navigation';
-import { ArrowRight, Boxes, Hammer, Home, Settings2 } from 'lucide-react';
+import { ArrowRight, Boxes, CircleDollarSign, Hammer, Home, Settings2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { redirect } from '@/i18n/server-navigation';
 import { getAdminDb, getAdminUser, loadCatalogCounts } from '@/lib/admin/catalog';
@@ -46,6 +46,15 @@ export default async function AdminCatalogPage() {
             manageLabel={t('manage')}
           />
           <CatalogTypeCard
+            href="/vault/admin/catalog/prices"
+            title={t('prices.title')}
+            description={t('prices.description')}
+            count={counts.products}
+            icon={CircleDollarSign}
+            accent="emerald"
+            manageLabel={t('manage')}
+          />
+          <CatalogTypeCard
             href="/vault/admin/catalog/builds"
             title={t('cards.builds.title')}
             description={t('cards.builds.description')}
@@ -87,14 +96,16 @@ function CatalogTypeCard({
   description: string;
   count: number | null;
   icon: LucideIcon;
-  accent: 'cyan' | 'violet' | 'amber';
+  accent: 'cyan' | 'violet' | 'amber' | 'emerald';
   manageLabel: string;
 }) {
   const colors = accent === 'cyan'
     ? 'border-cyan-200/20 bg-cyan-200/[0.04] text-cyan-200 group-hover:border-cyan-200/45'
     : accent === 'violet'
       ? 'border-violet-200/20 bg-violet-200/[0.04] text-violet-200 group-hover:border-violet-200/45'
-      : 'border-amber-200/20 bg-amber-200/[0.04] text-amber-200 group-hover:border-amber-200/45';
+      : accent === 'emerald'
+        ? 'border-emerald-200/20 bg-emerald-200/[0.04] text-emerald-200 group-hover:border-emerald-200/45'
+        : 'border-amber-200/20 bg-amber-200/[0.04] text-amber-200 group-hover:border-amber-200/45';
 
   return (
     <Link

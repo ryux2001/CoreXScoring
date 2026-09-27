@@ -129,6 +129,9 @@ export function getApiBodyPolicy(request: ApiRequest): ApiBodyPolicy | null {
   if (method === 'PATCH' && /^\/api\/vault\/admin\/catalog\/[^/]+\/order$/.test(pathname)) {
     return { mode: 'required', maxBytes: API_BODY_LIMITS.adminLists };
   }
+  if (method === 'PUT' && pathname === '/api/vault/admin/catalog/prices') {
+    return { mode: 'required', maxBytes: API_BODY_LIMITS.adminLists };
+  }
 
   return null;
 }
