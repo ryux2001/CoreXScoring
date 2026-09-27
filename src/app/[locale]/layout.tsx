@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { Courier_Prime, Geist, Geist_Mono, Rajdhani } from "next/font/google";
 import type { ReactNode } from "react";
 import { isLocale, type Locale } from "@/i18n/routing";
+import EarlyStageNotice from "@/ui/EarlyStageNotice";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -70,6 +71,7 @@ export default async function LocaleLayout({
     >
       <body className="min-h-full flex flex-col bg-black" cz-shortcut-listen="true">
         <NextIntlClientProvider locale={locale as Locale} messages={messages}>
+          <EarlyStageNotice />
           {children}
         </NextIntlClientProvider>
         <Analytics />

@@ -12,6 +12,16 @@
     "adminLoginDescription": "Inicia sesión con Google para acceder al panel administrativo durante el mantenimiento.",
     "adminLoginError": "No se pudo iniciar la autenticación. Inténtalo de nuevo."
   },
+  "earlyStageNotice": {
+    "eyebrow": "Aviso de lanzamiento",
+    "title": "CoreXScoring está en una etapa temprana",
+    "introduction": "Pedimos comprensión ante cualquier error o inconveniente que pueda ocurrir.",
+    "progress": "Estamos trabajando constantemente para solucionar errores, mejorar la experiencia de la web y añadir más funcionalidades atractivas para ustedes.",
+    "contact": "Si encuentras algún error o simplemente deseas comunicarte con nosotros, puedes hacerlo desde la sección de contacto a través de cualquiera de nuestras redes.",
+    "signature": "Gracias por tu atención. Atte. equipo CoreXScoring",
+    "dismiss": "Entendido",
+    "close": "Cerrar aviso de etapa temprana"
+  },
   "seo": {
     "homeTitle": "CoreXScoring | Scoring y configuraciones de PC",
     "homeDescription": "Compara componentes de PC, evalúa el rendimiento y crea configuraciones personalizadas.",

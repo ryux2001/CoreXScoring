@@ -12,6 +12,16 @@
     "adminLoginDescription": "Sign in with Google to access the administration panel during maintenance.",
     "adminLoginError": "Authentication could not be started. Try again."
   },
+  "earlyStageNotice": {
+    "eyebrow": "Launch notice",
+    "title": "CoreXScoring is in an early stage",
+    "introduction": "Please bear with us if you encounter any errors or inconveniences.",
+    "progress": "We are continuously working to fix issues, improve the website experience, and add more useful features for you.",
+    "contact": "If you find an error or simply want to get in touch, you can contact us through any of our social channels in the contact section.",
+    "signature": "Thank you for your attention. CoreXScoring team",
+    "dismiss": "Understood",
+    "close": "Close early-stage notice"
+  },
   "seo": {
     "homeTitle": "CoreXScoring | PC hardware scoring and builds",
     "homeDescription": "Compare PC components, evaluate performance and create custom builds.",
