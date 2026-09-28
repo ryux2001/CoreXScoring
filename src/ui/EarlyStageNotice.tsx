@@ -94,7 +94,7 @@ export default function EarlyStageNotice() {
         aria-modal="true"
         aria-labelledby="early-stage-notice-title"
         aria-describedby="early-stage-notice-description"
-        className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-cyan-200/20 bg-zinc-950 shadow-[0_24px_100px_rgba(0,0,0,0.65)]"
+        className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-x-hidden overflow-y-auto overscroll-contain rounded-3xl border border-cyan-200/20 bg-zinc-950 shadow-[0_24px_100px_rgba(0,0,0,0.65)] sm:max-h-[calc(100vh-3rem)]"
       >
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/80 to-transparent" />
         <header className="flex items-start justify-between gap-4 border-b border-white/10 p-5 sm:p-7">
