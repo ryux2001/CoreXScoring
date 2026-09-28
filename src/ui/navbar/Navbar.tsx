@@ -34,7 +34,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/70 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black backdrop-blur-md">
       <nav aria-label={t("mainNavigation")} className="relative mx-auto px-4 py-1.5 sm:px-6 sm:py-2 xl:px-8">
         <div className="flex h-14 items-center justify-between gap-2 xl:hidden">
           <Link
