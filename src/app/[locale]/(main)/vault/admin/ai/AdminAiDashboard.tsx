@@ -15,15 +15,18 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   AiAdminConfig,
+  AiAdminDailyIssues,
   AiAdminDailyUsage,
   AiAdminError,
   AiAdminIpBucket,
+  AiAdminLimits,
   AiAdminProviderUsage,
+  AiAdminRecentError,
   AiAdminUsageResponse,
 } from "@/lib/ai/admin-types";
 import { useLocale, useTranslations } from 'next-intl';
 
-const PERIODS = [7, 14, 30] as const;
+const PERIODS = [1, 7, 14, 30] as const;
 
 function formatNumber(value: number, locale: string): string {
   return new Intl.NumberFormat(locale).format(Number.isFinite(value) ? value : 0);
@@ -34,6 +37,25 @@ function formatDate(value: string, locale: string): string {
     day: "2-digit",
     month: "short",
   }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function formatDateTime(value: string, locale: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "medium",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatCurrencyMicrousd(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format((Number.isFinite(value) ? value : 0) / 1_000_000);
 }
 
 function getIpLabel(ipHash: string): string {
@@ -77,6 +99,24 @@ function QuotaCard({
         <p className="font-technical text-xs text-zinc-300">{tokensLabel}</p>
         <p className="mt-1 text-[10px] text-zinc-600">{tokensDescription}</p>
       </div>
+    </article>
+  );
+}
+
+function LimitCard({
+  label,
+  value,
+  description,
+}: {
+  label: string;
+  value: string;
+  description: string;
+}) {
+  return (
+    <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+      <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">{label}</p>
+      <p className="mt-4 font-display text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{description}</p>
     </article>
   );
 }
@@ -230,9 +270,13 @@ export default function AdminAiDashboard() {
   }, [data, summary.blocked, summary.errors, summary.requests, t]);
 
   const config: AiAdminConfig | undefined = data?.config;
+  const limits: AiAdminLimits | undefined = data?.limits;
+  const budget = data?.budget;
   const dailyUsage: AiAdminDailyUsage[] = data?.daily_usage ?? [];
+  const dailyIssues: AiAdminDailyIssues[] = data?.daily_issues ?? [];
   const providers: AiAdminProviderUsage[] = data?.providers ?? [];
   const errors: AiAdminError[] = data?.errors ?? [];
+  const recentErrors: AiAdminRecentError[] = data?.recent_errors ?? [];
   const ipBuckets: AiAdminIpBucket[] = data?.top_ip_buckets ?? [];
 
   return (
@@ -376,6 +420,25 @@ export default function AdminAiDashboard() {
               ) : <EmptyState message={t('quotas.empty')} />}
             </section>
 
+            {limits && budget && (
+              <section className="mt-8">
+                <SectionTitle eyebrow={t('limits.eyebrow')} title={t('limits.title')} description={t('limits.description')} />
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                  <LimitCard label={t('limits.rate.label')} value={`${formatNumber(limits.request_rate_limit_per_minute, locale)}/min`} description={t('limits.rate.description')} />
+                  <LimitCard label={t('limits.concurrency.label')} value={formatNumber(limits.global_concurrency_limit, locale)} description={t('limits.concurrency.description', { user: limits.user_concurrency_limit, guestIp: limits.anonymous_ip_concurrency_limit })} />
+                  <LimitCard label={t('limits.pending.label')} value={formatNumber(limits.active_pending_actions_limit, locale)} description={t('limits.pending.description')} />
+                  <LimitCard label={t('limits.circuit.label')} value={`${formatNumber(limits.circuit_failure_threshold, locale)} / ${formatNumber(limits.circuit_timeout_threshold, locale)}`} description={t('limits.circuit.description', { window: Math.round(limits.circuit_window_seconds / 60), cooldown: Math.round(limits.circuit_cooldown_seconds / 60) })} />
+                  <article className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.04] p-4 sm:col-span-2 xl:col-span-1">
+                    <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-cyan-100/70">{t('limits.budget.label')}</p>
+                    <p className="mt-4 font-display text-lg font-black text-white">{formatCurrencyMicrousd(budget.daily_used_microusd, locale)} / {formatCurrencyMicrousd(budget.daily_limit_microusd, locale)}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{t('limits.budget.dailyDescription')}</p>
+                    <p className="mt-3 border-t border-cyan-200/10 pt-3 font-display text-sm font-bold text-white">{formatCurrencyMicrousd(budget.monthly_used_microusd, locale)} / {formatCurrencyMicrousd(budget.monthly_limit_microusd, locale)}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{t('limits.budget.monthlyDescription')}</p>
+                  </article>
+                </div>
+              </section>
+            )}
+
             <section className="mt-8 grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
               <div>
                 <SectionTitle eyebrow={t('dailyUsage.eyebrow')} title={t('dailyUsage.title')} description={t('dailyUsage.description')} />
@@ -408,11 +471,33 @@ export default function AdminAiDashboard() {
               </div>
             </section>
 
+            <section className="mt-8">
+              <SectionTitle eyebrow={t('dailyIssues.eyebrow')} title={t('dailyIssues.title')} description={t('dailyIssues.description')} />
+              {dailyIssues.length === 0 ? <EmptyState message={t('dailyIssues.empty')} /> : (
+                <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70">
+                  <table className="w-full min-w-[520px] text-left text-xs">
+                    <thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600">
+                      <tr><th className="px-4 py-3 font-bold">{t('dailyIssues.table.day')}</th><th className="px-4 py-3 font-bold">{t('dailyIssues.table.errors')}</th><th className="px-4 py-3 font-bold">{t('dailyIssues.table.rateLimited')}</th><th className="px-4 py-3 font-bold">{t('dailyIssues.table.total')}</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-900">
+                      {dailyIssues.map((item) => <tr key={item.issue_date} className="text-zinc-300"><td className="px-4 py-3 font-bold text-white">{formatDate(item.issue_date, locale)}</td><td className="px-4 py-3 text-red-200">{formatNumber(item.errors, locale)}</td><td className="px-4 py-3 text-amber-200">{formatNumber(item.rate_limited, locale)}</td><td className="px-4 py-3">{formatNumber(item.total, locale)}</td></tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
             <section className="mt-8 grid gap-8 lg:grid-cols-2">
               <div>
                 <SectionTitle eyebrow={t('errorsSection.eyebrow')} title={t('errorsSection.title')} />
                 {errors.length === 0 ? <EmptyState message={t('errorsSection.empty')} /> : (
                   <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70"><table className="w-full text-left text-xs"><thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600"><tr><th className="px-4 py-3 font-bold">{t('errorsSection.table.code')}</th><th className="px-4 py-3 font-bold">{t('errorsSection.table.occurrences')}</th></tr></thead><tbody className="divide-y divide-zinc-900">{errors.map((item) => <tr key={item.error_code} className="text-zinc-300"><td className="px-4 py-3 font-technical text-red-200">{item.error_code}</td><td className="px-4 py-3">{formatNumber(item.failures, locale)}</td></tr>)}</tbody></table></div>
+                )}
+                {recentErrors.length > 0 && (
+                  <div className="mt-4 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/70">
+                    <div className="border-b border-zinc-800 px-4 py-3"><h3 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">{t('errorsSection.recentTitle')}</h3><p className="mt-1 text-[11px] text-zinc-600">{t('errorsSection.utcNotice')}</p></div>
+                    <table className="w-full min-w-[720px] text-left text-xs"><thead className="border-b border-zinc-800 text-[10px] uppercase tracking-[0.16em] text-zinc-600"><tr><th className="px-4 py-3 font-bold">{t('errorsSection.table.date')}</th><th className="px-4 py-3 font-bold">{t('errorsSection.table.code')}</th><th className="px-4 py-3 font-bold">{t('errorsSection.table.provider')}</th><th className="px-4 py-3 font-bold">{t('errorsSection.table.stage')}</th><th className="px-4 py-3 font-bold">{t('errorsSection.table.status')}</th></tr></thead><tbody className="divide-y divide-zinc-900">{recentErrors.map((item) => <tr key={`${item.created_at}-${item.error_code}`} className="text-zinc-300"><td className="whitespace-nowrap px-4 py-3 text-zinc-200">{formatDateTime(item.created_at, locale)}</td><td className="px-4 py-3 font-technical text-red-200">{item.error_code}</td><td className="px-4 py-3">{item.provider}</td><td className="px-4 py-3">{item.failure_stage || '-'}</td><td className="px-4 py-3">{item.provider_http_status || '-'}</td></tr>)}</tbody></table>
+                  </div>
                 )}
               </div>
               <div>
