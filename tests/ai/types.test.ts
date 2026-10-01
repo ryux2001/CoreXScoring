@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isChatRequest, MAX_CHAT_MESSAGE_LENGTH, normalizePageContext } from "@/lib/ai/types";
+import { isChatRequest, MAX_ASSISTANT_MESSAGE_LENGTH, MAX_CHAT_MESSAGE_LENGTH, normalizePageContext } from "@/lib/ai/types";
 import { mergeRecommendationState } from "@/lib/ai/recommendation-state";
 
 describe("AI request contracts", () => {
@@ -13,6 +13,8 @@ describe("AI request contracts", () => {
     expect(isChatRequest({ messages: Array.from({ length: 13 }, () => ({ role: "user", content: "hola" })) })).toBe(false);
     expect(isChatRequest({ messages: [{ role: "user", content: "x".repeat(MAX_CHAT_MESSAGE_LENGTH) }] })).toBe(true);
     expect(isChatRequest({ messages: [{ role: "user", content: "x".repeat(MAX_CHAT_MESSAGE_LENGTH + 1) }] })).toBe(false);
+    expect(isChatRequest({ messages: [{ role: "assistant", content: "x".repeat(MAX_ASSISTANT_MESSAGE_LENGTH) }] })).toBe(true);
+    expect(isChatRequest({ messages: [{ role: "assistant", content: "x".repeat(MAX_ASSISTANT_MESSAGE_LENGTH + 1) }] })).toBe(false);
   });
 
   it("rejects untrusted roles and malformed actions", () => {

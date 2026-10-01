@@ -64,6 +64,17 @@ try {
     record("quota-reservation-settles-exactly-once", !firstSettlement.error && Boolean(replay.error) && reservation.data?.state === "settled" && reservation.data?.reserved_tokens === 100 && reservation.data?.actual_tokens === 25, firstSettlement.error || replay.error || reservation.error);
   }
 
+  const expanded = await reserve(crypto.randomUUID(), 30000);
+  const expandedId = expanded.data?.reservation_id;
+  record("expanded-quota-reservation-accepts-30000", !expanded.error && typeof expandedId === "string", expanded.error);
+  if (expandedId) {
+    const settled = await admin.rpc("settle_ai_quota_reservation", { p_reservation_id: expandedId, p_actual_tokens: 25 });
+    const reservation = await admin.from("ai_quota_reservations").select("state,reserved_tokens,actual_tokens").eq("id", expandedId).maybeSingle();
+    record("expanded-quota-reservation-settles", !settled.error && !reservation.error && reservation.data?.state === "settled" && reservation.data?.reserved_tokens === 30000 && reservation.data?.actual_tokens === 25, settled.error || reservation.error);
+  }
+  const oversized = await reserve(crypto.randomUUID(), 30001);
+  record("expanded-quota-reservation-rejects-over-30000", oversized.error?.code === "22023", oversized.error);
+
   const concurrent = await reserve(crypto.randomUUID());
   const concurrentId = concurrent.data?.reservation_id;
   if (concurrentId) {

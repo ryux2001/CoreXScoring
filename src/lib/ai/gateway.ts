@@ -29,7 +29,8 @@ const GROQ_REQUEST_TIMEOUT_MS = 25_000;
 const CEREBRAS_REQUEST_TIMEOUT_MS = 25_000;
 const OPENROUTER_REQUEST_TIMEOUT_MS = 50_000;
 const LOCAL_REQUEST_TIMEOUT_MS = 180_000;
-const MAX_EXTERNAL_COMPLETION_TOKENS = 400;
+const DEFAULT_EXTERNAL_COMPLETION_TOKENS = 2_048;
+const MAX_EXTERNAL_COMPLETION_TOKENS = 4_096;
 const DEFAULT_LOCAL_COMPLETION_TOKENS = 1_600;
 const MAX_LOCAL_COMPLETION_TOKENS = 4_096;
 const MAX_EXTERNAL_TOOL_ROUNDS = 4;
@@ -50,7 +51,8 @@ export interface AiGatewayUserCredential {
 const SYSTEM_PROMPT = [
   "Eres CoreX AI, el asistente de hardware de CoreXScoring.",
   "Tu ámbito es el hardware de PC y el uso de la web CoreXScoring: componentes, compatibilidad, rendimiento, metodología de scoring y navegación de la aplicación.",
-  "Sé directo y conciso: normalmente 120-160 palabras como máximo, con hasta cinco viñetas cuando ayuden. Da primero la conclusión, evita repetir datos y formula solo una pregunta si falta un dato imprescindible. Amplía la explicación únicamente si el usuario lo pide de forma explícita.",
+  "Sé directo y conciso, adaptando la extensión a la pregunta. Da primero la respuesta, evita repetir datos y formula solo una pregunta si falta un dato imprescindible. No conviertas una corrección o pregunta sobre la web en una recomendación de productos no solicitada.",
+  "Si el usuario corrige una afirmación previa, revisa los hechos disponibles. Reconoce y corrige con claridad cualquier error; no defiendas una respuesta anterior que contradiga datos verificados.",
   "Diferencia hechos conocidos, estimaciones y recomendaciones. No presentes una estimación como un dato verificado.",
   "Puedes usar tools de lectura para consultar componentes, combos, builds, scoring, contexto de página y datos propios de la bóveda cuando el usuario tenga una cuenta permanente.",
   "El sistema incluye el contexto validado de la página actual. Si el usuario dice ‘este componente’, ‘esta build’ o ‘este combo’, usa ese contexto antes de pedir aclaraciones; consulta la tool de lectura correspondiente para los detalles.",
@@ -118,6 +120,9 @@ interface CompletionPayload {
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
+    completion_tokens_details?: {
+      reasoning_tokens?: number;
+    };
     prompt_tokens_details?: {
       cached_tokens?: number;
       cache_write_tokens?: number;
@@ -150,8 +155,17 @@ function getOptionalEnvironmentVariable(name: string): string | undefined {
   return value || undefined;
 }
 
-function getMaxCompletionTokens(provider: ProviderName): number {
-  if (provider !== "local") return MAX_EXTERNAL_COMPLETION_TOKENS;
+function getMaxCompletionTokens(provider: ProviderName, messages: ProviderMessage[]): number {
+  if (provider !== "local") {
+    const configured = Number.parseInt(process.env.AI_EXTERNAL_MAX_COMPLETION_TOKENS || "", 10);
+    const base = Number.isFinite(configured)
+      ? Math.min(Math.max(configured, 512), MAX_EXTERNAL_COMPLETION_TOKENS)
+      : DEFAULT_EXTERNAL_COMPLETION_TOKENS;
+    const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "";
+    const requiresLongOutput = latestUserMessage.length > 1_000
+      || /\b(?:analiza|compara|detalla|explica\s+(?:en\s+detalle|paso\s+a\s+paso)|recomiendame\s+una\s+build|recommend\s+a\s+build)\b/i.test(latestUserMessage);
+    return requiresLongOutput ? MAX_EXTERNAL_COMPLETION_TOKENS : base;
+  }
 
   const configured = Number.parseInt(process.env.AI_LOCAL_MAX_COMPLETION_TOKENS || "", 10);
   if (!Number.isFinite(configured)) return DEFAULT_LOCAL_COMPLETION_TOKENS;
@@ -343,12 +357,14 @@ async function requestCompletion({
         messages,
         tools,
         ...(provider === "openrouter" && cacheSessionId ? { session_id: cacheSessionId } : {}),
-        tool_choice: forcedRecommendationTool
+        tool_choice: tools.length === 0
+          ? "none"
+          : forcedRecommendationTool
           ? { type: "function", function: { name: forcedRecommendationTool } }
           : "auto",
         ...(provider === "openrouter" || provider === "cerebras" ? { parallel_tool_calls: false } : {}),
         temperature: 0.4,
-        max_tokens: getMaxCompletionTokens(provider),
+        max_tokens: getMaxCompletionTokens(provider, messages),
       }),
       signal: requestSignal
         ? AbortSignal.any([
@@ -693,13 +709,13 @@ function getToolDefinitionsForMessages(
 }
 
 function parseToolArguments(rawArguments: string | undefined): unknown {
-  if (!rawArguments) return {};
+  if (!rawArguments) return null;
 
   try {
     const parsed: unknown = JSON.parse(rawArguments);
-    return parsed !== null && typeof parsed === "object" ? parsed : {};
+    return parsed !== null && typeof parsed === "object" ? parsed : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -847,14 +863,15 @@ async function runProviderConversation({
   let pendingAction: PendingAction | undefined;
   const executedToolCalls = new Set<string>();
   let recommendationState = toolContext.recommendationState;
-  const recommendationRecoveryMode = getRecommendationRecoveryMode(messages, recommendationState);
+  const isContinuation = Boolean(continuationInstruction);
+  const recommendationRecoveryMode = isContinuation ? undefined : getRecommendationRecoveryMode(messages, recommendationState);
   const recommendationRecoveryTurn = recommendationRecoveryMode !== undefined;
   const expectedRecommendationTool = recommendationRecoveryMode === "combo"
     ? "update_combo_recommendation_state"
     : "update_build_recommendation_state";
   const allowedTools = toolContext.allowedTools ? new Set(toolContext.allowedTools) : null;
   if (recommendationRecoveryTurn) allowedTools?.add(expectedRecommendationTool);
-  let toolDefinitions = getToolDefinitionsForMessages(messages, toolContext.buildDraft, toolContext.comboDraft, toolContext.pageContext, toolContext.actor.isAnonymous, toolContext.allowedTools, recommendationState)
+  let toolDefinitions = isContinuation ? [] : getToolDefinitionsForMessages(messages, toolContext.buildDraft, toolContext.comboDraft, toolContext.pageContext, toolContext.actor.isAnonymous, toolContext.allowedTools, recommendationState)
     .filter((tool) => !allowedTools || allowedTools.has(tool.function.name));
   if (recommendationRecoveryTurn) {
     const recommendationTool = AI_TOOL_DEFINITIONS.find((tool) => tool.function.name === expectedRecommendationTool);
@@ -885,6 +902,8 @@ async function runProviderConversation({
         || typeof payload.usage.completion_tokens === "number";
       usage.inputTokens += payload.usage.prompt_tokens || 0;
       usage.outputTokens += payload.usage.completion_tokens || 0;
+      const reasoningTokens = payload.usage.completion_tokens_details?.reasoning_tokens || 0;
+      if (reasoningTokens > 0) usage.reasoningTokens = (usage.reasoningTokens || 0) + reasoningTokens;
       const cachedInputTokens = payload.usage.prompt_tokens_details?.cached_tokens || 0;
       const cacheWriteTokens = payload.usage.prompt_tokens_details?.cache_write_tokens || 0;
       if (cachedInputTokens > 0) usage.cachedInputTokens = (usage.cachedInputTokens || 0) + cachedInputTokens;
@@ -902,8 +921,23 @@ async function runProviderConversation({
       throw new AiGatewayError(provider, 502, "missing_completion", "response");
     }
 
+    if (choice?.finish_reason === "length" && assistantMessage.tool_calls?.length) {
+      throw new AiGatewayError(provider, 502, "truncated_tool_call", "response", choice.finish_reason, undefined, false, undefined, toolCallCount);
+    }
+
     if (!toolCalls?.length) {
         const content = assistantMessage.content ? redactSensitiveText(assistantMessage.content.trim()) : undefined;
+       if (!content && choice?.finish_reason === "length") {
+         return {
+           message: { role: "assistant", content: localizedAiText(responseLanguage, "responseTruncated") },
+           provider,
+           model: payload.model || model,
+           ...(usageReported ? { usage } : {}),
+           toolCalls: toolCallCount,
+           truncated: true,
+           finishReason: choice.finish_reason,
+         };
+       }
        if (!content) throw new AiGatewayError(provider, 502, "empty_completion", "response", choice?.finish_reason);
       if (isLeakedToolPlan(content)) {
         throw new AiGatewayError(provider, 502, "unstructured_tool_plan", "response", choice?.finish_reason);
@@ -917,8 +951,9 @@ async function runProviderConversation({
         toolCalls: toolCallCount,
          ...(pendingAction ? { pendingAction } : {}),
          ...(recommendationState ? { recommendationState } : {}),
-        ...(choice?.finish_reason === "length" ? { truncated: true } : {}),
-      };
+         ...(choice?.finish_reason === "length" ? { truncated: true } : {}),
+         finishReason: choice?.finish_reason,
+       };
     }
 
     if (toolCalls.length > MAX_TOOL_CALLS_PER_ROUND) {
@@ -944,6 +979,9 @@ async function runProviderConversation({
       if (!name) continue;
 
       const parsedArguments = parseToolArguments(toolCall.function?.arguments);
+      if (!toolCall.id || !parsedArguments) {
+        throw new AiGatewayError(provider, 502, "invalid_tool_call", "response", choice?.finish_reason, undefined, false, undefined, toolCallCount);
+      }
       const fingerprint = `${name}:${JSON.stringify(parsedArguments)}`;
       const isToolAllowed = toolDefinitions.some((tool) => tool.function.name === name);
       let result;

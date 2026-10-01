@@ -446,16 +446,82 @@ describe("AI gateway conversational protocol", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
 
+    const recommendationState = mergeRecommendationState(undefined, "build", { criteria: { useCase: "gaming" } });
     await runChat([
       { role: "user", content: "Explica esta GPU." },
       { role: "assistant", content: "La respuesta quedó incompleta." },
-    ], { ...toolContext(), allowedTools: [] }, "gateway-continuation", undefined, undefined, undefined, undefined, "Continue from the interruption without repeating content.");
+      { role: "user", content: "continúa" },
+    ], { ...toolContext(), allowedTools: [], recommendationState }, "gateway-continuation", undefined, undefined, undefined, undefined, "Continue from the interruption without repeating content. Do not infer missing tool results.");
 
     const [, init] = (fetchMock.mock.calls[0] || []) as unknown as [RequestInfo | URL, RequestInit];
     const request = JSON.parse(String(init.body));
     expect(request.tools).toEqual([]);
+    expect(request.tool_choice).toBe("none");
     expect(request.messages[0].content).toContain("Continue from the interruption");
+    expect(request.messages[0].content).toContain("Do not infer missing tool results");
     expect(request.messages.slice(1).some((message: { content: string }) => message.content.includes("Continue from the interruption"))).toBe(false);
+  });
+
+  it("uses a larger configurable output budget for external providers", async () => {
+    vi.stubEnv("AI_MANAGED_PROVIDERS", "openrouter");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    vi.stubEnv("AI_OPENROUTER_MODELS", "openai/gpt-oss-120b");
+    vi.stubEnv("AI_EXTERNAL_MAX_COMPLETION_TOKENS", "3072");
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "openai/gpt-oss-120b",
+      choices: [{ message: { role: "assistant", content: "La GPU renderiza gráficos." }, finish_reason: "stop" }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await runChat([{ role: "user", content: "¿Qué hace una GPU?" }], toolContext(), "gateway-external-budget");
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    expect(JSON.parse(String(init.body)).max_tokens).toBe(3_072);
+  });
+
+  it("marks empty generations stopped by the output limit as continuable truncations", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    vi.stubEnv("AI_LOCAL_BASE_URL", "http://127.0.0.1:8080/v1");
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "Qwen3.5-9B-UD-Q4_K_XL",
+      choices: [{ message: { role: "assistant", content: null }, finish_reason: "length" }],
+      usage: { prompt_tokens: 100, completion_tokens: 512, completion_tokens_details: { reasoning_tokens: 512 } },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runChat([{ role: "user", content: "Analiza con detalle esta GPU." }], toolContext(), "gateway-empty-truncation");
+
+    expect(result.truncated).toBe(true);
+    expect(result.finishReason).toBe("length");
+    expect(result.usage?.reasoningTokens).toBe(512);
+  });
+
+  it("never executes a tool call from a generation truncated by the provider", async () => {
+    vi.stubEnv("AI_LOCAL_ENABLED", "true");
+    vi.stubEnv("AI_LOCAL_ONLY", "true");
+    const executeSpy = vi.spyOn(await import("@/lib/ai/tools"), "executeAiTool");
+    const fetchMock = vi.fn(async () => providerResponse({
+      model: "Qwen3.5-9B-UD-Q4_K_XL",
+      choices: [{
+        message: {
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: "truncated-call",
+            type: "function",
+            function: { name: "search_components", arguments: "{\\\"query\\\":\\\"Ryzen" },
+          }],
+        },
+        finish_reason: "length",
+      }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(runChat([{ role: "user", content: "Busca Ryzen en el catálogo" }], toolContext(), "gateway-truncated-tool"))
+      .rejects.toMatchObject({ code: "truncated_tool_call", stage: "response" });
+
+    expect(executeSpy).not.toHaveBeenCalled();
   });
 
   it("sends an opaque cache session only to OpenRouter and records cache usage", async () => {

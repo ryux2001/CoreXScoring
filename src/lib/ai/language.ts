@@ -50,7 +50,7 @@ export function responseLanguageInstruction(language: AiResponseLanguage): strin
 
 export function localizedAiText(
   language: AiResponseLanguage,
-  key: 'draftTitle' | 'needDetails' | 'priceFailure' | 'buildFailure' | 'priceUpdated' | 'draftUpdated',
+  key: 'draftTitle' | 'needDetails' | 'priceFailure' | 'buildFailure' | 'priceUpdated' | 'draftUpdated' | 'responseTruncated',
   values: Record<string, string> = {},
 ): string {
   const messages: Record<typeof key, { en: string; es: string }> = {
@@ -60,6 +60,7 @@ export function localizedAiText(
     buildFailure: { en: 'I could not prepare the build: {error}', es: 'No pude preparar la build: {error}' },
     priceUpdated: { en: 'I updated the evaluated price for this component.', es: 'He actualizado el precio evaluado de este componente.' },
     draftUpdated: { en: 'I updated the draft. You can ask me for more changes or tell me you want to proceed with it.', es: 'He actualizado el borrador. Puedes pedirme más cambios o indicar que quieres proceder con él.' },
+    responseTruncated: { en: 'The response reached its generation limit before visible text was produced. You can continue the response.', es: 'La generación alcanzó su límite antes de producir texto visible. Puedes continuar la respuesta.' },
   };
 
   return messages[key][language].replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? `{${name}}`);

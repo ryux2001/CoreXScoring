@@ -5,9 +5,20 @@ import type { ChatMessage, ChatProvider } from "./types";
 import type { AiFailureStage } from "./gateway";
 import type { AiSupabaseClient } from "./tools/types";
 
-/** Reserva para hasta seis rondas externas breves, sin infravalorar las tool calls. */
-export const AI_RESERVED_OUTPUT_TOKENS = 3_000;
-const MAX_ESTIMATED_TOKEN_BUDGET = 20_000;
+/** Output allowance for four external generations of up to 4,096 tokens. */
+export const AI_RESERVED_OUTPUT_TOKENS = 16_384;
+const LEGACY_QUOTA_RESERVATION_LIMIT = 20_000;
+const MAX_QUOTA_RESERVATION_LIMIT = 30_000;
+
+/** Opt into 30,000 only after applying the quota reservation limit migration. */
+export function getAiQuotaReservationLimit(): number {
+  const configured = Number(process.env.AI_QUOTA_MAX_RESERVATION_TOKENS);
+  return Number.isInteger(configured)
+    && configured >= LEGACY_QUOTA_RESERVATION_LIMIT
+    && configured <= MAX_QUOTA_RESERVATION_LIMIT
+    ? configured
+    : LEGACY_QUOTA_RESERVATION_LIMIT;
+}
 
 export type AiQuotaReason = "user_messages" | "ip_messages" | "user_tokens" | "ip_tokens";
 
@@ -32,8 +43,16 @@ export interface AiQuotaStatus {
 }
 
 export class AiQuotaUnavailableError extends Error {
-  constructor() {
+  constructor(readonly databaseCode?: string) {
     super("No se pudo consultar la cuota de CoreX AI.");
+  }
+
+  get code(): string {
+    return this.databaseCode === "22023" ? "ai_quota_invalid_reservation" : "ai_quota_unavailable";
+  }
+
+  get retryable(): boolean {
+    return this.databaseCode !== "22023";
   }
 }
 
@@ -98,7 +117,7 @@ export async function reserveOpenRouterBudget(supabase: AiSupabaseClient, reques
     p_request_id: requestId,
     p_model: model,
     p_input_tokens: 120_000,
-    p_output_tokens: 2_400,
+    p_output_tokens: 16_384,
   });
   if (error) throw new AiBudgetUnavailableError();
   const result = toRecord(data);
@@ -139,7 +158,7 @@ export function estimateTokenBudget(messages: ChatMessage[]): number {
   const inputTokens = Math.ceil(messages.reduce((total, message) => total + message.content.length, 0) / 4);
   // Reserve room for the system policy, verified page context and tool schemas.
   const promptOverhead = 5_000;
-  return Math.min(MAX_ESTIMATED_TOKEN_BUDGET, inputTokens + promptOverhead + AI_RESERVED_OUTPUT_TOKENS);
+  return Math.min(getAiQuotaReservationLimit(), inputTokens + promptOverhead + AI_RESERVED_OUTPUT_TOKENS);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -159,7 +178,7 @@ export async function getAiQuotaStatus(supabase: AiSupabaseClient): Promise<AiQu
   const { data, error } = await supabase.rpc("get_my_ai_quota_status");
   if (error) {
     console.error("AI quota status failed", { code: error.code || "unknown" });
-    throw new AiQuotaUnavailableError();
+    throw new AiQuotaUnavailableError(error.code);
   }
 
   const result = toRecord(data);
@@ -193,6 +212,10 @@ export async function consumeAiQuota({
   estimatedTokens: number;
   requestId: string;
 }): Promise<AiQuotaDecision> {
+  if (!Number.isInteger(estimatedTokens) || estimatedTokens < 0 || estimatedTokens > getAiQuotaReservationLimit()) {
+    console.error("AI quota reservation rejected", { requestId, estimatedTokens, maximumTokens: getAiQuotaReservationLimit() });
+    throw new AiQuotaUnavailableError("22023");
+  }
   const { data, error } = await supabase.rpc("reserve_ai_quota", {
     p_request_id: requestId,
     p_user_id: userId,
@@ -202,8 +225,14 @@ export async function consumeAiQuota({
   });
 
   if (error) {
-    console.error("AI quota check failed", { code: error.code || "unknown" });
-    throw new AiQuotaUnavailableError();
+    console.error("AI quota check failed", {
+      requestId,
+      code: error.code || "unknown",
+      message: error.message?.slice(0, 500),
+      estimatedTokens,
+      maximumTokens: getAiQuotaReservationLimit(),
+    });
+    throw new AiQuotaUnavailableError(error.code);
   }
 
   const result = toRecord(data);

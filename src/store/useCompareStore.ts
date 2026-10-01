@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { MAX_COMPARISON_ITEMS } from '@/lib/comparison-limits';
 
 // Interfaz para el producto (puedes adaptarla a tu tipo exacto de Supabase)
 export interface CompareProduct {
@@ -56,7 +57,7 @@ export const useCompareStore = create<CompareState>()(
     (set, get) => ({
       items: [],
       componentType: null,
-      maxSlots: 3, // Límite inicial de 3 componentes acordado
+      maxSlots: MAX_COMPARISON_ITEMS,
       evaluatedPrices: {},
       evaluatedPartPrices: {},
 

@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
   let body: unknown;
   try {
-    body = await readLimitedJson(request, 64 * 1024);
+    body = await readLimitedJson(request, 512 * 1024);
   } catch (error) {
     const status = error instanceof Error && "status" in error ? Number(error.status) : 400;
     console.warn("CoreX AI request rejected", { requestId, code: "invalid_json" });
@@ -463,7 +463,7 @@ export async function POST(request: NextRequest) {
       request.signal,
       body.cacheSessionId,
       isContinuation
-        ? "Continue exactly the previous assistant response from where it was interrupted. Do not repeat content and do not execute actions or tools."
+        ? "Continue exactly the previous assistant response from where it was interrupted. Do not repeat content. Use only facts already present in the conversation; do not infer missing tool results or introduce unsupported facts. Do not execute actions or tools."
         : undefined,
     );
 
@@ -504,6 +504,7 @@ export async function POST(request: NextRequest) {
         buildDraft: completion.buildDraft || effectiveBuildDraft,
         comboDraft: completion.comboDraft || effectiveComboDraft,
         recommendationState: completion.recommendationState ?? effectiveRecommendationState,
+        mergeContinuation: true,
       });
     } else if (conversationMode === "saved" && !isContinuation) {
       savedCompletion = isAlreadyStored && body.conversationId
@@ -537,6 +538,7 @@ export async function POST(request: NextRequest) {
       outputTokens: completion.usage?.outputTokens || 0,
       toolCalls: completion.toolCalls || 0,
       status: completion.provider === "guardrail" ? "guardrail" : "success",
+      finishReason: completion.finishReason,
     });
 
     return NextResponse.json(savedCompletion, {
@@ -551,13 +553,20 @@ export async function POST(request: NextRequest) {
       });
     }
     if (budgetReservationId) {
-      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 120_000, 2_400, 0, 0, completionModel);
+      await settleOpenRouterBudget(quotaAdmin, budgetReservationId, 120_000, 16_384, 0, 0, completionModel);
     }
     if (error instanceof AiQuotaUnavailableError) {
-      return NextResponse.json(
-        { error: "Las cuotas de CoreX AI no están disponibles. Inténtalo de nuevo más tarde." },
+      return withRequestId(NextResponse.json(
+        {
+          error: error.retryable
+            ? "Las cuotas de CoreX AI no están disponibles. Inténtalo de nuevo más tarde."
+            : "La configuración de reservas de CoreX AI no coincide con la base de datos. Revisa el límite de cuota del servidor.",
+          code: error.code,
+          retryable: error.retryable,
+          requestId,
+        },
         { status: 503, headers: { "Cache-Control": "no-store" } },
-      );
+      ), requestId);
     }
     if (error instanceof AiBudgetUnavailableError) {
       return NextResponse.json({ error: "El presupuesto de CoreX AI no está disponible." }, { status: 503, headers: { "Cache-Control": "no-store" } });

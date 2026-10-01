@@ -10,6 +10,7 @@ import { getComparisonFpsResult, type ComparisonFpsItem } from "@/lib/fpsCombos/
 import type { ComparisonUiAction, PageContext } from "../types";
 import type { AiToolContext, AiToolResult } from "./types";
 import { AI_PRODUCT_SELECT } from "../privacy";
+import { MAX_COMPARISON_ITEMS } from "@/lib/comparison-limits";
 
 type Row = Record<string, unknown>;
 type Currency = "USD" | "EUR";
@@ -1176,7 +1177,7 @@ export async function proposeAddToComparison(args: unknown, context: AiToolConte
   }
   if (!itemId) return getToolFailure("Falta el ID del componente que quieres añadir.");
   if (currentIds.includes(itemId)) return getToolFailure("Ese componente ya está en la comparación.");
-  if (currentIds.length >= 3) return getToolFailure("La comparación ya tiene tres componentes.");
+  if (currentIds.length >= MAX_COMPARISON_ITEMS) return getToolFailure(`La comparación ya tiene ${MAX_COMPARISON_ITEMS} elementos.`);
 
   const { data: currentProducts, error: currentError } = await getProductQuery(context.supabase).in("id", currentIds);
   if (currentError) return getToolFailure("No pude validar los componentes actuales de la comparación.");
@@ -1306,7 +1307,7 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
   const removeIds = Array.isArray(input.removeIds) ? input.removeIds.map(sanitizeIdentifier).filter(Boolean) : [];
   const rawAdditions = Array.isArray(input.additions) ? input.additions : [];
   const rawPriceOverrides = Array.isArray(input.priceOverrides) ? input.priceOverrides : [];
-  if (removeIds.length > 3 || rawAdditions.length > 3 || rawPriceOverrides.length > 3) {
+  if (removeIds.length > MAX_COMPARISON_ITEMS || rawAdditions.length > MAX_COMPARISON_ITEMS || rawPriceOverrides.length > MAX_COMPARISON_ITEMS) {
     return getToolFailure("La comparación admite como máximo tres elementos por operación.");
   }
   if (new Set(removeIds).size !== removeIds.length) return getToolFailure("No repitas un componente al quitarlo.");
@@ -1364,7 +1365,7 @@ export async function proposeUpdateComparison(args: unknown, context: AiToolCont
   const finalEntities = mode === "replace"
     ? additions.map(({ id, entityType }) => ({ id, entityType }))
     : [...currentEntities.filter((entity) => !removeIds.includes(entity.id)), ...additions.map(({ id, entityType }) => ({ id, entityType }))];
-  if (finalEntities.length > 3) return getToolFailure("El resultado supera el límite de tres elementos en la comparación.");
+  if (finalEntities.length > MAX_COMPARISON_ITEMS) return getToolFailure(`El resultado supera el límite de ${MAX_COMPARISON_ITEMS} elementos en la comparación.`);
   if (new Set(finalEntities.map((entity) => entity.id)).size !== finalEntities.length) return getToolFailure("La comparación resultante contiene elementos duplicados.");
 
   const resolved = await resolveComparisonRows(context, [...currentEntities, ...additions.map(({ id, entityType }) => ({ id, entityType }))]);

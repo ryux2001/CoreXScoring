@@ -17,6 +17,23 @@ describe("chat turn lifecycle", () => {
     const assistant = { role: "assistant" as const, content: "Respuesta" };
 
     expect(completeChatTurn(completed, user, assistant)).toEqual([...completed, user, assistant]);
-    expect(completeChatTurn(completed, user, assistant, true)).toEqual([...completed, assistant]);
+    expect(completeChatTurn(completed, user, assistant, true)).toEqual([
+      { role: "assistant", content: "Anterior\nRespuesta" },
+    ]);
+  });
+
+  it("merges a continuation into the previous assistant message without repeating overlap", () => {
+    const completed = [
+      { role: "user" as const, content: "Pregunta" },
+      { role: "assistant" as const, content: "La respuesta termina en una frase" },
+    ];
+
+    expect(completeChatTurn(completed, { role: "user", content: "" }, {
+      role: "assistant",
+      content: "una frase y continúa.",
+    }, true)).toEqual([
+      { role: "user", content: "Pregunta" },
+      { role: "assistant", content: "La respuesta termina en una frase y continúa." },
+    ]);
   });
 });

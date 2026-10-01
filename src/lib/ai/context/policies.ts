@@ -26,6 +26,7 @@ const RAM_PATTERN = /\b(?:ram|memoria(?:\s+ram)?|ddr[45]|dual channel|latencia|c
 const BUILD_PATTERN = /\b(?:build|pc gaming|ordenador(?:\s+(?:completo|gaming))?|equipo(?:\s+(?:completo|gaming))?|configuracion(?:\s+(?:completa|de pc))?|montar(?:me)?\s+(?:un\s+)?pc)\b/i;
 const COMBO_PATTERN = /\b(?:combo|combinacion\s+(?:de\s+)?(?:cpu|gpu|ram)|cpu\s*\+\s*gpu)\b/i;
 const USED_MARKET_PATTERN = /\b(?:segunda mano|segundamano|mercado usado|usad[oa]s?|reacondicionad[oa]s?|wallapop|mineria|mining)\b/i;
+const HARDWARE_POLICY_PATTERN = /\b(?:gpu|grafica|tarjeta grafica|geforce|radeon|rtx|gtx|rx\s*\d|arc\s*[a-z]?\d|vram|dlss|fsr|ray tracing|cpu|procesador|ryzen|core\s*i[3579]|core ultra|intel|socket|am4|am5|lga|ram|memoria|ddr[45]|build|pc gaming|combo|fps|benchmark|compatibilidad|rendimiento|scoring|precio|calidad\s*\/\s*precio)\b/i;
 
 function normalize(text: string): string {
   return text
@@ -53,7 +54,9 @@ function addPolicy(selection: AiPolicyFile[], file: AiPolicyFile): void {
 /** Selecciona políticas locales según la pregunta y el contexto validado de la página. */
 export function selectAiPolicyFiles(messages: ChatMessage[], pageContext?: PageContext): AiPolicyFile[] {
   const text = getSelectionText(messages, pageContext);
-  const selection: AiPolicyFile[] = [...BASE_POLICY_FILES];
+  const selection: AiPolicyFile[] = HARDWARE_POLICY_PATTERN.test(text) || pageContext?.entityType
+    ? [...BASE_POLICY_FILES]
+    : [];
 
   if (USED_MARKET_PATTERN.test(text)) addPolicy(selection, "used-market.md");
   if (pageContext?.route === "build" || pageContext?.entityType === "build" || pageContext?.entityType === "saved_build" || BUILD_PATTERN.test(text)) {
@@ -91,7 +94,7 @@ export function resolveAiPolicyContext(messages: ChatMessage[], pageContext?: Pa
   for (const file of files) {
     const content = readPolicy(file);
     const section = `\n\n--- Política local: ${file} ---\n${content}`;
-    if (sections.length > 0 && currentLength + section.length > MAX_POLICY_CONTEXT_CHARS) continue;
+    if (currentLength + section.length > MAX_POLICY_CONTEXT_CHARS) continue;
     sections.push(section);
     currentLength += section.length;
   }

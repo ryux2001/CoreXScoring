@@ -1,6 +1,6 @@
 "use client";
 
-import React, { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import { Plus } from 'lucide-react';
 import { useCompareStore, type CompareProduct } from '@/store/useCompareStore';
@@ -38,6 +38,11 @@ interface ComparatorClientProps {
 }
 
 type ScrollSource = 'comparison' | 'fps';
+
+type ComparisonPriceSnapshot = {
+  evaluatedPrices: Record<string, number>;
+  evaluatedPartPrices: Record<string, Record<string, number>>;
+};
 
 function getCurrentPrice(
   item: CompareProduct,
@@ -116,9 +121,17 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   const scrollSyncFrameRef = useRef<number | null>(null);
   const pendingScrollSourceRef = useRef<ScrollSource | null>(null);
   const suppressedScrollRef = useRef<{ source: ScrollSource; scrollLeft: number } | null>(null);
+  const pendingInternalRouteRef = useRef<{
+    key: string;
+    prices: ComparisonPriceSnapshot;
+  } | null>(null);
   const hasHydratedStoredProducts = useRef(false);
   const [hydratedRouteKey, setHydratedRouteKey] = useState('');
   const initialItemsKey = initialItems.map((item) => `${item.id}:${item.slug}`).join('|');
+  const getCurrentPriceSnapshot = useEffectEvent((): ComparisonPriceSnapshot => ({
+    evaluatedPrices,
+    evaluatedPartPrices,
+  }));
 
   const syncComparisonScroll = (source: ScrollSource) => {
     const sourceElement = source === 'comparison'
@@ -173,16 +186,24 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
   useLayoutEffect(() => {
     if (initialItems.length === 0 || hydratedRouteKey === initialItemsKey) return;
 
+    const pendingInternalRoute = pendingInternalRouteRef.current;
+    const isInternalRoute = pendingInternalRoute?.key === initialItemsKey;
     const routeItems = initialItems.map((item) => ({
       ...item,
       price: getCurrentPrice(item, globalCurrency, {}, {}, {}),
       currency: globalCurrency,
     }));
-    const result = applyComparisonSnapshot(routeItems, {});
+    const result = applyComparisonSnapshot(
+      routeItems,
+      isInternalRoute ? pendingInternalRoute.prices.evaluatedPrices : {},
+      isInternalRoute ? pendingInternalRoute.prices.evaluatedPartPrices : {},
+    );
     if (!result.success) {
       console.error('Unable to load comparison from URL:', result.error);
       return;
     }
+
+    if (isInternalRoute) pendingInternalRouteRef.current = null;
 
     // Editorial and shared comparison URLs are the source of truth, never stale local storage.
     startTransition(() => {
@@ -266,9 +287,23 @@ export default function ComparatorClient({ initialItems, globalCurrency, games }
       router.replace('/comparator', { scroll: false });
     } else {
       const pathSlugs = items.map((item) => item.slug).join('/');
+      const nextRouteKey = items.map((item) => `${item.id}:${item.slug}`).join('|');
+      if (nextRouteKey !== initialItemsKey) {
+        pendingInternalRouteRef.current = {
+          key: nextRouteKey,
+          prices: getCurrentPriceSnapshot(),
+        };
+      }
       router.replace(`/comparator/${pathSlugs}?currency=${globalCurrency}`, { scroll: false });
     }
-  }, [items, router, globalCurrency, hydratedRouteKey, initialItems.length, initialItemsKey]);
+  }, [
+    globalCurrency,
+    hydratedRouteKey,
+    initialItems.length,
+    initialItemsKey,
+    items,
+    router,
+  ]);
 
   const maxScoresByCategory = useMemo(() => {
     const maxes: Record<string, number> = {};

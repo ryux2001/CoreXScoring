@@ -31,6 +31,7 @@ describe("AI conversation persistence", () => {
       p_conversation_id: "conversation-1",
       p_assistant_content: "La explicación continúa aquí.",
       p_state: { version: 1 },
+      p_merge_continuation: false,
     });
   });
 

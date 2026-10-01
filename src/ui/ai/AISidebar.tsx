@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/navigation";
+import { MAX_COMPARISON_ITEMS } from "@/lib/comparison-limits";
 import { getComparisonErrorMessage } from "@/lib/comparison-errors";
 import {
   Bot,
@@ -18,7 +19,7 @@ import {
   Square,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { AiFrontendPriceContext, BuildDraft, ChatMessage, ChatResponse, ComboDraft, ComparisonUiAction, ConversationRecord, ConversationSummary, AiConversationMode, PageContext, PendingAction, RecommendationState } from "@/lib/ai/types";
+import { MAX_ASSISTANT_MESSAGE_LENGTH, type AiFrontendPriceContext, type BuildDraft, type ChatMessage, type ChatResponse, type ComboDraft, type ComparisonUiAction, type ConversationRecord, type ConversationSummary, type AiConversationMode, type PageContext, type PendingAction, type RecommendationState } from "@/lib/ai/types";
 import { completeChatTurn, getChatRequestMessages } from "@/lib/ai/chat-turns";
 import { ensureAiSession, resetExpiredAiSession } from "@/lib/ai/client-session";
 import PendingActionCard from "./PendingActionCard";
@@ -115,7 +116,7 @@ function getCurrentClientPageContext(comparisonItems: CompareProduct[]): PageCon
             ? "vault"
             : root ? "other" : "home";
   const identifier = root === "vault" ? segments[2] || segments[1] : route === "comparator" ? undefined : segments[1];
-  const comparisonEntities = comparisonItems.slice(0, 3).map((item) => ({
+  const comparisonEntities = comparisonItems.slice(0, MAX_COMPARISON_ITEMS).map((item) => ({
     id: String(item.id),
     entityType: getComparisonEntityType(item),
     ...(item.slug ? { slug: item.slug } : {}),
@@ -1051,7 +1052,8 @@ export default function AISidebar() {
             content: t("errors.comparisonUpdateAssistant", { error: comparisonActionError }),
           }
         : payload.message;
-      setMessages((currentMessages) => completeChatTurn(currentMessages, userMessage, responseMessage, isContinuation));
+      const completedMessages = completeChatTurn(messages, userMessage, responseMessage, isContinuation);
+      setMessages(completedMessages);
       setPendingUserMessage(null);
       setFailedUserMessage(null);
       setProvider(payload.provider);
@@ -1086,7 +1088,12 @@ export default function AISidebar() {
       if (comparisonActionError) {
         setError({ message: comparisonActionError, retryable: false });
       }
-      setCanContinue(payload.truncated === true && !payload.pendingAction && !payload.comparisonAction && pendingActions.length === 0);
+      const completedAssistantMessage = [...completedMessages].reverse().find((message) => message.role === "assistant");
+      setCanContinue(payload.truncated === true
+        && (completedAssistantMessage?.content.length || 0) < MAX_ASSISTANT_MESSAGE_LENGTH
+        && !payload.pendingAction
+        && !payload.comparisonAction
+        && pendingActions.length === 0);
     } catch (requestError) {
       if (requestError instanceof DOMException && requestError.name === "AbortError") {
         setPendingUserMessage(null);

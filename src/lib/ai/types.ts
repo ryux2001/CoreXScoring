@@ -1,6 +1,8 @@
 import type { CatalogPriceEvaluation } from "@/lib/catalog/price-evaluation";
+import { MAX_COMPARISON_ITEMS } from "@/lib/comparison-limits";
 
 export const MAX_CHAT_MESSAGE_LENGTH = 4_000;
+export const MAX_ASSISTANT_MESSAGE_LENGTH = 24_000;
 export const MAX_CHAT_HISTORY_MESSAGES = 12;
 export const MAX_SAVED_CHAT_MESSAGES = 150;
 
@@ -210,6 +212,7 @@ export interface ConversationRecord extends ConversationSummary {
 export interface ChatUsage {
   inputTokens: number;
   outputTokens: number;
+  reasoningTokens?: number;
   cachedInputTokens?: number;
   cacheWriteTokens?: number;
 }
@@ -330,6 +333,8 @@ export interface ChatResponse {
   comparisonAction?: ComparisonUiAction;
   /** El proveedor terminó por límite de salida; la interfaz puede pedir continuación. */
   truncated?: boolean;
+  /** Provider-reported completion finish reason, retained for diagnostics. */
+  finishReason?: string | null;
 }
 
 export function isChatRequest(value: unknown): value is ChatRequest {
@@ -383,7 +388,7 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     && (message.role === "user" || message.role === "assistant")
     && typeof message.content === "string"
     && message.content.trim().length > 0
-    && message.content.length <= MAX_CHAT_MESSAGE_LENGTH
+    && message.content.length <= (message.role === "user" ? MAX_CHAT_MESSAGE_LENGTH : MAX_ASSISTANT_MESSAGE_LENGTH)
   ));
 }
 
@@ -583,7 +588,7 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
       ...(item.slug ? { slug: item.slug.slice(0, 120) } : {}),
     }))
     .filter((item) => item.id.length > 0)
-    .slice(0, 3);
+    .slice(0, MAX_COMPARISON_ITEMS);
 
   return {
     pathname: context.pathname.slice(0, 300),
@@ -597,7 +602,7 @@ export function normalizePageContext(context: PageContext | undefined): PageCont
     ...(context.comparison && context.comparison.itemIds.length > 0
       ? {
           comparison: {
-            itemIds: Array.from(new Set(context.comparison.itemIds.map((id) => id.trim()).filter(Boolean))).slice(0, 3),
+            itemIds: Array.from(new Set(context.comparison.itemIds.map((id) => id.trim()).filter(Boolean))).slice(0, MAX_COMPARISON_ITEMS),
             ...(comparisonItems && comparisonItems.length > 0 ? { items: comparisonItems } : {}),
             ...(context.comparison.comparisonType ? { comparisonType: context.comparison.comparisonType } : {}),
             ...(context.comparison.componentType ? { componentType: context.comparison.componentType.slice(0, 30) } : {}),

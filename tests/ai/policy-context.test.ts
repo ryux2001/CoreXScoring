@@ -31,4 +31,8 @@ describe("AI recommendation policy context", () => {
     expect(context).toContain("ram-policies.md");
     expect(context).not.toContain("gpu-policies.md");
   });
+
+  it("does not load long hardware policies for a generic web-usage question", () => {
+    expect(selectAiPolicyFiles([{ role: "user", content: "¿Cómo uso el comparador?" }])).toEqual([]);
+  });
 });

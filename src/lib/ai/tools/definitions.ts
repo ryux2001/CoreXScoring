@@ -1,3 +1,5 @@
+import { MAX_COMPARISON_ITEMS } from "@/lib/comparison-limits";
+
 export interface AiToolDefinition {
   type: "function";
   function: {
@@ -309,10 +311,10 @@ const PROPOSE_UPDATE_COMPARISON_TOOL: AiToolDefinition = {
       type: "object",
       properties: {
         mode: { type: "string", enum: ["patch", "replace"], description: "patch conserva los componentes no afectados; replace limpia primero y deja solo additions." },
-        removeIds: { type: "array", maxItems: 3, items: { type: "string" }, description: "IDs actuales que se deben quitar con mode patch." },
+        removeIds: { type: "array", maxItems: MAX_COMPARISON_ITEMS, items: { type: "string" }, description: "IDs actuales que se deben quitar con mode patch." },
         additions: {
           type: "array",
-          maxItems: 3,
+          maxItems: MAX_COMPARISON_ITEMS,
           items: {
             type: "object",
             properties: {
@@ -327,7 +329,7 @@ const PROPOSE_UPDATE_COMPARISON_TOOL: AiToolDefinition = {
         },
         priceOverrides: {
           type: "array",
-          maxItems: 3,
+          maxItems: MAX_COMPARISON_ITEMS,
           items: {
             type: "object",
             properties: { id: { type: "string", description: "ID del componente o pieza." }, slot: { type: "string", description: "Pieza de una build/combo: cpu, gpu, ram, motherboard, storage o psu." }, price: { type: "number", minimum: 0.01, maximum: 1000000 } },
